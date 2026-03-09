@@ -134,6 +134,15 @@ For full details on updates, see the release notes on **TestFlight** or **App St
 - Feedback, PR, and issue reports are welcome
 - Will be on TestFlight or App Store
 
+## 🤖 AI Features (Developer Preview)
+
+AI-powered features are currently being deployed and are in **private developer preview**.
+
+At the moment, these features are only available to **authorized developer accounts** for internal testing.  
+A small number of additional testers may be invited during this stage.
+
+The full AI feature set is planned to be **officially released in version 2.0.0**.
+
 ## Current UI Direction
 
 The current UI uses a structured glass tile system inspired by macOS 26 (liquid glass). <br>
