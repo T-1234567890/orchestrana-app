@@ -10,16 +10,16 @@ enum AuthProvider: CaseIterable, Identifiable {
 
     var id: Self { self }
 
-    var title: String {
+    func title(using localizationManager: LocalizationManager) -> String {
         switch self {
         case .google:
-            return "Continue with Google"
+            return localizationManager.text("auth.continue_google")
         case .github:
-            return "Continue with GitHub"
+            return localizationManager.text("auth.continue_github")
         case .apple:
-            return "Continue with Apple"
+            return localizationManager.text("auth.continue_apple")
         case .email:
-            return "Continue with Email"
+            return localizationManager.text("auth.continue_email")
         }
     }
 }
@@ -60,10 +60,18 @@ struct CloudSettingsSection: View {
             }
 
             Button(localizationManager.text("settings.account.logout")) {
-                authViewModel.signOut()
+                Task { @MainActor in
+                    await authViewModel.signOut()
+                }
             }
             .buttonStyle(.bordered)
-            .disabled(authViewModel.isLoading)
+            .disabled(authViewModel.isAuthenticating)
+
+            if let message = authViewModel.authError, !message.isEmpty {
+                Text(message)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
         }
     }
 
@@ -135,37 +143,45 @@ struct LoginView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var localizationManager: LocalizationManager
     @State private var showEmailLogin = false
-    @State private var showAppleComingSoon = false
-    @State private var providerErrorMessage: String?
     @State private var activeProvider: AuthProvider?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            AuthProviderButton(provider: .google, isLoading: activeProvider == .google) {
+            AuthProviderButton(
+                provider: .google,
+                title: AuthProvider.google.title(using: localizationManager),
+                isLoading: activeProvider == .google && authViewModel.isAuthenticating,
+                isDisabled: authViewModel.isAuthenticating
+            ) {
                 Task { @MainActor in
                     authViewModel.clearError()
                     await performProviderSignIn(provider: .google) {
-                        _ = try await AuthManager.shared.signInWithGoogle()
+                        try await authViewModel.signInWithGoogle()
                     }
                 }
             }
 
-            AuthProviderButton(provider: .github, isLoading: activeProvider == .github) {
+            AuthProviderButton(
+                provider: .apple,
+                title: AuthProvider.apple.title(using: localizationManager),
+                isLoading: activeProvider == .apple && authViewModel.isAuthenticating,
+                isDisabled: authViewModel.isAuthenticating
+            ) {
                 Task { @MainActor in
                     authViewModel.clearError()
-                    await performProviderSignIn(provider: .github) {
-                        _ = try await AuthManager.shared.signInWithGithub()
+                    await performProviderSignIn(provider: .apple) {
+                        try await authViewModel.signInWithApple()
                     }
                 }
             }
 
-            AuthProviderButton(provider: .apple, isLoading: false) {
-                showAppleComingSoon = true
-            }
-
-            AuthProviderButton(provider: .email, isLoading: false) {
+            AuthProviderButton(
+                provider: .email,
+                title: AuthProvider.email.title(using: localizationManager),
+                isLoading: false,
+                isDisabled: authViewModel.isAuthenticating
+            ) {
                 withAnimation(.easeInOut(duration: 0.18)) {
-                    providerErrorMessage = nil
                     authViewModel.clearError()
                     showEmailLogin.toggle()
                 }
@@ -176,22 +192,11 @@ struct LoginView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
 
-            if let message = providerErrorMessage, !message.isEmpty {
+            if !showEmailLogin, let message = authViewModel.authError, !message.isEmpty {
                 Text(message)
                     .font(.footnote)
                     .foregroundStyle(.red)
             }
-
-            if !showEmailLogin, let message = authViewModel.errorMessage, !message.isEmpty {
-                Text(message)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-            }
-        }
-        .alert("Sign in with Apple", isPresented: $showAppleComingSoon) {
-            Button(localizationManager.text("common.close"), role: .cancel) {}
-        } message: {
-            Text("Sign in with Apple – Coming Soon")
         }
     }
 
@@ -200,20 +205,19 @@ struct LoginView: View {
         provider: AuthProvider,
         _ operation: @escaping @MainActor () async throws -> Void
     ) async {
-        providerErrorMessage = nil
         activeProvider = provider
         defer { activeProvider = nil }
         do {
             try await operation()
-        } catch {
-            providerErrorMessage = (error as NSError).localizedDescription
-        }
+        } catch {}
     }
 }
 
 struct AuthProviderButton: View {
     let provider: AuthProvider
+    let title: String
     var isLoading: Bool = false
+    var isDisabled: Bool = false
     let action: () -> Void
 
     var body: some View {
@@ -221,13 +225,13 @@ struct AuthProviderButton: View {
             HStack(spacing: 10) {
                 AuthProviderIcon(provider: provider)
 
-                Text(provider.title)
+                Text(title)
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.primary)
 
                 Spacer()
 
-                if isLoading, provider == .google || provider == .github {
+                if isLoading, provider == .google || provider == .github || provider == .apple {
                     ProgressView()
                         .controlSize(.small)
                 }
@@ -244,7 +248,7 @@ struct AuthProviderButton: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(isLoading && (provider == .google || provider == .github))
+        .disabled(isDisabled)
     }
 }
 
@@ -254,19 +258,29 @@ struct EmailLoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var emailErrorMessage: String?
+    @State private var showingCreateAccountPrompt = false
+    @State private var showingPasswordResetSheet = false
+    @State private var passwordResetEmail = ""
+    @State private var passwordResetMessage: String?
+    @State private var passwordResetErrorMessage: String?
+    @State private var isSendingPasswordReset = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Text(localizationManager.text("auth.email_auto_create_hint"))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
             TextField(localizationManager.text("auth.email.placeholder"), text: $email)
                 .textFieldStyle(.roundedBorder)
                 .textContentType(.emailAddress)
                 .autocorrectionDisabled()
-                .disabled(authViewModel.isLoading)
+                .disabled(authViewModel.isAuthenticating)
 
             SecureField(localizationManager.text("auth.password.placeholder"), text: $password)
                 .textFieldStyle(.roundedBorder)
                 .textContentType(.password)
-                .disabled(authViewModel.isLoading)
+                .disabled(authViewModel.isAuthenticating)
 
             if let emailErrorMessage, !emailErrorMessage.isEmpty {
                 Text(emailErrorMessage)
@@ -285,12 +299,47 @@ struct EmailLoginView: View {
                         )
                         password = ""
                     } catch {
-                        emailErrorMessage = (error as NSError).localizedDescription
+                        if isAccountNotFound(error) {
+                            showingCreateAccountPrompt = true
+                        } else {
+                            emailErrorMessage = (error as NSError).localizedDescription
+                        }
                     }
                 }
             }
             .buttonStyle(.borderedProminent)
-            .disabled(authViewModel.isLoading || !canSubmit)
+            .disabled(authViewModel.isAuthenticating || !canSubmit)
+
+            Button(localizationManager.text("auth.create_account")) {
+                Task { @MainActor in
+                    emailErrorMessage = nil
+                    authViewModel.clearError()
+                    do {
+                        try await authViewModel.signUpWithEmail(
+                            email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                            password: password
+                        )
+                        password = ""
+                    } catch {
+                        emailErrorMessage = (error as NSError).localizedDescription
+                    }
+                }
+            }
+            .buttonStyle(.bordered)
+            .disabled(authViewModel.isAuthenticating || !canSubmit)
+
+            HStack {
+                Spacer()
+
+                Button(localizationManager.text("auth.forgot_password")) {
+                    passwordResetEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+                    passwordResetMessage = nil
+                    passwordResetErrorMessage = nil
+                    showingPasswordResetSheet = true
+                }
+                .buttonStyle(.link)
+                .disabled(authViewModel.isAuthenticating)
+            }
         }
         .padding(16)
         .background(
@@ -305,10 +354,99 @@ struct EmailLoginView: View {
             emailErrorMessage = nil
             authViewModel.clearError()
         }
+        .alert(localizationManager.text("auth.create_account_prompt.title"), isPresented: $showingCreateAccountPrompt) {
+            Button(localizationManager.text("common.cancel"), role: .cancel) {}
+            Button(localizationManager.text("auth.create_account")) {
+                Task { @MainActor in
+                    emailErrorMessage = nil
+                    authViewModel.clearError()
+                    do {
+                        try await authViewModel.signUpWithEmail(
+                            email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                            password: password
+                        )
+                        password = ""
+                    } catch {
+                        emailErrorMessage = (error as NSError).localizedDescription
+                    }
+                }
+            }
+        } message: {
+            Text(
+                localizationManager.format(
+                    "auth.create_account_prompt.message",
+                    email.trimmingCharacters(in: .whitespacesAndNewlines)
+                )
+            )
+        }
+        .sheet(isPresented: $showingPasswordResetSheet) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(localizationManager.text("auth.password_reset.title"))
+                    .font(.title3.weight(.semibold))
+
+                Text(localizationManager.text("auth.password_reset.subtitle"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                TextField(localizationManager.text("auth.email.placeholder"), text: $passwordResetEmail)
+                    .textFieldStyle(.roundedBorder)
+                    .textContentType(.emailAddress)
+                    .autocorrectionDisabled()
+                    .disabled(isSendingPasswordReset)
+
+                if let passwordResetMessage, !passwordResetMessage.isEmpty {
+                    Text(passwordResetMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.green)
+                }
+
+                if let passwordResetErrorMessage, !passwordResetErrorMessage.isEmpty {
+                    Text(passwordResetErrorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
+
+                HStack {
+                    Spacer()
+
+                    Button(localizationManager.text("common.cancel")) {
+                        showingPasswordResetSheet = false
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button(localizationManager.text("auth.password_reset.send")) {
+                        Task { @MainActor in
+                            isSendingPasswordReset = true
+                            passwordResetMessage = nil
+                            passwordResetErrorMessage = nil
+                            authViewModel.clearError()
+                            do {
+                                try await authViewModel.sendPasswordReset(email: passwordResetEmail)
+                                passwordResetMessage = localizationManager.text("auth.password_reset.success")
+                            } catch {
+                                passwordResetErrorMessage = (error as NSError).localizedDescription
+                            }
+                            isSendingPasswordReset = false
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                        .disabled(isSendingPasswordReset || passwordResetEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .padding(24)
+            .frame(minWidth: 420)
+        }
     }
 
     private var canSubmit: Bool {
         !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !password.isEmpty
+    }
+
+    private func isAccountNotFound(_ error: Error) -> Bool {
+        guard let authError = error as? AuthViewModel.AuthViewModelError else {
+            return false
+        }
+        return authError == .accountNotFound
     }
 }
 

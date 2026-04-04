@@ -279,12 +279,12 @@ struct FlowModeView: View {
         .help(localizationManager.text("focus.fullscreen.settings"))
     }
 
-    private var clockStack: some View {
+    private func clockStack(in size: CGSize) -> some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
             let currentDate = context.date
             VStack(spacing: 8) {
                 Text(wallClockString(for: currentDate))
-                    .font(clockFont)
+                    .font(clockFont(for: size))
                     // Fixed neutral tone: Flow clock should not signal urgency or timer state.
                     .foregroundStyle(Color.primary.opacity(0.9))
                     .kerning(-0.8)
@@ -405,9 +405,9 @@ struct FlowModeView: View {
 
     // MARK: - Clock styling
 
-    private var clockFont: Font {
-        // Large type keeps the clock the visual center without adding motion.
-        .system(size: 104, weight: .heavy, design: .rounded).monospacedDigit()
+    private func clockFont(for size: CGSize) -> Font {
+        _ = size
+        return .system(size: 104, weight: .heavy, design: .rounded).monospacedDigit()
     }
 
     // MARK: - Timer wiring (observes existing engines, never duplicates logic)
@@ -497,7 +497,7 @@ struct FlowModeView: View {
                 if isCustomLayoutActive {
                     customLayoutCanvas(in: proxy.size, safeAreaInsets: proxy.safeAreaInsets)
                 } else {
-                    defaultLayoutCanvas
+                    defaultLayoutCanvas(in: proxy.size)
                 }
 
                 topBar
@@ -509,15 +509,16 @@ struct FlowModeView: View {
         }
     }
 
-    private var defaultLayoutCanvas: some View {
+    private func defaultLayoutCanvas(in size: CGSize) -> some View {
         VStack(spacing: 0) {
             Color.clear
                 .frame(height: topBarReservedHeight)
 
             Spacer(minLength: 0)
 
-            clockStack
-                .padding(.horizontal, 12)
+            clockStack(in: size)
+                .padding(.horizontal, horizontalChromePadding)
+                .frame(maxWidth: .infinity)
 
             Spacer(minLength: 0)
         }
@@ -531,7 +532,7 @@ struct FlowModeView: View {
 
     private func customLayoutCanvas(in size: CGSize, safeAreaInsets: EdgeInsets) -> some View {
         ZStack(alignment: .topLeading) {
-            clockStack
+            clockStack(in: size)
                 .padding(.horizontal, 12)
                 .measureSize { timerSize = $0 }
                 .position(resolvedPosition(for: .timer, in: size, safeAreaInsets: safeAreaInsets))

@@ -254,6 +254,15 @@ final class AppState: ObservableObject {
         pomodoro.start()
     }
 
+    func previewPomodoroSession(durationConfig: DurationConfig) {
+        pomodoro.updateConfiguration(durationConfig: durationConfig)
+    }
+
+    func startPomodoroSession(durationConfig: DurationConfig) {
+        pomodoro.updateConfiguration(durationConfig: durationConfig)
+        pomodoro.start()
+    }
+
     func applyPlan(title: String, pomodoroCount: Int, pomodoroPresetID: String? = nil) {
         currentPlanTitle = title
         currentPlanPomodoros = max(1, pomodoroCount)
@@ -303,6 +312,7 @@ final class AppState: ObservableObject {
     func resetPomodoro() {
         pomodoro.reset()
         clearExecutionPlan()
+        updatePomodoroConfiguration()
     }
 
     func startBreak() {
@@ -520,10 +530,17 @@ final class AppState: ObservableObject {
             }
             lastBreakMode = pomodoro.currentMode
         case .idle:
+            if previousState == .running || previousState == .paused {
+                if !pomodoroDidReachZero {
+                    logFocusSessionIfNeeded(completed: false, interruptionCount: 1)
+                }
+            }
             if previousState == .breakRunning || previousState == .breakPaused {
                 if pomodoroDidReachZero {
                     sendBreakCompletionNotification()
-                    logBreakSessionIfNeeded()
+                    logBreakSessionIfNeeded(completed: true)
+                } else {
+                    logBreakSessionIfNeeded(completed: false, interruptionCount: 1)
                 }
                 pomodoroDidReachZero = false
             }
@@ -732,38 +749,85 @@ final class AppState: ObservableObject {
         }
     }
 
-    private func logFocusSessionIfNeeded() {
-        guard let durationSeconds = currentFocusDurationSeconds else { return }
+    private func logFocusSessionIfNeeded(completed: Bool = true, interruptionCount: Int? = nil) {
+        let durationSeconds = elapsedPomodoroSessionDurationSeconds(
+            plannedDurationSeconds: currentFocusDurationSeconds,
+            remainingSeconds: pomodoro.remainingSeconds,
+            completed: completed
+        )
+        guard durationSeconds > 0 else { return }
         let endTime = Date()
         let startTime = endTime.addingTimeInterval(TimeInterval(-durationSeconds))
         updateDailyStats { stats in
-            stats.logFocusSession(durationSeconds: durationSeconds)
+            stats.logFocusSession(durationSeconds: durationSeconds, completed: completed)
         }
         // Local-only session record to power insights; no server or cloud dependency.
-        appendSessionRecord(startTime: startTime, endTime: endTime, durationSeconds: durationSeconds, taskId: nil)
+        appendSessionRecord(
+            startTime: startTime,
+            endTime: endTime,
+            durationSeconds: durationSeconds,
+            taskId: nil,
+            sessionType: .focus,
+            completed: completed,
+            interruptionCount: interruptionCount
+        )
     }
 
-    private func logBreakSessionIfNeeded() {
-        guard let durationSeconds = currentBreakDurationSeconds else { return }
+    private func logBreakSessionIfNeeded(completed: Bool = true, interruptionCount: Int? = nil) {
+        let durationSeconds = elapsedPomodoroSessionDurationSeconds(
+            plannedDurationSeconds: currentBreakDurationSeconds,
+            remainingSeconds: pomodoro.remainingSeconds,
+            completed: completed
+        )
+        guard durationSeconds > 0 else { return }
+        let endTime = Date()
+        let startTime = endTime.addingTimeInterval(TimeInterval(-durationSeconds))
         updateDailyStats { stats in
-            stats.logBreakSession(durationSeconds: durationSeconds)
+            stats.logBreakSession(durationSeconds: durationSeconds, completed: completed)
         }
+        appendSessionRecord(
+            startTime: startTime,
+            endTime: endTime,
+            durationSeconds: durationSeconds,
+            taskId: nil,
+            sessionType: .break,
+            completed: completed,
+            interruptionCount: interruptionCount
+        )
     }
 
     private func appendSessionRecord(
         startTime: Date,
         endTime: Date,
         durationSeconds: Int,
-        taskId: UUID?
+        taskId: UUID?,
+        sessionType: SessionType,
+        completed: Bool,
+        interruptionCount: Int?
     ) {
         Task { @MainActor in
             SessionRecordStore.shared.appendRecord(
                 startTime: startTime,
                 endTime: endTime,
                 durationSeconds: durationSeconds,
-                taskId: taskId
+                taskId: taskId,
+                sessionType: sessionType,
+                completed: completed,
+                interruptionCount: interruptionCount
             )
         }
+    }
+
+    private func elapsedPomodoroSessionDurationSeconds(
+        plannedDurationSeconds: Int?,
+        remainingSeconds: Int,
+        completed: Bool
+    ) -> Int {
+        guard let plannedDurationSeconds, plannedDurationSeconds > 0 else { return 0 }
+        if completed {
+            return plannedDurationSeconds
+        }
+        return max(0, plannedDurationSeconds - max(0, remainingSeconds))
     }
 
     private func updateDailyStats(_ update: (inout DailyStats) -> Void) {

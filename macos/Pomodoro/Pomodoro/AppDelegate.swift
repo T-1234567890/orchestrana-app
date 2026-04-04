@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import FirebaseAuth
 import FirebaseCore
 import SwiftUI
 
@@ -50,6 +51,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self, let window = self.existingMainWindow() else { return }
             window.applyPomodoroWindowChrome()
         }
+    }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        AuthManager.shared.handleOpenURLs(urls)
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -131,6 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         print("[Firebase] projectID: \(String(describing: FirebaseApp.app()?.options.projectID))")
         print("[Firebase] googleAppID: \(String(describing: FirebaseApp.app()?.options.googleAppID))")
+        AuthManager.shared.logAuthConfiguration()
         AuthViewModel.shared.startListeningIfNeeded()
     }
 

@@ -9,13 +9,50 @@ struct SessionRecord: Codable, Identifiable {
     let endTime: Date
     let durationSeconds: Int
     let taskId: UUID?
-    
-    init(startTime: Date, endTime: Date, durationSeconds: Int, taskId: UUID?) {
+    let sessionType: SessionType
+    let completed: Bool
+    let interruptionCount: Int?
+
+    init(
+        startTime: Date,
+        endTime: Date,
+        durationSeconds: Int,
+        taskId: UUID?,
+        sessionType: SessionType = .focus,
+        completed: Bool = true,
+        interruptionCount: Int? = nil
+    ) {
         self.id = UUID()
         self.startTime = startTime
         self.endTime = endTime
         self.durationSeconds = durationSeconds
         self.taskId = taskId
+        self.sessionType = sessionType
+        self.completed = completed
+        self.interruptionCount = interruptionCount
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        startTime = try container.decode(Date.self, forKey: .startTime)
+        endTime = try container.decode(Date.self, forKey: .endTime)
+        durationSeconds = try container.decode(Int.self, forKey: .durationSeconds)
+        taskId = try container.decodeIfPresent(UUID.self, forKey: .taskId)
+        sessionType = try container.decodeIfPresent(SessionType.self, forKey: .sessionType) ?? .focus
+        completed = try container.decodeIfPresent(Bool.self, forKey: .completed) ?? true
+        interruptionCount = try container.decodeIfPresent(Int.self, forKey: .interruptionCount)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case startTime
+        case endTime
+        case durationSeconds
+        case taskId
+        case sessionType
+        case completed
+        case interruptionCount
     }
 }
 
@@ -35,12 +72,30 @@ final class SessionRecordStore: ObservableObject {
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         fileURL = dir.appendingPathComponent("session_records.json")
         load()
+        ProductivityAnalyticsStore.shared.rebuild(from: records)
     }
     
-    func appendRecord(startTime: Date, endTime: Date, durationSeconds: Int, taskId: UUID?) {
-        let record = SessionRecord(startTime: startTime, endTime: endTime, durationSeconds: durationSeconds, taskId: taskId)
+    func appendRecord(
+        startTime: Date,
+        endTime: Date,
+        durationSeconds: Int,
+        taskId: UUID?,
+        sessionType: SessionType = .focus,
+        completed: Bool = true,
+        interruptionCount: Int? = nil
+    ) {
+        let record = SessionRecord(
+            startTime: startTime,
+            endTime: endTime,
+            durationSeconds: durationSeconds,
+            taskId: taskId,
+            sessionType: sessionType,
+            completed: completed,
+            interruptionCount: interruptionCount
+        )
         records.append(record)
         save()
+        ProductivityAnalyticsStore.shared.ingest(record)
     }
     
     /// Returns records within the last N days (inclusive of today).
@@ -61,6 +116,7 @@ final class SessionRecordStore: ObservableObject {
         guard let data = try? Data(contentsOf: fileURL) else { return }
         if let decoded = try? decoder.decode([SessionRecord].self, from: data) {
             records = decoded
+            ProductivityAnalyticsStore.shared.rebuild(from: decoded)
         }
     }
     

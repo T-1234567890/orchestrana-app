@@ -73,6 +73,7 @@
 		B6A2001B2FFD4BD7B90F8AC1 /* ExternalID.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6A2000B2FFD4BD7B90F8AC1 /* ExternalID.swift */; };
 		B6A2001C2FFD4BD7B90F8AC1 /* IntentMarkers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6A2000C2FFD4BD7B90F8AC1 /* IntentMarkers.swift */; };
 		B6A2001D2FFD4BD7B90F8AC1 /* SessionRecordStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6A2001E2FFD4BD7B90F8AC1 /* SessionRecordStore.swift */; };
+		B6A2001F2FFD4BD7B90F8AC1 /* ProductivityAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6A200202FFD4BD7B90F8AC1 /* ProductivityAnalytics.swift */; };
 		BE7A1C1C2E644B6D9B3C1E0D /* AuthSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = D04B5B1F0F1B4A5496C6E0B7 /* AuthSession.swift */; };
 		C9E56B409BCB40FCA8485A09 /* LocalMediaPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05F639B95E5345199E439834 /* LocalMediaPlayer.swift */; };
 		D0495D48D1B5BUILDBDA97DE /* CalendarMonthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0495D48D1B544D0ABDA97DE /* CalendarMonthView.swift */; };
@@ -151,6 +152,7 @@
 		B6A2000C2FFD4BD7B90F8AC1 /* IntentMarkers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentMarkers.swift; sourceTree = "<group>"; };
 		B6A2001A2FFD4BD7B90F8AC1 /* SyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEngine.swift; sourceTree = "<group>"; };
 		B6A2001E2FFD4BD7B90F8AC1 /* SessionRecordStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRecordStore.swift; sourceTree = "<group>"; };
+		B6A200202FFD4BD7B90F8AC1 /* ProductivityAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductivityAnalytics.swift; sourceTree = "<group>"; };
 		C67603580DB6C7C7A08CA894 /* AmbientNoiseEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmbientNoiseEngine.swift; sourceTree = "<group>"; };
 		D0495D48D1B544D0ABDA97DE /* CalendarMonthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarMonthView.swift; sourceTree = "<group>"; };
 		D04B5B1F0F1B4A5496C6E0B7 /* AuthSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSession.swift; sourceTree = "<group>"; };
@@ -274,6 +276,7 @@
 				B6A2000B2FFD4BD7B90F8AC1 /* ExternalID.swift */,
 				B6A2000C2FFD4BD7B90F8AC1 /* IntentMarkers.swift */,
 				B6A2001E2FFD4BD7B90F8AC1 /* SessionRecordStore.swift */,
+				B6A200202FFD4BD7B90F8AC1 /* ProductivityAnalytics.swift */,
 				B6A2001A2FFD4BD7B90F8AC1 /* SyncEngine.swift */,
 			);
 			name = State;
@@ -532,6 +535,7 @@
 				B6A2001B2FFD4BD7B90F8AC1 /* ExternalID.swift in Sources */,
 				B6A2001C2FFD4BD7B90F8AC1 /* IntentMarkers.swift in Sources */,
 				B6A2001D2FFD4BD7B90F8AC1 /* SessionRecordStore.swift in Sources */,
+				B6A2001F2FFD4BD7B90F8AC1 /* ProductivityAnalytics.swift in Sources */,
 				B6A200192FFD4BD7B90F8AC1 /* SyncEngine.swift in Sources */,
 				4DD2B11CF188B287CE18674F /* APIClient.swift in Sources */,
 				ADF8CB8E6B5CD0F9482E94DD /* AuthStore.swift in Sources */,
@@ -695,7 +699,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGN_ENTITLEMENTS = Pomodoro/Pomodoro.entitlements;
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -727,9 +731,10 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 1.6.3;
+				MARKETING_VERSION = 1.7.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.pomodoro.Pomodoro;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
 				RUNTIME_EXCEPTION_ALLOW_JIT = NO;
@@ -754,7 +759,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGN_ENTITLEMENTS = Pomodoro/Pomodoro.entitlements;
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -786,9 +791,10 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 1.6.3;
+				MARKETING_VERSION = 1.7.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.pomodoro.Pomodoro;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
 				RUNTIME_EXCEPTION_ALLOW_JIT = NO;

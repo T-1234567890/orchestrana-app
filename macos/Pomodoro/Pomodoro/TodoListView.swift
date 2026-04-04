@@ -38,10 +38,14 @@ struct TodoListView: View {
     @State private var aiEstimatedHours = 1
     @State private var isGeneratingAIPlan = false
     @State private var isGeneratingAIDescription = false
+    @State private var isGeneratingAITaskDraft = false
     @State private var aiPlanErrorMessage: String?
     @State private var aiDescriptionErrorMessage: String?
+    @State private var aiTaskDraftErrorMessage: String?
     @State private var pendingGeneratedDescription: String?
     @State private var showReplaceDescriptionConfirmation = false
+    @State private var showAITaskDraftSheet = false
+    @State private var aiTaskDraftPrompt = ""
     @State private var showAILoginSheet = false
     @State private var upgradePaywallContext: SubscriptionPaywallContext?
     @State private var showAIAssistant = false
@@ -51,6 +55,7 @@ struct TodoListView: View {
     @State private var bouncingCompletionIDs: Set<UUID> = []
     @State private var animatingSubtaskCompletionIDs: Set<UUID> = []
     @State private var bouncingSubtaskCompletionIDs: Set<UUID> = []
+    @State private var editorSubtasks: [TodoSubtask] = []
     
     private static let taskHintDefaultsKey = "com.pomodoro.taskHintShown"
     private var taskExpansionAnimation: Animation {
@@ -120,6 +125,10 @@ struct TodoListView: View {
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter
     }()
+
+    private var isGeneratingTaskAI: Bool {
+        isGeneratingAIDescription || isGeneratingAITaskDraft
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -177,16 +186,19 @@ struct TodoListView: View {
                 }
 
                 Button {
-                    if !featureGate.canUseCloudProxyAI {
-                        presentLockedFeatureInfo(
-                            featureName: localizationManager.text("tasks.ai_assistant.button"),
-                            description: localizationManager.text("feature_gate.paywall.ai_assistant.description"),
-                            requiredTier: .plus,
-                            requirementText: localizationManager.text("feature_gate.paywall.requires_plus_or_pro")
-                        )
-                    } else {
-                        aiAssistantErrorMessage = nil
-                        showAIAssistant = true
+                    Task { @MainActor in
+                        await featureGate.refreshSubscriptionStatusIfNeeded()
+                        if !featureGate.canUseCloudProxyAI {
+                            presentLockedFeatureInfo(
+                                featureName: localizationManager.text("tasks.ai_assistant.button"),
+                                description: localizationManager.text("feature_gate.paywall.ai_assistant.description"),
+                                requiredTier: .plus,
+                                requirementText: localizationManager.text("feature_gate.paywall.requires_plus_or_pro")
+                            )
+                        } else {
+                            aiAssistantErrorMessage = nil
+                            showAIAssistant = true
+                        }
                     }
                 } label: {
                     Label(localizationManager.text("tasks.ai_assistant.button"), systemImage: "sparkles")
@@ -202,13 +214,17 @@ struct TodoListView: View {
                 .pickerStyle(.segmented)
                 .frame(maxWidth: 220)
                 .onChange(of: taskViewMode) { _, newMode in
-                    guard newMode == .matrix, !featureGate.canUseEisenhowerMatrix else { return }
-                    taskViewMode = .list
-                    presentLockedFeatureInfo(
-                        featureName: "Eisenhower Matrix",
-                        description: "Organize tasks by urgency and importance in a matrix view.",
-                        requiredTier: .pro
-                    )
+                    guard newMode == .matrix else { return }
+                    Task { @MainActor in
+                        await featureGate.refreshSubscriptionStatusIfNeeded()
+                        guard !featureGate.canUseEisenhowerMatrix else { return }
+                        taskViewMode = .list
+                        presentLockedFeatureInfo(
+                            featureName: "Eisenhower Matrix",
+                            description: "Organize tasks by urgency and importance in a matrix view.",
+                            requiredTier: .pro
+                        )
+                    }
                 }
                 
                 Picker("", selection: $selectedSegment) {
@@ -288,6 +304,9 @@ struct TodoListView: View {
         .padding(.bottom, 28)
         .sheet(isPresented: $showingEditor) {
             taskEditorSheet
+        }
+        .sheet(isPresented: $showAITaskDraftSheet) {
+            taskDraftPromptSheet
         }
         .sheet(isPresented: $showAILoginSheet) {
             LoginSheetView()
@@ -1130,25 +1149,47 @@ struct TodoListView: View {
 
                         Spacer()
 
-                        Button(action: handleGenerateDescriptionTapped) {
-                            if isGeneratingAIDescription {
-                                HStack(spacing: 8) {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                    Text(localizationManager.text("tasks.ai_description.loading"))
-                                }
-                            } else {
-                                Label(localizationManager.text("tasks.ai_description.button"), systemImage: "sparkles")
+                        if isGeneratingTaskAI {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                    .controlSize(.small)
+                                Text("Working…")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
+                        } else {
+                            Menu {
+                                Button("Improve Task Details") {
+                                    handleImproveTaskDraftTapped()
+                                }
+                                .disabled(titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && descriptionField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                                Button("Draft From Idea") {
+                                    handleDraftFromIdeaTapped()
+                                }
+
+                                Divider()
+
+                                Button(localizationManager.text("tasks.ai_description.button")) {
+                                    handleGenerateDescriptionTapped()
+                                }
+                                .disabled(titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            } label: {
+                                Label("Task AI", systemImage: "sparkles")
+                            }
+                            .menuStyle(.borderlessButton)
                         }
-                        .buttonStyle(.bordered)
-                        .disabled(isGeneratingAIDescription || titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
 
                     TextField(localizationManager.text("tasks.editor.notes_placeholder"), text: $descriptionField, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                     if let aiDescriptionErrorMessage, !aiDescriptionErrorMessage.isEmpty {
                         Text(aiDescriptionErrorMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+                    if let aiTaskDraftErrorMessage, !aiTaskDraftErrorMessage.isEmpty {
+                        Text(aiTaskDraftErrorMessage)
                             .font(.footnote)
                             .foregroundStyle(.red)
                     }
@@ -1163,6 +1204,32 @@ struct TodoListView: View {
                         Label("Markdown Descriptions", systemImage: "lock.fill")
                     }
                     .buttonStyle(.bordered)
+                }
+
+                if featureGate.canUseSubtasks, !editorSubtasks.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(localizationManager.text("tasks.subtasks.title"))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        ForEach(editorSubtasks) { subtask in
+                            HStack(spacing: 10) {
+                                Image(systemName: "checklist")
+                                    .foregroundStyle(.secondary)
+                                Text(subtask.title)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Button {
+                                    editorSubtasks.removeAll { $0.id == subtask.id }
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(10)
+                            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        }
+                    }
                 }
                 
                 Text(localizationManager.text("tasks.editor.tags_optional"))
@@ -1211,7 +1278,9 @@ struct TodoListView: View {
                 .disabled(isGeneratingAIPlan || titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 
                 Button(editingItem == nil ? localizationManager.text("common.add") : localizationManager.text("common.save")) {
-                    saveTask()
+                    Task { @MainActor in
+                        await saveTask()
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.return, modifiers: [.command])
@@ -1239,11 +1308,64 @@ struct TodoListView: View {
         }
     }
 
+    private var taskDraftPromptSheet: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Draft Task From Idea")
+                .font(.title3.weight(.semibold))
+
+            Text("Paste a rough idea, project note, or messy thought. AI will turn it into a clearer task draft without saving anything automatically.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            TextEditor(text: $aiTaskDraftPrompt)
+                .font(.body)
+                .frame(minHeight: 180)
+                .padding(10)
+                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            if let aiTaskDraftErrorMessage, !aiTaskDraftErrorMessage.isEmpty {
+                Text(aiTaskDraftErrorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
+
+            HStack {
+                Button(localizationManager.text("common.cancel")) {
+                    showAITaskDraftSheet = false
+                }
+                .buttonStyle(.bordered)
+
+                Spacer()
+
+                Button {
+                    Task { @MainActor in
+                        await generateTaskDraftFromIdea()
+                    }
+                } label: {
+                    if isGeneratingAITaskDraft {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Drafting…")
+                        }
+                    } else {
+                        Text("Generate Draft")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isGeneratingAITaskDraft || aiTaskDraftPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(24)
+        .frame(width: 520)
+    }
+
     private func openEditorForNew() {
         editingItem = nil
         titleField = ""
         descriptionField = ""
         tagsField = ""
+        editorSubtasks = []
         dueDateEnabled = false
         dueDateField = Date()
         includeDueTime = false
@@ -1253,9 +1375,12 @@ struct TodoListView: View {
         aiEstimatedHours = 1
         aiPlanErrorMessage = nil
         aiDescriptionErrorMessage = nil
+        aiTaskDraftErrorMessage = nil
         isGeneratingAIPlan = false
         isGeneratingAIDescription = false
+        isGeneratingAITaskDraft = false
         pendingGeneratedDescription = nil
+        aiTaskDraftPrompt = ""
         showingEditor = true
     }
     
@@ -1264,6 +1389,7 @@ struct TodoListView: View {
         titleField = item.title
         descriptionField = item.descriptionMarkdown ?? ""
         tagsField = item.tags.joined(separator: ", ")
+        editorSubtasks = item.subtasks
         if let due = item.dueDate {
             dueDateEnabled = true
             dueDateField = due
@@ -1279,9 +1405,12 @@ struct TodoListView: View {
         aiEstimatedHours = max(1, ((item.durationMinutes ?? 25) + 59) / 60)
         aiPlanErrorMessage = nil
         aiDescriptionErrorMessage = nil
+        aiTaskDraftErrorMessage = nil
         isGeneratingAIPlan = false
         isGeneratingAIDescription = false
+        isGeneratingAITaskDraft = false
         pendingGeneratedDescription = nil
+        aiTaskDraftPrompt = ""
         showingEditor = true
     }
     
@@ -1290,6 +1419,7 @@ struct TodoListView: View {
         titleField = ""
         descriptionField = ""
         tagsField = ""
+        editorSubtasks = []
         dueDateEnabled = false
         dueDateField = Date()
         includeDueTime = false
@@ -1299,12 +1429,16 @@ struct TodoListView: View {
         aiEstimatedHours = 1
         aiPlanErrorMessage = nil
         aiDescriptionErrorMessage = nil
+        aiTaskDraftErrorMessage = nil
         isGeneratingAIPlan = false
         isGeneratingAIDescription = false
+        isGeneratingAITaskDraft = false
         pendingGeneratedDescription = nil
+        aiTaskDraftPrompt = ""
     }
     
-    private func saveTask() {
+    private func saveTask() async {
+        await featureGate.refreshSubscriptionStatusIfNeeded()
         aiPlanErrorMessage = nil
         let trimmedTitle = titleField.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty else { return }
@@ -1320,6 +1454,7 @@ struct TodoListView: View {
             editing.dueDate = dueDate
             editing.hasDueTime = hasDueTime
             editing.tags = tags
+            editing.subtasks = editorSubtasks
             editing.syncToCalendar = syncToCalendarField
             editing.priority = featureGate.canUseAdvancedTasks ? priorityField : .none
             editing.pomodoroEstimate = featureGate.canUseAdvancedTasks ? pomodoroEstimateField : nil
@@ -1338,6 +1473,7 @@ struct TodoListView: View {
                 hasDueTime: hasDueTime,
                 durationMinutes: featureGate.canUseAdvancedTasks ? pomodoroEstimateField * 25 : nil,
                 priority: featureGate.canUseAdvancedTasks ? priorityField : .none,
+                subtasks: editorSubtasks,
                 syncToCalendar: syncToCalendarField
             )
             todoStore.addItem(newItem)
@@ -1419,7 +1555,95 @@ struct TodoListView: View {
         }
     }
 
+    private func generateTaskDraftFromIdea() async {
+        aiTaskDraftErrorMessage = nil
+        let trimmedPrompt = aiTaskDraftPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPrompt.isEmpty else {
+            aiTaskDraftErrorMessage = "Enter an idea first."
+            return
+        }
+
+        isGeneratingAITaskDraft = true
+        defer { isGeneratingAITaskDraft = false }
+
+        do {
+            let draft = try await AIService.shared.draftTask(idea: trimmedPrompt)
+            applyTaskDraftToEditor(draft)
+            showAITaskDraftSheet = false
+            aiTaskDraftPrompt = ""
+        } catch {
+            aiTaskDraftErrorMessage = (error as NSError).localizedDescription
+        }
+    }
+
+    private func improveCurrentTaskDraft() async {
+        aiTaskDraftErrorMessage = nil
+        let trimmedTitle = titleField.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedDescription = descriptionField.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedTitle.isEmpty || !trimmedDescription.isEmpty else {
+            aiTaskDraftErrorMessage = "Add a task title or description first."
+            return
+        }
+
+        let context = [trimmedTitle, trimmedDescription]
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
+
+        isGeneratingAITaskDraft = true
+        defer { isGeneratingAITaskDraft = false }
+
+        do {
+            let draft = try await AIService.shared.draftTask(
+                idea: context,
+                existingTitle: trimmedTitle,
+                existingDescription: trimmedDescription
+            )
+            applyTaskDraftToEditor(draft)
+        } catch {
+            aiTaskDraftErrorMessage = (error as NSError).localizedDescription
+        }
+    }
+
+    private func applyTaskDraftToEditor(_ draft: AIService.TaskDraftResponse) {
+        if !draft.title.isEmpty {
+            titleField = draft.title
+        }
+        if !draft.description.isEmpty {
+            descriptionField = draft.description
+        }
+        if featureGate.canUseAdvancedTasks {
+            if let estimatedPomodoros = draft.estimatedPomodoros {
+                pomodoroEstimateField = min(max(estimatedPomodoros, 1), 20)
+                aiEstimatedHours = max(1, Int(ceil(Double(estimatedPomodoros * 25) / 60.0)))
+            }
+            if let priority = draft.priority {
+                priorityField = priority
+            }
+        }
+        if featureGate.canUseSubtasks, !draft.subtasks.isEmpty {
+            editorSubtasks = draft.subtasks.map { TodoSubtask(title: $0) }
+        }
+
+        var mergedTags = parsedTagsField()
+        mergedTags.append(contentsOf: draft.tags)
+        if let focusStyle = draft.focusStyle?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+           !focusStyle.isEmpty {
+            mergedTags.append(focusStyle.replacingOccurrences(of: " ", with: "-"))
+        }
+        let normalizedTags = Array(NSOrderedSet(array: mergedTags.map { $0.lowercased() })) as? [String] ?? mergedTags
+        tagsField = normalizedTags.joined(separator: ", ")
+    }
+
     private func handleAIPlanButtonTapped() {
+        Task { @MainActor in
+            await featureGate.refreshSubscriptionStatusIfNeeded()
+            handleAIPlanButtonTappedAfterRefresh()
+        }
+    }
+
+    @MainActor
+    private func handleAIPlanButtonTappedAfterRefresh() {
         aiPlanErrorMessage = nil
 
         guard authViewModel.isAuthenticated else {
@@ -1453,6 +1677,14 @@ struct TodoListView: View {
     }
 
     private func handleGenerateDescriptionTapped() {
+        Task { @MainActor in
+            await featureGate.refreshSubscriptionStatusIfNeeded()
+            handleGenerateDescriptionTappedAfterRefresh()
+        }
+    }
+
+    @MainActor
+    private func handleGenerateDescriptionTappedAfterRefresh() {
         aiDescriptionErrorMessage = nil
 
         guard authViewModel.isAuthenticated else {
@@ -1485,12 +1717,93 @@ struct TodoListView: View {
         }
     }
 
+    private func handleDraftFromIdeaTapped() {
+        Task { @MainActor in
+            await featureGate.refreshSubscriptionStatusIfNeeded()
+            handleDraftFromIdeaTappedAfterRefresh()
+        }
+    }
+
+    @MainActor
+    private func handleDraftFromIdeaTappedAfterRefresh() {
+        aiTaskDraftErrorMessage = nil
+
+        guard authViewModel.isAuthenticated else {
+            showAILoginSheet = true
+            return
+        }
+
+        guard featureGate.canUseAIAssistantBreakdown else {
+            presentLockedFeatureInfo(
+                featureName: localizationManager.text("tasks.ai_assistant.title"),
+                description: localizationManager.text("feature_gate.paywall.ai_assistant.description"),
+                requiredTier: .plus,
+                requirementText: localizationManager.text("feature_gate.paywall.requires_plus_or_pro")
+            )
+            return
+        }
+
+        if let quotaMessage = featureGate.aiPlanningQuotaMessage {
+            aiTaskDraftErrorMessage = quotaMessage
+            return
+        }
+
+        guard featureGate.canRunAIPlanningRequest else {
+            aiTaskDraftErrorMessage = featureGate.aiAssistantDisabledReason(for: .breakdown)
+            return
+        }
+
+        showAITaskDraftSheet = true
+    }
+
+    private func handleImproveTaskDraftTapped() {
+        Task { @MainActor in
+            await featureGate.refreshSubscriptionStatusIfNeeded()
+            handleImproveTaskDraftTappedAfterRefresh()
+        }
+    }
+
+    @MainActor
+    private func handleImproveTaskDraftTappedAfterRefresh() {
+        aiTaskDraftErrorMessage = nil
+
+        guard authViewModel.isAuthenticated else {
+            showAILoginSheet = true
+            return
+        }
+
+        guard featureGate.canUseAIAssistantBreakdown else {
+            presentLockedFeatureInfo(
+                featureName: localizationManager.text("tasks.ai_assistant.title"),
+                description: localizationManager.text("feature_gate.paywall.ai_assistant.description"),
+                requiredTier: .plus,
+                requirementText: localizationManager.text("feature_gate.paywall.requires_plus_or_pro")
+            )
+            return
+        }
+
+        if let quotaMessage = featureGate.aiPlanningQuotaMessage {
+            aiTaskDraftErrorMessage = quotaMessage
+            return
+        }
+
+        guard featureGate.canRunAIPlanningRequest else {
+            aiTaskDraftErrorMessage = featureGate.aiAssistantDisabledReason(for: .breakdown)
+            return
+        }
+
+        Task { @MainActor in
+            await improveCurrentTaskDraft()
+        }
+    }
+
     private func handleAIAssistantAction(
         _ action: AIAssistantAction,
         selectedTasks: [TodoItem],
         dueDate: Date,
         estimatedHours: Int
     ) async {
+        await featureGate.refreshSubscriptionStatusIfNeeded()
         aiAssistantErrorMessage = nil
 
         guard authViewModel.isAuthenticated else {

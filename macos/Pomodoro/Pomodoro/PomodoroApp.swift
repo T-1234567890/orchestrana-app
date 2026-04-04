@@ -7,6 +7,7 @@
 
 import SwiftUI
 import FirebaseCore
+import FirebaseAppCheck
 import AppKit
 
 @MainActor
@@ -26,6 +27,7 @@ struct PomodoroApp: App {
 
     init() {
         if FirebaseApp.app() == nil {
+            AppCheckBootstrap.configure()
             FirebaseApp.configure()
         }
 
@@ -268,5 +270,15 @@ struct PomodoroApp: App {
                 window.applyPomodoroWindowChrome()
             }
         }
+    }
+}
+
+private enum AppCheckBootstrap {
+    static func configure() {
+#if DEBUG
+        AppCheck.setAppCheckProviderFactory(AppCheckDebugProviderFactory())
+#else
+        AppCheck.setAppCheckProviderFactory(DeviceCheckProviderFactory())
+#endif
     }
 }

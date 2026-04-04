@@ -145,6 +145,10 @@ final class MusicController: ObservableObject {
             stopFocusSound()
             return
         }
+        if currentFocusSound == type, playbackState == .playing, activeSource == .focusSound {
+            ambientNoiseEngine.setVolume(focusVolume)
+            return
+        }
         currentFocusSound = type
         ambientNoiseEngine.setVolume(focusVolume)
         ambientNoiseEngine.play(type: type.ambientNoiseType)
@@ -200,6 +204,10 @@ final class ExternalAudioMonitor: ObservableObject {
 
     init() {
         startAppleMusicPolling()
+    }
+
+    deinit {
+        pollTask?.cancel()
     }
 
     private func startAppleMusicPolling() {
@@ -270,6 +278,7 @@ final class AudioSourceStore: ObservableObject {
     private let externalMonitor: ExternalAudioMonitor
     private let externalController: ExternalPlaybackController
     private var cancellables: Set<AnyCancellable> = []
+    private var pendingSyncTask: Task<Void, Never>?
 
     init(
         musicController: MusicController,
@@ -341,8 +350,10 @@ final class AudioSourceStore: ObservableObject {
     }
 
     private func scheduleStateSync() {
-        Task { @MainActor [weak self] in
+        pendingSyncTask?.cancel()
+        pendingSyncTask = Task { @MainActor [weak self] in
             await Task.yield()
+            guard !Task.isCancelled else { return }
             self?.syncStateFromSources()
         }
     }
@@ -377,6 +388,10 @@ final class AudioSourceStore: ObservableObject {
         if !audioSourceEquals(audioSource, nextSource) {
             audioSource = nextSource
         }
+    }
+
+    deinit {
+        pendingSyncTask?.cancel()
     }
 
     private func mediaEquals(_ lhs: ExternalMedia?, _ rhs: ExternalMedia?) -> Bool {

@@ -27,20 +27,30 @@ struct MainWindowView: View {
     @State private var shortBreakMinutesText = ""
     @State private var longBreakMinutesText = ""
     @State private var countdownMinutesText = ""
+    @State private var countdownSecondsText = ""
+    @State private var dashboardPresetSelection: PresetSelection = .preset(Preset.shortestBuiltIn)
+    @State private var dashboardWorkMinutes: Int = 25
+    @State private var dashboardShortBreakMinutes: Int = 5
+    @State private var dashboardLongBreakMinutes: Int = 15
+    @State private var dashboardLongBreakInterval: Int = 4
     @FocusState private var focusedField: DurationField?
     @State private var longBreakIntervalValue: Int = 4
-    @State private var sidebarSelection: SidebarItem = .pomodoro
+    @State private var sidebarSelection: SidebarItem = .dashboard
     @State private var pomodoroStatePulse = false
     @State private var countdownStatePulse = false
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @State private var calendarStatus: EKAuthorizationStatus = .notDetermined
     @State private var remindersStatus: EKAuthorizationStatus = .notDetermined
-    private let sessionRecordStore = SessionRecordStore.shared
+    @ObservedObject private var productivityAnalyticsStore = ProductivityAnalyticsStore.shared
     @State private var weeklyFocusPoints: [DailyFocusPoint] = []
+    @State private var dailyCompletionPoints: [DailyFocusPoint] = []
+    @State private var focusByHourPoints: [FocusHourPoint] = []
+    @State private var sessionLengthDistributionPoints: [SessionLengthDistributionPoint] = []
     @State private var todayFocusMinutes: Int = 0
     @State private var completionRate: Double = 0
+    @State private var summarySnapshot: ProductivityAnalyticsSnapshot?
     private let eventStore = SharedEventStore.shared.eventStore
-    @State private var lastNonFlowSelection: SidebarItem = .pomodoro
+    @State private var lastNonFlowSelection: SidebarItem = .dashboard
     // Slider micro-interactions
     @State private var ambientSliderEditing = false
     @State private var ambientSliderHover = false
@@ -50,6 +60,13 @@ struct MainWindowView: View {
     @State private var plansErrorMessage: String?
     @State private var showPlansModePicker = false
     @State private var availablePlanModes: [YourPlansMode] = []
+    @State private var showPlanTaskPicker = false
+    @State private var selectablePlannedTaskEntries: [AppState.PlanExecutionEntry] = []
+    @State private var insightHubResult: AIService.ProductivityInsightResult?
+    @State private var isInsightHubLoading = false
+    @State private var selectedSettingsPane: SettingsPane = .general
+    @State private var settingsSearchText = ""
+    @State private var showSettingsPlansSheet = false
     
     // New: Calendar, Reminders, and Todo system
     @StateObject private var permissionsManager = PermissionsManager.shared
@@ -87,12 +104,14 @@ struct MainWindowView: View {
             .onAppear {
                 syncDurationTexts()
                 syncLongBreakInterval()
+                syncDashboardPomodoroSessionDefaults()
                 todoStore.attachPlanningStore(planningStore)
                 remindersSync.setTodoStore(todoStore)
             }
             .onChange(of: appState.durationConfig) { _, _ in
                 syncDurationTexts()
                 syncLongBreakInterval()
+                syncDashboardPomodoroSessionDefaults()
             }
             .onChange(of: sidebarSelection) { oldValue, newValue in
                 if newValue == .flow {
@@ -102,6 +121,12 @@ struct MainWindowView: View {
                 } else {
                     lastNonFlowSelection = newValue
                 }
+
+                if newValue == .settings {
+                    Task { @MainActor in
+                        await featureGate.refreshSubscriptionStatusIfNeeded()
+                    }
+                }
             }
             .onChange(of: focusedField) { _, newValue in
                 guard newValue == nil else { return }
@@ -109,6 +134,7 @@ struct MainWindowView: View {
                 commitDuration(.shortBreak)
                 commitDuration(.longBreak)
                 commitDuration(.countdown)
+                commitDuration(.countdownSeconds)
             }
             .onChange(of: appState.pomodoro.state) { oldValue, newValue in
                 triggerPomodoroStateAnimation(from: oldValue, to: newValue)
@@ -123,12 +149,12 @@ struct MainWindowView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .navigateToPomodoro)) { _ in
                 withAnimation {
-                    sidebarSelection = .pomodoro
+                    sidebarSelection = .dashboard
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .navigateToCountdown)) { _ in
                 withAnimation {
-                    sidebarSelection = .countdown
+                    sidebarSelection = .dashboard
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .navigateToTasks)) { _ in
@@ -164,6 +190,20 @@ struct MainWindowView: View {
                 context: context,
                 featureGate: featureGate,
                 subscriptionStore: subscriptionStore
+            )
+        }
+        .sheet(isPresented: $showSettingsPlansSheet) {
+            SettingsPlansSheet(
+                featureGate: featureGate,
+                subscriptionStore: subscriptionStore
+            )
+        }
+        .sheet(isPresented: $showPlanTaskPicker) {
+            PlanTaskSelectionSheet(
+                entries: selectablePlannedTaskEntries,
+                onSelect: { entry in
+                    startPlannedTaskExecution(with: entry)
+                }
             )
         }
         .alert("Your Plans", isPresented: Binding(
@@ -206,38 +246,39 @@ struct MainWindowView: View {
 
     private var sidebar: some View {
         List(selection: $sidebarSelection) {
-            ForEach(SidebarItem.allCases) { item in
+            ForEach(SidebarItem.visibleItems) { item in
                 Label(languageManager.text(item.localizationKey), systemImage: item.systemImage)
                     .tag(item)
             }
         }
         .listStyle(.sidebar)
+        .scrollContentBackground(.hidden)
+        .background(.ultraThinMaterial)
     }
 
     private var detailView: some View {
         ZStack {
             switch sidebarSelection {
-            case .pomodoro:
-                pomodoroView
-            case .flow:
-                flowModeView
-            case .countdown:
-                countdownView
+            case .dashboard:
+                dashboardView
+            case .workspace:
+                workspaceView
             case .tasks:
                 tasksView
             case .calendar:
                 calendarView
-            case .audioAndMusic:
-                audioAndMusicView
-            case .summary:
-                summaryView
+            case .insights:
+                insightsView
             case .settings:
                 settingsView
+            case .flow:
+                flowModeView
             }
         }
         .id(sidebarSelection)
         .transition(sectionTransition)
         .animation(sectionTransitionAnimation, value: sidebarSelection)
+        .background(.thinMaterial)
     }
 
     private var pomodoroView: some View {
@@ -364,9 +405,141 @@ struct MainWindowView: View {
         .frame(minWidth: 360, alignment: .leading)
     }
 
+    private var dashboardView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                SectionHeaderView(
+                    title: "Dashboard",
+                    subtitle: "Your timer, daily progress, and focus controls in one place."
+                )
+
+                GlassCardView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        HStack(alignment: .top, spacing: 18) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(titleForPomodoroMode(appState.pomodoroMode))
+                                    .font(.headline)
+                                    .foregroundStyle(.secondary)
+                                Text(formattedTime(appState.pomodoro.remainingSeconds))
+                                    .font(.system(size: 68, weight: .heavy, design: .rounded).monospacedDigit())
+                                    .contentTransition(.numericText())
+                                Text(languageManager.format("timer.state_format", labelForPomodoroState(appState.pomodoro.state)))
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            VStack(alignment: .trailing, spacing: 10) {
+                                Button {
+                                    Task {
+                                        await checkSubscription()
+                                    }
+                                } label: {
+                                    if isCheckingPlans {
+                                        HStack(spacing: 8) {
+                                            ProgressView()
+                                                .controlSize(.small)
+                                            Text("Your Plans")
+                                        }
+                                    } else {
+                                        Text("Your Plans")
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .disabled(isCheckingPlans)
+                            }
+                        }
+
+                        HStack(spacing: 10) {
+                            let actions = pomodoroActions(for: appState.pomodoro.state)
+                            ActionButton(languageManager.text("common.start"), isEnabled: actions.canStart) {
+                                startDashboardPomodoro()
+                            }
+                            ActionButton(languageManager.text("common.pause"), isEnabled: actions.canPause) {
+                                appState.pomodoro.pause()
+                            }
+                            ActionButton(languageManager.text("common.resume"), isEnabled: actions.canResume) {
+                                appState.pomodoro.resume()
+                            }
+                            ActionButton(languageManager.text("common.reset")) {
+                                appState.resetPomodoro()
+                                previewDashboardPomodoroIfIdle()
+                            }
+                            ActionButton(languageManager.text("timer.skip_break"), isEnabled: actions.canSkipBreak) {
+                                appState.pomodoro.skipBreak()
+                            }
+                        }
+
+                        dashboardPomodoroConfigurationPanel
+                    }
+                }
+
+                AdaptiveMetricGrid {
+                    MetricCard(
+                        title: languageManager.text("summary.today_focus"),
+                        value: languageManager.format("summary.today_focus_minutes_short", todayFocusMinutes),
+                        caption: "\(weeklyFocusPoints.reduce(0) { $0 + $1.minutes }) min this week"
+                    )
+                    MetricCard(
+                        title: languageManager.text("summary.completion"),
+                        value: "\(Int((completionRate * 100).rounded()))%",
+                        caption: "Task completion"
+                    )
+                    MetricCard(
+                        title: "Sessions",
+                        value: "\(summarySnapshot?.dailyAggregates.reduce(0) { $0 + $1.totalSessions } ?? 0)",
+                        caption: "Tracked in analytics",
+                        tint: .green
+                    )
+                }
+
+                AdaptivePageGrid {
+                    GlassCardView {
+                        VStack(alignment: .leading, spacing: 14) {
+                            SectionHeaderView(
+                                title: languageManager.text("timer.countdown"),
+                                subtitle: "Keep a simple deadline visible and adjustable without leaving the dashboard."
+                            )
+                            Text(formattedTime(appState.countdown.remainingSeconds))
+                                .font(.system(size: 38, weight: .bold, design: .rounded).monospacedDigit())
+                            countdownConfigurationPanel
+                            countdownActionsRow
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    GlassCardView {
+                        VStack(alignment: .leading, spacing: 14) {
+                            SectionHeaderView(
+                                title: "Audio",
+                                subtitle: "Ambient sound and now-playing controls stay available here."
+                            )
+                            nowPlayingSection
+                            Divider()
+                            sourceSelector
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+            .padding(24)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .onAppear {
+            refreshSummaryMetrics()
+        }
+        .onChange(of: todoStore.items) { _, _ in
+            refreshSummaryMetrics()
+        }
+        .onChange(of: productivityAnalyticsStore.dailyAggregates) { _, _ in
+            refreshSummaryMetrics()
+        }
+    }
+
     private var flowModeView: some View {
         FlowModeView(
-            showsBackgroundLayer: true,
+            showsBackgroundLayer: false,
             isFullscreenPresentation: false,
             exitAction: {
                 withAnimation {
@@ -461,25 +634,44 @@ struct MainWindowView: View {
         .frame(minWidth: 360, alignment: .leading)
     }
 
-    private var summaryView: some View {
+    private var insightsView: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .center, spacing: 8) {
-                    Text(languageManager.text("main.summary.title"))
-                        .font(.system(size: 22, weight: .semibold, design: .default))
-                        .foregroundStyle(.secondary)
-                    summarySection
+            VStack(alignment: .leading, spacing: 20) {
+                SectionHeaderView(
+                    title: "Insights",
+                    subtitle: "A single place for analytics and guided AI assistance."
+                )
+
+                GlassCardView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        SectionHeaderView(
+                            title: languageManager.text("main.summary.title"),
+                            subtitle: "Baseline performance signals and longer-term trends."
+                        )
+                        summarySection
+                        summaryFocusTiles
+                    }
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
-                
-                summaryFocusTiles
-                weeklyFocusChart
-                completionSection
+
+                if hasInsightContent {
+                    GlassCardView {
+                        insightsAIQuickActions
+                    }
+                }
+
+                AdaptivePageGrid {
+                    GlassCardView {
+                        weeklyFocusChart
+                    }
+                    GlassCardView { dailyCompletionTrendChart }
+                    GlassCardView { focusBreakRatioCard }
+                    GlassCardView { focusByHourChart }
+                    GlassCardView { sessionLengthDistributionChart }
+                    GlassCardView { completionSection }
+                }
             }
-            .padding(.top, 28)
-            .padding(.horizontal)
-            .padding(.bottom)
-            .frame(minWidth: 360, alignment: .leading)
+            .padding(24)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .onAppear {
             refreshSummaryMetrics()
@@ -487,68 +679,204 @@ struct MainWindowView: View {
         .onChange(of: todoStore.items) { _, _ in
             refreshSummaryMetrics()
         }
+        .onChange(of: productivityAnalyticsStore.dailyAggregates) { _, _ in
+            refreshSummaryMetrics()
+        }
+    }
+
+    private var workspaceView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                SectionHeaderView(
+                    title: "Workspace",
+                    subtitle: "One place for task planning, scheduling, and AI-assisted analysis."
+                )
+
+                aiWorkspaceSection
+            }
+            .padding(24)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var aiWorkspaceSection: some View {
+        AdaptivePageGrid(minimumWidth: 260) {
+            AIActionCard(
+                icon: "list.bullet.rectangle.portrait",
+                title: "Task AI",
+                description: "Break down work, draft task details, and build focused plans without scattering AI actions across the app."
+            ) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Includes task breakdown, task planning, and description generation.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button("Open Tasks") {
+                        withAnimation {
+                            sidebarSelection = .tasks
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+
+            AIActionCard(
+                icon: "calendar.badge.clock",
+                title: "Schedule AI",
+                description: "Use one scheduling surface for calendar-based planning and rescheduling instead of separate scattered entry points."
+            ) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Includes calendar scheduling and rescheduling.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button("Open Calendar") {
+                        withAnimation {
+                            sidebarSelection = .calendar
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+
+            AIActionCard(
+                icon: "waveform.and.magnifyingglass",
+                title: "Insight AI",
+                description: "Generate weekly overviews, deeper analysis, and metric-level explanations from your local productivity data."
+            ) {
+                VStack(alignment: .leading, spacing: 10) {
+                    if let insightHubResult {
+                        Text(insightHubResult.text)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(4)
+                    } else {
+                        Text("Includes weekly overview, deep analysis, and metric explanations.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    HStack(spacing: 8) {
+                        Button {
+                            Task {
+                                await runInsightHubAnalysis()
+                            }
+                        } label: {
+                            if isInsightHubLoading {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Text(featureGate.canUseAIDeepAnalysis ? "Run Deep Analysis" : "Generate Overview")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isInsightHubLoading)
+
+                        Menu("Explain Metric") {
+                            ForEach([
+                                AIService.ProductivityInsightMetric.focusQualityScore,
+                                .consistencyScore,
+                                .focusByHour,
+                                .breakFocusRatio
+                            ], id: \.rawValue) { metric in
+                                Button(metric.displayName) {
+                                    Task {
+                                        await runInsightMetricAnalysis(metric)
+                                    }
+                                }
+                            }
+                        }
+                        .disabled(isInsightHubLoading || !featureGate.canUseAIDeepAnalysis)
+                    }
+                }
+            }
+        }
+    }
+
+    private var insightsAIQuickActions: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Insight AI")
+                        .font(.headline)
+                    Text("Run analysis here, or open Workspace for the full AI toolset.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                HStack(spacing: 8) {
+                    Button {
+                        Task {
+                            await runInsightHubAnalysis()
+                        }
+                    } label: {
+                        if isInsightHubLoading {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Text(featureGate.canUseAIDeepAnalysis ? "Run Deep Analysis" : "Generate Overview")
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isInsightHubLoading)
+
+                    Menu("Explain Metric") {
+                        ForEach([
+                            AIService.ProductivityInsightMetric.focusQualityScore,
+                            .consistencyScore,
+                            .focusByHour,
+                            .breakFocusRatio
+                        ], id: \.rawValue) { metric in
+                            Button(metric.displayName) {
+                                Task {
+                                    await runInsightMetricAnalysis(metric)
+                                }
+                            }
+                        }
+                    }
+                    .disabled(isInsightHubLoading || !featureGate.canUseAIDeepAnalysis)
+
+                    Button("Open Workspace") {
+                        withAnimation {
+                            sidebarSelection = .workspace
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+
+            if let insightHubResult {
+                Text(insightHubResult.text)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+        }
     }
 
     private var settingsView: some View {
-        ZStack {
-            VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow)
-                .ignoresSafeArea()
-            // Subtle overlay to keep text legible while showing wallpaper blur
-            Color(nsColor: .windowBackgroundColor)
-                .opacity(0.32)
-                .ignoresSafeArea()
+        HStack(alignment: .top, spacing: 24) {
+            settingsSidebar
 
             ScrollView(.vertical, showsIndicators: true) {
-                VStack(alignment: .leading, spacing: 18) {
-                    SettingsSectionCard(title: languageManager.text("settings.notifications.title")) {
-                        Picker(languageManager.text("main.delivery"), selection: $appState.notificationDeliveryStyle) {
-                            ForEach(NotificationDeliveryStyle.allCases) { style in
-                                Text(style.title)
-                                    .tag(style)
-                            }
-                        }
-                        .pickerStyle(.segmented)
+                VStack(alignment: .leading, spacing: 24) {
+                    SectionHeaderView(
+                        title: selectedSettingsPane.title,
+                        subtitle: selectedSettingsPane.subtitle
+                    )
 
-                        Picker(languageManager.text("settings.notifications.title"), selection: $appState.notificationPreference) {
-                            ForEach(NotificationPreference.allCases) { preference in
-                                Text(preference.title)
-                                    .tag(preference)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-
-                        Picker(languageManager.text("main.reminder"), selection: $appState.reminderPreference) {
-                            ForEach(ReminderPreference.allCases) { preference in
-                                Text(preference.title)
-                                    .tag(preference)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-
-                    SettingsSectionCard(title: languageManager.text("settings.permissions_sync.title")) {
-                        SettingsView(permissionsManager: permissionsManager)
-                    }
-
-                    SettingsSectionCard(title: languageManager.text("settings.language.title")) {
-                        Picker(languageManager.text("settings.language.picker.label"), selection: $languageManager.currentLanguage) {
-                            Text(languageManager.text("settings.language.system"))
-                                .tag(LanguageManager.AppLanguage.auto)
-                            Text(languageManager.text("settings.language.english"))
-                                .tag(LanguageManager.AppLanguage.english)
-                            Text(languageManager.text("settings.language.chinese"))
-                                .tag(LanguageManager.AppLanguage.chinese)
-                        }
-                        .pickerStyle(.segmented)
-                    }
+                    settingsPaneContent
                 }
                 .padding(.vertical, 24)
                 .padding(.horizontal, 24)
-                .padding(.trailing, 8) // keep scrollbar off the content edge
-                .frame(maxWidth: 820, alignment: .leading)
+                .padding(.trailing, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .frame(minWidth: 520, idealWidth: 680, maxWidth: 900, minHeight: 520, alignment: .topLeading)
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
             refreshPermissionStatuses()
         }
@@ -587,6 +915,509 @@ struct MainWindowView: View {
                 openNotificationSettings()
             }
         }
+    }
+
+    private var settingsSidebar: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            TextField("Search Settings", text: $settingsSearchText)
+                .textFieldStyle(.roundedBorder)
+
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(filteredSettingsPanes) { pane in
+                    Button {
+                        withAnimation(.easeOut(duration: 0.18)) {
+                            selectedSettingsPane = pane
+                        }
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: pane.systemImage)
+                                .frame(width: 18)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(pane.title)
+                                    .font(.subheadline.weight(.semibold))
+                                Text(pane.shortDescription)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(selectedSettingsPane == pane ? Color.accentColor.opacity(0.14) : Color.clear)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(selectedSettingsPane == pane ? Color.accentColor.opacity(0.28) : Color.clear, lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .frame(width: 250)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
+        )
+    }
+
+    @ViewBuilder
+    private var settingsPaneContent: some View {
+        switch selectedSettingsPane {
+        case .general:
+            AdaptivePageGrid(minimumWidth: 360, spacing: 20) {
+                settingsGeneralModule
+                settingsAppearanceModule
+            }
+        case .timerFocus:
+            AdaptivePageGrid(minimumWidth: 360, spacing: 20) {
+                settingsTimerPresetModule
+                settingsTimerDurationsModule
+                settingsCountdownModule
+            }
+        case .notifications:
+            AdaptivePageGrid(minimumWidth: 360, spacing: 20) {
+                settingsNotificationPreferencesModule
+                settingsPermissionsModule
+            }
+        case .aiFeatures:
+            AdaptivePageGrid(minimumWidth: 360, spacing: 20) {
+                settingsAISubscriptionModule
+                settingsAIFeaturesModule
+            }
+        case .account:
+            AdaptivePageGrid(minimumWidth: 360, spacing: 20) {
+                settingsAccountModule
+                settingsPoliciesModule
+            }
+        }
+    }
+
+    private var settingsGeneralModule: some View {
+        SettingsModuleCard(
+            title: "General",
+            description: "Core app behavior and defaults that affect everyday use."
+        ) {
+            settingsLabeledControl(title: "Language", description: "Choose how the app should present text.") {
+                Picker(languageManager.text("settings.language.picker.label"), selection: $languageManager.currentLanguage) {
+                    Text(languageManager.text("settings.language.system"))
+                        .tag(LanguageManager.AppLanguage.auto)
+                    Text(languageManager.text("settings.language.english"))
+                        .tag(LanguageManager.AppLanguage.english)
+                    Text(languageManager.text("settings.language.chinese"))
+                        .tag(LanguageManager.AppLanguage.chinese)
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 320)
+            }
+        }
+    }
+
+    private var settingsAppearanceModule: some View {
+        SettingsModuleCard(
+            title: "Appearance",
+            description: "Keep the interface clean, readable, and consistent with macOS."
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                settingsInfoRow(title: "Style", value: "System materials and native controls")
+                settingsInfoRow(title: "Layout", value: "Adaptive modules that expand with window size")
+            }
+        }
+    }
+
+    private var settingsTimerPresetModule: some View {
+        SettingsModuleCard(
+            title: "Timer & Focus",
+            description: "Set the default Pomodoro rhythm used when the dashboard is not overriding the current session."
+        ) {
+            settingsLabeledControl(title: languageManager.text("timer.preset"), description: "Switch between built-in focus presets or a custom schedule.") {
+                Picker(languageManager.text("timer.preset"), selection: presetSelectionBinding) {
+                    ForEach(Preset.builtIn) { preset in
+                        Text(preset.name)
+                            .tag(PresetSelection.preset(preset))
+                    }
+                    Text(languageManager.text("timer.custom"))
+                        .tag(PresetSelection.custom)
+                }
+                .pickerStyle(.segmented)
+            }
+        }
+    }
+
+    private var settingsTimerDurationsModule: some View {
+        SettingsModuleCard(
+            title: "Pomodoro Durations",
+            description: "Adjust the default work and break lengths saved for the app."
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                DurationInputRow(
+                    title: languageManager.text("timer.work"),
+                    text: $workMinutesText,
+                    field: .work,
+                    focusedField: $focusedField,
+                    isFocused: focusedField == .work
+                ) {
+                    commitDuration(.work)
+                }
+
+                Divider()
+
+                DurationInputRow(
+                    title: languageManager.text("timer.short_break"),
+                    text: $shortBreakMinutesText,
+                    field: .shortBreak,
+                    focusedField: $focusedField,
+                    isFocused: focusedField == .shortBreak
+                ) {
+                    commitDuration(.shortBreak)
+                }
+
+                Divider()
+
+                DurationInputRow(
+                    title: languageManager.text("timer.long_break"),
+                    text: $longBreakMinutesText,
+                    field: .longBreak,
+                    focusedField: $focusedField,
+                    isFocused: focusedField == .longBreak
+                ) {
+                    commitDuration(.longBreak)
+                }
+
+                Divider()
+
+                LongBreakIntervalRow(
+                    interval: $longBreakIntervalValue
+                ) {
+                    updateDurationConfig(longBreakInterval: longBreakIntervalValue)
+                }
+            }
+        }
+    }
+
+    private var settingsCountdownModule: some View {
+        SettingsModuleCard(
+            title: "Countdown Default",
+            description: "Set the default countdown used across the app, with quick preset shortcuts."
+        ) {
+            countdownConfigurationPanel
+        }
+    }
+
+    private var settingsNotificationPreferencesModule: some View {
+        SettingsModuleCard(
+            title: "Notifications",
+            description: "Choose how reminders are delivered and when the app should surface them."
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                settingsLabeledControl(title: languageManager.text("main.delivery"), description: "Decide how timer alerts should reach you.") {
+                    Picker(languageManager.text("main.delivery"), selection: $appState.notificationDeliveryStyle) {
+                        ForEach(NotificationDeliveryStyle.allCases) { style in
+                            Text(style.title).tag(style)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                Divider()
+
+                settingsLabeledControl(title: languageManager.text("settings.notifications.title"), description: "Control whether focus notifications are shown.") {
+                    Picker(languageManager.text("settings.notifications.title"), selection: $appState.notificationPreference) {
+                        ForEach(NotificationPreference.allCases) { preference in
+                            Text(preference.title).tag(preference)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                Divider()
+
+                settingsLabeledControl(title: languageManager.text("main.reminder"), description: "Choose how reminder follow-ups should behave.") {
+                    Picker(languageManager.text("main.reminder"), selection: $appState.reminderPreference) {
+                        ForEach(ReminderPreference.allCases) { preference in
+                            Text(preference.title).tag(preference)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+            }
+        }
+    }
+
+    private var settingsPermissionsModule: some View {
+        SettingsModuleCard(
+            title: "Permissions & Sync",
+            description: "Review system access for notifications, calendar, and reminders."
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                settingsPermissionRow(
+                    title: "Notifications",
+                    status: notificationStatusText(notificationStatus),
+                    statusColor: notificationStatusColor(notificationStatus),
+                    buttonTitle: notificationStatus == .authorized ? "Open Settings" : "Enable",
+                    action: handleNotificationAccessRequest
+                )
+
+                Divider()
+
+                settingsPermissionRow(
+                    title: "Calendar",
+                    status: eventStatusText(calendarStatus),
+                    statusColor: eventStatusColor(calendarStatus),
+                    buttonTitle: eventStatusColor(calendarStatus) == .green ? "Open Settings" : "Enable",
+                    action: handleCalendarAccessRequest
+                )
+
+                Divider()
+
+                settingsPermissionRow(
+                    title: "Reminders",
+                    status: eventStatusText(remindersStatus),
+                    statusColor: eventStatusColor(remindersStatus),
+                    buttonTitle: eventStatusColor(remindersStatus) == .green ? "Open Settings" : "Enable",
+                    action: handleRemindersAccessRequest
+                )
+            }
+        }
+    }
+
+    private var settingsAISubscriptionModule: some View {
+        SettingsModuleCard(
+            title: "AI & Subscription",
+            description: "Review your current plan, usage window, and restore purchases when needed."
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                settingsInfoRow(title: "Current Plan", value: currentPlanLabel)
+
+                if let resetAt = featureGate.allowanceResetAt {
+                    settingsInfoRow(title: "Usage Resets", value: formattedSettingsDate(resetAt))
+                }
+
+                if let subscriptionEndAt = featureGate.subscriptionEndAt,
+                   featureGate.tier == .plus || featureGate.tier == .pro {
+                    settingsInfoRow(title: "Subscription Ends", value: formattedSettingsDate(subscriptionEndAt))
+                }
+
+                Button {
+                    Task {
+                        await subscriptionStore.restorePurchases()
+                    }
+                } label: {
+                    if subscriptionStore.isRestoring {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text("Restore Purchases")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(subscriptionStore.isRestoring)
+
+                Button("Manage Subscription") {
+                    showSettingsPlansSheet = true
+                }
+                .buttonStyle(.borderedProminent)
+
+                if let errorMessage = subscriptionStore.errorMessage, !errorMessage.isEmpty {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
+                if let productLoadErrorMessage = subscriptionStore.productLoadErrorMessage,
+                   !productLoadErrorMessage.isEmpty {
+                    Text(productLoadErrorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+    }
+
+    private var settingsAIFeaturesModule: some View {
+        SettingsModuleCard(
+            title: "AI Access & Features",
+            description: "See what your tier unlocks, then open the subscription sheet when you need full plan details."
+        ) {
+            VStack(alignment: .leading, spacing: 16) {
+                if !featureGate.aiUsageProgressItems.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(featureGate.aiUsageProgressItems, id: \.title) { item in
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    Text(item.title)
+                                        .font(.subheadline.weight(.medium))
+                                    Spacer()
+                                    Text("\(item.usedPercentage)% used")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                ProgressView(value: item.usedRatio)
+                                    .tint(usageColor(for: item.usedRatio))
+                            }
+                        }
+                    }
+                }
+
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Plan Comparison")
+                            .font(.subheadline.weight(.semibold))
+                        Text("Open the subscription pop-up to compare Free, Plus, and Pro in detail.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Compare Plans") {
+                        showSettingsPlansSheet = true
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+        }
+    }
+
+    private var settingsAccountModule: some View {
+        SettingsModuleCard(
+            title: "Account",
+            description: "Manage sign-in state and cloud-connected access from one place."
+        ) {
+            CloudSettingsSection()
+                .environmentObject(authViewModel)
+                .environmentObject(LocalizationManager.shared)
+        }
+    }
+
+    private var settingsPoliciesModule: some View {
+        SettingsModuleCard(
+            title: "Privacy & Policies",
+            description: "Open the product policy page in your browser."
+        ) {
+            Button {
+                guard let url = URL(string: "https://pomodoro-app.tech/policies.html") else {
+                    return
+                }
+                NSWorkspace.shared.open(url)
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "doc.text")
+                        .foregroundStyle(.secondary)
+                    Text("Open Privacy & Policies")
+                    Spacer()
+                    Image(systemName: "arrow.up.right.square")
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
+    private func settingsLabeledControl<Content: View>(
+        title: String,
+        description: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+            if let description {
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func settingsInfoRow(title: String, value: String) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .font(.subheadline.weight(.medium))
+            }
+            Spacer()
+        }
+    }
+
+    private func settingsPermissionRow(
+        title: String,
+        status: String,
+        statusColor: Color,
+        buttonTitle: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(status)
+                    .font(.caption)
+                    .foregroundStyle(statusColor)
+            }
+
+            Spacer()
+
+            Button(buttonTitle, action: action)
+                .buttonStyle(.bordered)
+        }
+    }
+
+    private func usageColor(for ratio: Double) -> Color {
+        switch ratio {
+        case ..<0.6:
+            return .accentColor
+        case ..<0.8:
+            return .yellow
+        default:
+            return .red
+        }
+    }
+
+    private var filteredSettingsPanes: [SettingsPane] {
+        let query = settingsSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if query.isEmpty {
+            return SettingsPane.allCases
+        }
+        let filtered = SettingsPane.allCases.filter { pane in
+            pane.title.lowercased().contains(query)
+                || pane.shortDescription.lowercased().contains(query)
+        }
+        return filtered.isEmpty ? SettingsPane.allCases : filtered
+    }
+
+    private var currentPlanLabel: String {
+        switch featureGate.tier {
+        case .free:
+            return "Free"
+        case .plus:
+            return "Plus"
+        case .pro:
+            return "Pro"
+        case .developer:
+            return "Developer"
+        case .beta:
+            return "Beta"
+        case .expired:
+            return "Expired"
+        }
+    }
+
+    private func formattedSettingsDate(_ date: Date) -> String {
+        date.formatted(date: .long, time: .omitted)
     }
 
     private func handleCalendarAccessRequest() {
@@ -873,6 +1704,110 @@ struct MainWindowView: View {
         .opacity(isDisabled ? 0.45 : 1.0)
     }
 
+    private var countdownConfigurationPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                countdownDurationField(
+                    title: "Minutes",
+                    text: $countdownMinutesText,
+                    field: .countdown,
+                    width: 72
+                )
+
+                countdownDurationField(
+                    title: "Seconds",
+                    text: $countdownSecondsText,
+                    field: .countdownSeconds,
+                    width: 72
+                )
+
+                Spacer(minLength: 0)
+            }
+
+            HStack(spacing: 8) {
+                ForEach([25, 50, 90], id: \.self) { preset in
+                    Button("\(preset) min") {
+                        applyCountdownPreset(minutes: preset)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+        }
+    }
+
+    private var countdownActionsRow: some View {
+        HStack(spacing: 10) {
+            let actions = countdownActions(for: appState.countdown.state)
+            ActionButton(languageManager.text("common.start"), isEnabled: actions.canStart) {
+                appState.countdown.start()
+            }
+            ActionButton(languageManager.text("common.pause"), isEnabled: actions.canPause) {
+                appState.countdown.pause()
+            }
+            ActionButton(languageManager.text("common.resume"), isEnabled: actions.canResume) {
+                appState.countdown.resume()
+            }
+            ActionButton(languageManager.text("common.reset")) {
+                appState.countdown.reset()
+            }
+        }
+    }
+
+    private func miniStatPill(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.headline.weight(.semibold))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func metricSummaryCard(title: String, value: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.system(size: 26, weight: .semibold, design: .rounded))
+                .foregroundStyle(.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(.thinMaterial)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(tint)
+        )
+        .cornerRadius(10)
+    }
+
+    private func countdownDurationField(
+        title: String,
+        text: Binding<String>,
+        field: DurationField,
+        width: CGFloat
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            TextField("", text: text)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: width)
+                .multilineTextAlignment(.trailing)
+                .font(.system(.body, design: .rounded).monospacedDigit())
+                .focused($focusedField, equals: field)
+                .onSubmit {
+                    commitDuration(field)
+                }
+        }
+    }
+
     private var ambientVolumeBinding: Binding<Double> {
         Binding(
             get: { Double(musicController.focusVolume) },
@@ -1035,59 +1970,167 @@ struct MainWindowView: View {
         case shortBreak
         case longBreak
         case countdown
+        case countdownSeconds
     }
 
     private enum SidebarItem: String, CaseIterable, Identifiable {
-        case pomodoro
-        case flow
-        case countdown
+        case dashboard
+        case workspace
         case tasks
         case calendar
-        case audioAndMusic
-        case summary
+        case insights
         case settings
+        case flow
 
         var id: String { rawValue }
 
+        static var visibleItems: [SidebarItem] {
+            [.dashboard, .flow, .workspace, .tasks, .calendar, .insights, .settings]
+        }
+
         var localizationKey: String {
             switch self {
-            case .pomodoro:
-                return "main.sidebar.pomodoro"
-            case .flow:
-                return "main.sidebar.flow"
-            case .countdown:
-                return "main.sidebar.countdown"
+            case .dashboard:
+                return "main.sidebar.dashboard"
+            case .workspace:
+                return "main.sidebar.workspace"
             case .tasks:
                 return "main.sidebar.tasks"
             case .calendar:
                 return "main.sidebar.calendar"
-            case .audioAndMusic:
-                return "main.sidebar.audio_music"
-            case .summary:
-                return "main.sidebar.summary"
+            case .insights:
+                return "main.sidebar.insights"
             case .settings:
                 return "main.sidebar.settings"
+            case .flow:
+                return "main.sidebar.flow"
             }
         }
 
         var systemImage: String {
             switch self {
-            case .pomodoro:
-                return "timer"
-            case .flow:
-                return "circle.dotted"
-            case .countdown:
-                return "hourglass"
+            case .dashboard:
+                return "square.grid.2x2"
+            case .workspace:
+                return "sparkles.rectangle.stack"
             case .tasks:
                 return "checklist"
             case .calendar:
                 return "calendar"
-            case .audioAndMusic:
-                return "music.note.list"
-            case .summary:
-                return "chart.bar"
+            case .insights:
+                return "chart.line.uptrend.xyaxis"
             case .settings:
                 return "gearshape"
+            case .flow:
+                return "circle.dotted"
+            }
+        }
+
+        var toolbarTitle: String {
+            switch self {
+            case .dashboard:
+                return "Dashboard"
+            case .workspace:
+                return "Workspace"
+            case .tasks:
+                return "Tasks"
+            case .calendar:
+                return "Calendar"
+            case .insights:
+                return "Insights"
+            case .settings:
+                return "Settings"
+            case .flow:
+                return "Flow Mode"
+            }
+        }
+
+        var toolbarSubtitle: String {
+            switch self {
+            case .dashboard:
+                return "Focus, timers, and today at a glance"
+            case .workspace:
+                return "Planning, scheduling, and AI assistance"
+            case .tasks:
+                return "Capture, organize, and plan work"
+            case .calendar:
+                return "See your schedule and reschedule intelligently"
+            case .insights:
+                return "Analytics and AI understanding"
+            case .settings:
+                return "Preferences, access, and customization"
+            case .flow:
+                return "Immersive focus workspace"
+            }
+        }
+    }
+
+    private enum SettingsPane: String, CaseIterable, Identifiable {
+        case general
+        case timerFocus
+        case notifications
+        case aiFeatures
+        case account
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .general:
+                return "General"
+            case .timerFocus:
+                return "Timer & Focus"
+            case .notifications:
+                return "Notifications"
+            case .aiFeatures:
+                return "AI & Features"
+            case .account:
+                return "Account"
+            }
+        }
+
+        var subtitle: String {
+            switch self {
+            case .general:
+                return "App-wide defaults, language, and baseline behavior."
+            case .timerFocus:
+                return "Presets, durations, and countdown defaults for focused work."
+            case .notifications:
+                return "Delivery preferences and system permissions."
+            case .aiFeatures:
+                return "Plans, quota visibility, and AI feature access."
+            case .account:
+                return "Sign-in state, cloud access, and policy links."
+            }
+        }
+
+        var shortDescription: String {
+            switch self {
+            case .general:
+                return "Defaults and language"
+            case .timerFocus:
+                return "Presets and durations"
+            case .notifications:
+                return "Alerts and permissions"
+            case .aiFeatures:
+                return "Plans and AI"
+            case .account:
+                return "Profile and cloud"
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .general:
+                return "slider.horizontal.3"
+            case .timerFocus:
+                return "timer"
+            case .notifications:
+                return "bell.badge"
+            case .aiFeatures:
+                return "sparkles"
+            case .account:
+                return "person.crop.circle"
             }
         }
     }
@@ -1293,103 +2336,209 @@ struct MainWindowView: View {
     }
 
     private var summaryFocusTiles: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(languageManager.text("summary.today_focus"))
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-                Text(languageManager.format("summary.today_focus_minutes_short", todayFocusMinutes))
-                    .font(.title)
-                    .fontWeight(.semibold)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
-            .background(Color.primary.opacity(0.05))
-            .cornerRadius(10)
-            
-            VStack(alignment: .leading, spacing: 6) {
-                Text(languageManager.text("summary.completion"))
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-                Text("\(Int(completionRate * 100))%")
-                    .font(.title)
-                    .fontWeight(.semibold)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
-            .background(Color.primary.opacity(0.05))
-            .cornerRadius(10)
+        AdaptiveMetricGrid {
+            miniStatPill(
+                title: languageManager.text("summary.today_focus"),
+                value: languageManager.format("summary.today_focus_minutes_short", todayFocusMinutes)
+            )
+            miniStatPill(
+                title: languageManager.text("summary.completion"),
+                value: "\(Int(completionRate * 100))%"
+            )
         }
     }
     
     private var weeklyFocusChart: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(languageManager.text("summary.weekly_trend"))
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            Chart(weeklyFocusPoints) { point in
-                BarMark(
-                    x: .value(languageManager.text("summary.chart.day"), shortWeekdayFormatter.string(from: point.date)),
-                    y: .value(languageManager.text("summary.chart.minutes"), point.minutes)
-                )
+            summarySectionHeader(title: languageManager.text("summary.weekly_trend"))
+            if weeklyFocusPoints.allSatisfy({ $0.minutes == 0 }) {
+                emptyChartCard(message: "Insights will appear after you have data.")
+            } else {
+                let maxMinutes = weeklyFocusPoints.map(\.minutes).max() ?? 0
+                let minMinutes = weeklyFocusPoints.map(\.minutes).min() ?? 0
+                Chart(weeklyFocusPoints) { point in
+                    LineMark(
+                        x: .value(languageManager.text("summary.chart.day"), shortWeekdayFormatter.string(from: point.date)),
+                        y: .value(languageManager.text("summary.chart.minutes"), point.minutes)
+                    )
+                    .interpolationMethod(.catmullRom)
+                    .foregroundStyle(Color.accentColor)
+
+                    AreaMark(
+                        x: .value(languageManager.text("summary.chart.day"), shortWeekdayFormatter.string(from: point.date)),
+                        y: .value(languageManager.text("summary.chart.minutes"), point.minutes)
+                    )
+                    .interpolationMethod(.catmullRom)
+                    .foregroundStyle(Color.accentColor.opacity(0.12))
+
+                    if point.minutes == maxMinutes || point.minutes == minMinutes {
+                        PointMark(
+                            x: .value(languageManager.text("summary.chart.day"), shortWeekdayFormatter.string(from: point.date)),
+                            y: .value(languageManager.text("summary.chart.minutes"), point.minutes)
+                        )
+                        .symbolSize(60)
+                        .foregroundStyle(point.minutes == maxMinutes ? Color.green : Color.orange)
+                    }
+                }
+                .frame(height: 180)
             }
-            .frame(height: 180)
+        }
+    }
+
+    private var dailyCompletionTrendChart: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            summarySectionHeader(title: "Daily Completion Trend")
+            if dailyCompletionPoints.allSatisfy({ $0.minutes == 0 }) {
+                emptyChartCard(message: "Insights will appear after you have data.")
+            } else {
+                Chart(dailyCompletionPoints) { point in
+                    BarMark(
+                        x: .value("Day", shortWeekdayFormatter.string(from: point.date)),
+                        y: .value("Completed Sessions", point.minutes)
+                    )
+                    .foregroundStyle(Color.green.gradient)
+                }
+                .frame(height: 160)
+            }
+        }
+    }
+
+    private var focusBreakRatioCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            summarySectionHeader(title: "Focus vs Break Ratio")
+            if let snapshot = summarySnapshot,
+               snapshot.dailyAggregates.contains(where: { $0.totalFocusSeconds > 0 || $0.totalBreakSeconds > 0 }) {
+                HStack(spacing: 20) {
+                    Chart {
+                        SectorMark(
+                            angle: .value("Focus", focusRatioValue.focus),
+                            innerRadius: .ratio(0.58),
+                            angularInset: 2
+                        )
+                        .foregroundStyle(Color.accentColor.gradient)
+
+                        SectorMark(
+                            angle: .value("Break", focusRatioValue.breakTime),
+                            innerRadius: .ratio(0.58),
+                            angularInset: 2
+                        )
+                        .foregroundStyle(Color.orange.gradient)
+                    }
+                    .frame(width: 160, height: 160)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        ratioLegendRow(color: .accentColor, title: "Focus", value: "\(focusRatioPercent.focus)%")
+                        ratioLegendRow(color: .orange, title: "Break", value: "\(focusRatioPercent.breakTime)%")
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                emptyChartCard(message: "Insights will appear after you have data.")
+            }
+        }
+    }
+
+    private var focusByHourChart: some View {
+        return VStack(alignment: .leading, spacing: 8) {
+            summarySectionHeader(title: "Focus by Hour")
+            if focusByHourPoints.contains(where: { $0.focusSeconds > 0 }) {
+                Chart(focusByHourPoints) { point in
+                    BarMark(
+                        x: .value("Hour", point.hour),
+                        y: .value("Minutes", point.focusSeconds / 60)
+                    )
+                    .foregroundStyle(Color.cyan.gradient)
+                }
+                .frame(height: 180)
+            } else {
+                emptyChartCard(message: "Insights will appear after you have data.")
+            }
+        }
+    }
+
+    private var sessionLengthDistributionChart: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            summarySectionHeader(title: "Session Length Distribution")
+            if sessionLengthDistributionPoints.contains(where: { $0.sessionCount > 0 }) {
+                Chart(sessionLengthDistributionPoints) { point in
+                    BarMark(
+                        x: .value("Bucket", point.bucket.title),
+                        y: .value("Sessions", point.sessionCount)
+                    )
+                    .foregroundStyle(Color.pink.gradient)
+                }
+                .frame(height: 180)
+            } else {
+                emptyChartCard(message: "Insights will appear after you have data.")
+            }
+        }
+    }
+
+    private func emptyChartCard(message: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(message)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.thinMaterial)
+                .cornerRadius(10)
         }
     }
     
     private var completionSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(languageManager.text("summary.task_completion"))
-                .font(.headline)
-                .foregroundStyle(.secondary)
+            summarySectionHeader(title: languageManager.text("summary.task_completion"))
             
             if todoStore.items.isEmpty {
-                Text(languageManager.text("summary.no_tasks"))
-                    .foregroundStyle(.secondary)
-                    .font(.subheadline)
+                emptyChartCard(message: "Insights will appear after you have data.")
             } else {
                 let completedCount = todoStore.items.filter { $0.isCompleted }.count
                 let total = todoStore.items.count
                 let activeCount = max(0, total - completedCount)
+                let progressValue = total == 0 ? 0 : Double(completedCount) / Double(total)
                 
-                // Option A: Split into two clear sections to avoid scale imbalance.
-                VStack(alignment: .leading, spacing: 10) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(languageManager.text("summary.completion_overview"))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text(languageManager.format("summary.completed_count", completedCount))
-                            .font(.system(size: 26, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.primary)
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("\(completedCount)/\(total) completed")
+                                .font(.subheadline.weight(.medium))
+                            Spacer()
+                            Text("\(Int((progressValue * 100).rounded()))%")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        ProgressView(value: progressValue)
+                            .progressViewStyle(.linear)
+                            .tint(.green)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding()
-                    // Subtle material + tint to feel native and avoid heavy color blocks.
-                    .background(.thinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.green.opacity(0.08))
-                    )
+                    .background(Color.primary.opacity(0.05))
                     .cornerRadius(10)
-                    
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(languageManager.text("summary.current_load"))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text(languageManager.format("summary.active_count", activeCount))
-                            .font(.system(size: 26, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.primary)
+
+                    AdaptiveMetricGrid {
+                        metricSummaryCard(
+                            title: languageManager.text("summary.completion_overview"),
+                            value: languageManager.format("summary.completed_count", completedCount),
+                            tint: Color.green.opacity(0.08)
+                        )
+                        metricSummaryCard(
+                            title: languageManager.text("summary.current_load"),
+                            value: languageManager.format("summary.active_count", activeCount),
+                            tint: Color.cyan.opacity(0.08)
+                        )
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .background(.thinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.cyan.opacity(0.08))
-                    )
-                    .cornerRadius(10)
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func summarySectionHeader(title: String) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -1400,24 +2549,132 @@ struct MainWindowView: View {
         return formatter
     }
 
+    private var focusRatioValue: (focus: Int, breakTime: Int) {
+        let focusSeconds = summarySnapshot?.dailyAggregates.reduce(0) { $0 + $1.totalFocusSeconds } ?? 0
+        let breakSeconds = summarySnapshot?.dailyAggregates.reduce(0) { $0 + $1.totalBreakSeconds } ?? 0
+        if focusSeconds == 0 && breakSeconds == 0 {
+            return (focus: 1, breakTime: 1)
+        }
+        return (focus: max(0, focusSeconds), breakTime: max(0, breakSeconds))
+    }
+
+    private var focusRatioPercent: (focus: Int, breakTime: Int) {
+        let ratio = focusRatioValue
+        let total = max(1, ratio.focus + ratio.breakTime)
+        let focus = Int((Double(ratio.focus) / Double(total) * 100).rounded())
+        return (focus: focus, breakTime: max(0, 100 - focus))
+    }
+
+    private func ratioLegendRow(color: Color, title: String, value: String) -> some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(color)
+                .frame(width: 10, height: 10)
+            Text(title)
+                .font(.subheadline)
+            Spacer()
+            Text(value)
+                .font(.subheadline.weight(.medium))
+        }
+    }
+
     private func refreshSummaryMetrics() {
         let calendar = Calendar.current
-        let todayRecords = sessionRecordStore.records(for: Date(), calendar: calendar)
-        todayFocusMinutes = todayRecords.reduce(0) { $0 + max(0, $1.durationSeconds) } / 60
-        
-        let sevenDayRecords = sessionRecordStore.records(lastDays: 7, calendar: calendar)
-        let grouped = Dictionary(grouping: sevenDayRecords) { calendar.startOfDay(for: $0.startTime) }
-        let lastSevenDays = (0..<7).compactMap { offset -> Date? in
-            calendar.date(byAdding: .day, value: -offset, to: calendar.startOfDay(for: Date()))
-        }.reversed()
-        weeklyFocusPoints = lastSevenDays.map { day in
-            let totalSeconds = grouped[day]?.reduce(0) { $0 + $1.durationSeconds } ?? 0
-            return DailyFocusPoint(date: day, minutes: totalSeconds / 60)
+        let snapshot = productivityAnalyticsStore.snapshot(calendar: calendar)
+        let todayAggregate = productivityAnalyticsStore.aggregate(for: Date(), calendar: calendar)
+        summarySnapshot = snapshot
+        todayFocusMinutes = todayAggregate.totalFocusSeconds / 60
+
+        weeklyFocusPoints = snapshot.focusTrend7Days.map { point in
+            DailyFocusPoint(date: point.date, minutes: Int(point.value.rounded()))
         }
-        
+        let aggregateLookup = Dictionary(uniqueKeysWithValues: snapshot.dailyAggregates.map { ($0.dayStart, $0) })
+        let today = calendar.startOfDay(for: Date())
+        dailyCompletionPoints = (0..<7).compactMap { offset in
+            calendar.date(byAdding: .day, value: -(6 - offset), to: today)
+        }.map { day in
+            DailyFocusPoint(
+                date: day,
+                minutes: aggregateLookup[day]?.completedSessions ?? 0
+            )
+        }
+        focusByHourPoints = snapshot.focusByHour
+        sessionLengthDistributionPoints = snapshot.sessionLengthDistribution
+
         let totalTasks = todoStore.items.count
         let completed = todoStore.items.filter { $0.isCompleted }.count
         completionRate = totalTasks == 0 ? 0 : Double(completed) / Double(totalTasks)
+    }
+
+    private var summaryTaskSummary: AIService.ProductivityTaskSummary {
+        AIService.ProductivityTaskSummary.from(items: todoStore.items)
+    }
+
+    private var hasInsightContent: Bool {
+        let hasAnalyticsData =
+            weeklyFocusPoints.contains(where: { $0.minutes > 0 }) ||
+            dailyCompletionPoints.contains(where: { $0.minutes > 0 }) ||
+            focusByHourPoints.contains(where: { $0.focusSeconds > 0 }) ||
+            sessionLengthDistributionPoints.contains(where: { $0.sessionCount > 0 }) ||
+            (summarySnapshot?.dailyAggregates.contains(where: { $0.totalFocusSeconds > 0 || $0.totalBreakSeconds > 0 }) ?? false)
+        return hasAnalyticsData || !todoStore.items.isEmpty
+    }
+
+    private func ensureInsightAIUnlocked() -> Bool {
+        switch featureGate.tier {
+        case .free, .expired:
+            plansPaywallContext = SubscriptionPaywallContext(
+                requiredTier: .plus,
+                title: "Unlock AI Workspace",
+                message: "Upgrade to Plus or Pro to use task, schedule, and insight AI from the new workspace."
+            )
+            return false
+        case .plus, .beta, .pro, .developer:
+            return true
+        }
+    }
+
+    private func runInsightHubAnalysis() async {
+        await featureGate.refreshSubscriptionStatusIfNeeded()
+        let snapshot = summarySnapshot ?? productivityAnalyticsStore.snapshot(calendar: .current)
+        guard ensureInsightAIUnlocked() else { return }
+        isInsightHubLoading = true
+        let result: AIService.ProductivityInsightResult
+        if featureGate.canUseAIDeepAnalysis {
+            result = await AIService.shared.generateDeepAnalysis(
+                snapshot: snapshot,
+                taskSummary: summaryTaskSummary
+            )
+        } else {
+            result = await AIService.shared.generateWeeklyOverview(
+                snapshot: snapshot,
+                taskSummary: summaryTaskSummary
+            )
+        }
+        insightHubResult = result
+        isInsightHubLoading = false
+    }
+
+    private func runInsightMetricAnalysis(_ metric: AIService.ProductivityInsightMetric) async {
+        await featureGate.refreshSubscriptionStatusIfNeeded()
+        guard let snapshot = summarySnapshot else { return }
+        guard ensureInsightAIUnlocked() else { return }
+        guard featureGate.canUseAIDeepAnalysis else {
+            plansPaywallContext = SubscriptionPaywallContext(
+                requiredTier: .pro,
+                title: "Unlock Deeper Insight AI",
+                message: "Metric-level explanations are available in Pro."
+            )
+            return
+        }
+        isInsightHubLoading = true
+        let metricResult = await AIService.shared.analyzeMetric(
+            metric,
+            snapshot: snapshot,
+            taskSummary: summaryTaskSummary
+        )
+        insightHubResult = metricResult
+        isInsightHubLoading = false
     }
 
     private func labelForPomodoroState(_ state: TimerState) -> String {
@@ -1509,43 +2766,34 @@ struct MainWindowView: View {
         isCheckingPlans = true
         defer { isCheckingPlans = false }
 
-        do {
-            let functions = Functions.functions(region: "us-central1")
-            let callable = functions.httpsCallable("verifySubscription")
-            let result = try await callable.call()
-            guard let payload = result.data as? [String: Any] else {
-                plansErrorMessage = "Unable to verify subscription."
-                return
-            }
-
-            let allowed = payload["allowed"] as? Bool ?? false
-            if !allowed {
-                plansPaywallContext = SubscriptionPaywallContext(
-                    requiredTier: .plus,
-                    title: "Your Plans requires Plus",
-                    message: "Upgrade to Plus or Pro to start Pomodoro sessions from your planned tasks."
-                )
-                return
-            }
-
-            let plannedEntries = plannedTaskEntries()
-            let calendarEntries = todayCalendarPlanEntries()
-
-            if plannedEntries.isEmpty && calendarEntries.isEmpty {
-                plansErrorMessage = "No runnable AI plans found."
-                return
-            }
-
-            if !plannedEntries.isEmpty && !calendarEntries.isEmpty {
-                availablePlanModes = [.plannedTasks, .todayCalendarPlan]
-                showPlansModePicker = true
-                return
-            }
-
-            runYourPlans(plannedEntries.isEmpty ? .todayCalendarPlan : .plannedTasks)
-        } catch {
-            plansErrorMessage = error.localizedDescription
+        if AuthViewModel.shared.isAuthenticated {
+            await featureGate.refreshSubscriptionStatusIfNeeded()
         }
+
+        guard featureGate.canUseAIPlanning else {
+            plansPaywallContext = SubscriptionPaywallContext(
+                requiredTier: .plus,
+                title: "Your Plans requires Plus",
+                message: "Upgrade to Plus or Pro to start Pomodoro sessions from your planned tasks."
+            )
+            return
+        }
+
+        let plannedEntries = plannedTaskEntries()
+        let calendarEntries = todayCalendarPlanEntries()
+
+        if plannedEntries.isEmpty && calendarEntries.isEmpty {
+            plansErrorMessage = "No runnable AI plans found."
+            return
+        }
+
+        if !plannedEntries.isEmpty && !calendarEntries.isEmpty {
+            availablePlanModes = [.plannedTasks, .todayCalendarPlan]
+            showPlansModePicker = true
+            return
+        }
+
+        runYourPlans(plannedEntries.isEmpty ? .todayCalendarPlan : .plannedTasks)
     }
 
     private func runYourPlans(_ mode: YourPlansMode) {
@@ -1566,7 +2814,21 @@ struct MainWindowView: View {
 
         showPlansModePicker = false
         availablePlanModes = []
+
+        if mode == .plannedTasks {
+            selectablePlannedTaskEntries = entries
+            showPlanTaskPicker = true
+            return
+        }
+
         appState.startExecutionPlan(entries)
+    }
+
+    private func startPlannedTaskExecution(with selectedEntry: AppState.PlanExecutionEntry) {
+        let reorderedEntries = [selectedEntry] + selectablePlannedTaskEntries.filter { $0.id != selectedEntry.id }
+        selectablePlannedTaskEntries = []
+        showPlanTaskPicker = false
+        appState.startExecutionPlan(reorderedEntries)
     }
 
     private func plannedTaskEntries() -> [AppState.PlanExecutionEntry] {
@@ -1641,7 +2903,11 @@ struct MainWindowView: View {
     }
 
     private var countdownMinutesValue: Int {
-        max(1, appState.durationConfig.countdownDuration / 60)
+        max(0, appState.durationConfig.countdownDuration / 60)
+    }
+
+    private var countdownSecondsValue: Int {
+        max(0, appState.durationConfig.countdownDuration % 60)
     }
 
     private func updateDurationConfig(
@@ -1649,21 +2915,25 @@ struct MainWindowView: View {
         shortBreakMinutes: Int? = nil,
         longBreakMinutes: Int? = nil,
         longBreakInterval: Int? = nil,
-        countdownMinutes: Int? = nil
+        countdownMinutes: Int? = nil,
+        countdownSeconds: Int? = nil
     ) {
         let currentConfig = appState.durationConfig
         let updatedWorkMinutes = clamp(workMinutes ?? currentConfig.workDuration / 60, range: 1...120)
         let updatedShortBreakMinutes = clamp(shortBreakMinutes ?? currentConfig.shortBreakDuration / 60, range: 1...60)
         let updatedLongBreakMinutes = clamp(longBreakMinutes ?? currentConfig.longBreakDuration / 60, range: 1...90)
         let updatedLongBreakInterval = clamp(longBreakInterval ?? currentConfig.longBreakInterval, range: 1...12)
-        let updatedCountdownMinutes = clamp(countdownMinutes ?? currentConfig.countdownDuration / 60, range: 1...120)
+        let currentCountdownDuration = max(60, currentConfig.countdownDuration)
+        let updatedCountdownMinutes = clamp(countdownMinutes ?? currentCountdownDuration / 60, range: 0...120)
+        let updatedCountdownSeconds = clamp(countdownSeconds ?? currentCountdownDuration % 60, range: 0...59)
+        let resolvedCountdownDuration = max(60, updatedCountdownMinutes * 60 + updatedCountdownSeconds)
 
         appState.applyCustomDurationConfig(DurationConfig(
             workDuration: updatedWorkMinutes * 60,
             shortBreakDuration: updatedShortBreakMinutes * 60,
             longBreakDuration: updatedLongBreakMinutes * 60,
             longBreakInterval: updatedLongBreakInterval,
-            countdownDuration: updatedCountdownMinutes * 60
+            countdownDuration: resolvedCountdownDuration
         ))
     }
 
@@ -1672,6 +2942,133 @@ struct MainWindowView: View {
             get: { appState.presetSelection },
             set: { appState.applyPresetSelection($0) }
         )
+    }
+
+    private var dashboardPomodoroConfigurationPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Divider()
+
+            Text("Session Setup")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+
+            Picker(languageManager.text("timer.preset"), selection: dashboardPresetSelectionBinding) {
+                ForEach(Preset.builtIn) { preset in
+                    Text(preset.name)
+                        .tag(PresetSelection.preset(preset))
+                }
+                Text(languageManager.text("timer.custom"))
+                    .tag(PresetSelection.custom)
+            }
+            .pickerStyle(.segmented)
+
+            dashboardDurationStepperRow(
+                title: languageManager.text("timer.work"),
+                value: $dashboardWorkMinutes,
+                range: 1...120
+            )
+            dashboardDurationStepperRow(
+                title: languageManager.text("timer.short_break"),
+                value: $dashboardShortBreakMinutes,
+                range: 1...60
+            )
+            dashboardDurationStepperRow(
+                title: languageManager.text("timer.long_break"),
+                value: $dashboardLongBreakMinutes,
+                range: 1...90
+            )
+
+            HStack {
+                Text(languageManager.text("timer.long_break_interval"))
+                    .font(.system(.body, design: .rounded))
+                Spacer()
+                Stepper(value: $dashboardLongBreakInterval, in: 1...12) {
+                    Text(languageManager.format("timer.long_break_interval.every_sessions", dashboardLongBreakInterval))
+                        .font(.system(.body, design: .rounded).monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Text("These controls affect the current dashboard session only. Change Settings to update the default Pomodoro setup.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .onChange(of: dashboardWorkMinutes) { _, _ in handleDashboardSessionEdit() }
+        .onChange(of: dashboardShortBreakMinutes) { _, _ in handleDashboardSessionEdit() }
+        .onChange(of: dashboardLongBreakMinutes) { _, _ in handleDashboardSessionEdit() }
+        .onChange(of: dashboardLongBreakInterval) { _, _ in handleDashboardSessionEdit() }
+    }
+
+    private func dashboardDurationStepperRow(
+        title: String,
+        value: Binding<Int>,
+        range: ClosedRange<Int>
+    ) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(.body, design: .rounded))
+            Spacer()
+            Stepper(value: value, in: range) {
+                Text(languageManager.format("tasks.pomodoro_estimate_value", value.wrappedValue).replacingOccurrences(of: " Pomodoros", with: " min").replacingOccurrences(of: " Pomodoro", with: " min"))
+                    .font(.system(.body, design: .rounded).monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var dashboardPresetSelectionBinding: Binding<PresetSelection> {
+        Binding(
+            get: { dashboardPresetSelection },
+            set: { applyDashboardPresetSelection($0) }
+        )
+    }
+
+    private var dashboardPomodoroDurationConfig: DurationConfig {
+        DurationConfig(
+            workDuration: dashboardWorkMinutes * 60,
+            shortBreakDuration: dashboardShortBreakMinutes * 60,
+            longBreakDuration: dashboardLongBreakMinutes * 60,
+            longBreakInterval: dashboardLongBreakInterval,
+            countdownDuration: appState.durationConfig.countdownDuration
+        )
+    }
+
+    private func syncDashboardPomodoroSessionDefaults() {
+        let config = appState.durationConfig
+        dashboardWorkMinutes = max(1, config.workDuration / 60)
+        dashboardShortBreakMinutes = max(1, config.shortBreakDuration / 60)
+        dashboardLongBreakMinutes = max(1, config.longBreakDuration / 60)
+        dashboardLongBreakInterval = clamp(config.longBreakInterval, range: 1...12)
+        dashboardPresetSelection = PresetSelection.selection(for: config)
+        previewDashboardPomodoroIfIdle()
+    }
+
+    private func applyDashboardPresetSelection(_ selection: PresetSelection) {
+        dashboardPresetSelection = selection
+        guard case .preset(let preset) = selection else {
+            previewDashboardPomodoroIfIdle()
+            return
+        }
+        let config = preset.durationConfig
+        dashboardWorkMinutes = max(1, config.workDuration / 60)
+        dashboardShortBreakMinutes = max(1, config.shortBreakDuration / 60)
+        dashboardLongBreakMinutes = max(1, config.longBreakDuration / 60)
+        dashboardLongBreakInterval = clamp(config.longBreakInterval, range: 1...12)
+        previewDashboardPomodoroIfIdle()
+    }
+
+    private func handleDashboardSessionEdit() {
+        dashboardPresetSelection = PresetSelection.selection(for: dashboardPomodoroDurationConfig)
+        previewDashboardPomodoroIfIdle()
+    }
+
+    private func previewDashboardPomodoroIfIdle() {
+        guard appState.pomodoro.state == .idle else { return }
+        appState.previewPomodoroSession(durationConfig: dashboardPomodoroDurationConfig)
+    }
+
+    private func startDashboardPomodoro() {
+        appState.startPomodoroSession(durationConfig: dashboardPomodoroDurationConfig)
     }
 
     private func syncDurationTexts() {
@@ -1686,6 +3083,9 @@ struct MainWindowView: View {
         }
         if focusedField != .countdown {
             countdownMinutesText = String(countdownMinutesValue)
+        }
+        if focusedField != .countdownSeconds {
+            countdownSecondsText = String(format: "%02d", countdownSecondsValue)
         }
     }
 
@@ -1708,10 +3108,20 @@ struct MainWindowView: View {
             longBreakMinutesText = String(committed)
             updateDurationConfig(longBreakMinutes: committed)
         case .countdown:
-            let committed = parseMinutes(from: countdownMinutesText, fallback: countdownMinutesValue, range: 1...120)
+            let committed = parseMinutes(from: countdownMinutesText, fallback: countdownMinutesValue, range: 0...120)
             countdownMinutesText = String(committed)
             updateDurationConfig(countdownMinutes: committed)
+        case .countdownSeconds:
+            let committed = parseMinutes(from: countdownSecondsText, fallback: countdownSecondsValue, range: 0...59)
+            countdownSecondsText = String(format: "%02d", committed)
+            updateDurationConfig(countdownSeconds: committed)
         }
+    }
+
+    private func applyCountdownPreset(minutes: Int) {
+        countdownMinutesText = String(minutes)
+        countdownSecondsText = "00"
+        updateDurationConfig(countdownMinutes: minutes, countdownSeconds: 0)
     }
 
     private func parseMinutes(from text: String, fallback: Int, range: ClosedRange<Int>) -> Int {
@@ -1783,6 +3193,241 @@ struct MainWindowView: View {
     }
 }
 
+private struct PlanTaskSelectionSheet: View {
+    let entries: [AppState.PlanExecutionEntry]
+    let onSelect: (AppState.PlanExecutionEntry) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Choose a Planned Task")
+                .font(.title3.weight(.semibold))
+
+            Text("Pick the task you want to work on first. Pomodoro will start with that task's saved estimate.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            if entries.isEmpty {
+                Text("No planned tasks available.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 12) {
+                        ForEach(entries) { entry in
+                            Button {
+                                onSelect(entry)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(entry.title)
+                                            .font(.headline)
+                                            .foregroundStyle(.primary)
+                                            .multilineTextAlignment(.leading)
+                                        Text("\(entry.pomodoros) Pomodoros")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "play.circle.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(.tint)
+                                }
+                                .padding(14)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .frame(minHeight: 220, maxHeight: 360)
+            }
+
+            HStack {
+                Spacer()
+                Button("Cancel") {
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+            }
+        }
+        .padding(24)
+        .frame(minWidth: 420)
+    }
+}
+
+private struct GlassCardView<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .padding(18)
+            .background(.regularMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+            )
+    }
+}
+
+private struct AdaptivePageGrid<Content: View>: View {
+    let minimumWidth: CGFloat
+    let spacing: CGFloat
+    let content: Content
+
+    init(
+        minimumWidth: CGFloat = 340,
+        spacing: CGFloat = 16,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.minimumWidth = minimumWidth
+        self.spacing = spacing
+        self.content = content()
+    }
+
+    var body: some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: minimumWidth), spacing: spacing, alignment: .top)],
+            alignment: .leading,
+            spacing: spacing
+        ) {
+            content
+        }
+    }
+}
+
+private struct AdaptiveMetricGrid<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        AdaptivePageGrid(minimumWidth: 220, spacing: 14) {
+            content
+        }
+    }
+}
+
+private struct SectionHeaderView<Trailing: View>: View {
+    let title: String
+    let subtitle: String?
+    let trailing: Trailing
+
+    init(
+        title: String,
+        subtitle: String? = nil,
+        @ViewBuilder trailing: () -> Trailing
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.trailing = trailing()
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.title3.weight(.semibold))
+                if let subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
+            trailing
+        }
+    }
+}
+
+private extension SectionHeaderView where Trailing == EmptyView {
+    init(title: String, subtitle: String? = nil) {
+        self.init(title: title, subtitle: subtitle) { EmptyView() }
+    }
+}
+
+private struct MetricCard: View {
+    let title: String
+    let value: String
+    let caption: String?
+    let tint: Color
+
+    init(title: String, value: String, caption: String? = nil, tint: Color = .accentColor) {
+        self.title = title
+        self.value = value
+        self.caption = caption
+        self.tint = tint
+    }
+
+    var body: some View {
+        GlassCardView {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .font(.system(size: 28, weight: .semibold, design: .rounded))
+                if let caption, !caption.isEmpty {
+                    Text(caption)
+                        .font(.caption)
+                        .foregroundStyle(tint)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+private struct AIActionCard<Trailing: View>: View {
+    let icon: String
+    let title: String
+    let description: String
+    let trailing: Trailing
+
+    init(
+        icon: String,
+        title: String,
+        description: String,
+        @ViewBuilder trailing: () -> Trailing
+    ) {
+        self.icon = icon
+        self.title = title
+        self.description = description
+        self.trailing = trailing()
+    }
+
+    var body: some View {
+        GlassCardView {
+            VStack(alignment: .leading, spacing: 14) {
+                Label {
+                    Text(title)
+                        .font(.headline)
+                } icon: {
+                    Image(systemName: icon)
+                        .foregroundStyle(Color.accentColor)
+                }
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                trailing
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+}
+
 private struct SettingsSectionCard<Content: View>: View {
     let title: String
     @ViewBuilder var content: Content
@@ -1807,6 +3452,99 @@ private struct SettingsSectionCard<Content: View>: View {
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct SettingsModuleCard<Content: View>: View {
+    let title: String
+    let description: String?
+    @ViewBuilder var content: Content
+    @State private var isHovering = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.system(.title3, design: .rounded).weight(.semibold))
+                if let description, !description.isEmpty {
+                    Text(description)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 14) {
+                content
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color(nsColor: .separatorColor).opacity(isHovering ? 0.85 : 0.55), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(isHovering ? 0.08 : 0.03), radius: isHovering ? 14 : 8, y: isHovering ? 8 : 4)
+        .scaleEffect(isHovering ? 1.004 : 1.0)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: isHovering)
+        .onHover { hovering in
+            isHovering = hovering
+        }
+    }
+}
+
+private struct SettingsPlansSheet: View {
+    @ObservedObject var featureGate: FeatureGate
+    @ObservedObject var subscriptionStore: SubscriptionStore
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Subscription")
+                        .font(.system(.title2, design: .rounded).weight(.semibold))
+                    Text("Compare plans, review upgrades, and restore purchases in a focused pop-up.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button("Done") {
+                    dismiss()
+                }
+                .buttonStyle(.bordered)
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    PlansComparisonView(
+                        featureGate: featureGate,
+                        subscriptionStore: subscriptionStore
+                    )
+
+                    if let errorMessage = subscriptionStore.errorMessage, !errorMessage.isEmpty {
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+
+                    if let productLoadErrorMessage = subscriptionStore.productLoadErrorMessage,
+                       !productLoadErrorMessage.isEmpty {
+                        Text(productLoadErrorMessage)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(24)
+        .frame(minWidth: 760, minHeight: 640)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 }
 

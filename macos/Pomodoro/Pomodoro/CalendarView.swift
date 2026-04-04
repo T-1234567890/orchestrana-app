@@ -424,6 +424,7 @@ struct CalendarView: View {
         dueDate: Date,
         estimatedHours: Int
     ) async {
+        await featureGate.refreshSubscriptionStatusIfNeeded()
         aiAssistantErrorMessage = nil
         rescheduleError = nil
 
@@ -696,6 +697,7 @@ struct CalendarView: View {
 
     private func performCalendarReschedule() async {
         print("Reschedule button tapped")
+        await featureGate.refreshSubscriptionStatusIfNeeded()
         isRescheduling = true
         rescheduleError = nil
         defer { isRescheduling = false }
@@ -1280,9 +1282,29 @@ struct CalendarView: View {
             schedulableTasks.compactMap { $0.calendarEventIdentifier ?? $0.linkedCalendarEventId }
         )
         return allEvents.filter { event in
+            if shouldIgnoreForRescheduleBlocking(event) {
+                return false
+            }
             guard let eventIdentifier = event.eventIdentifier else { return true }
             return !movableEventIDs.contains(eventIdentifier)
         }
+    }
+
+    private func shouldIgnoreForRescheduleBlocking(_ event: EKEvent) -> Bool {
+        // Holiday / national calendars are often subscribed all-day feeds. They should
+        // not consume the entire workday as busy time for AI rescheduling.
+        if event.isAllDay && isSubscribedCalendar(event.calendar) {
+            return true
+        }
+
+        let calendarTitle = event.calendar.title.lowercased()
+        let eventTitle = (event.title ?? "").lowercased()
+        let holidayHints = ["holiday", "holidays", "national", "public holiday"]
+        if event.isAllDay && holidayHints.contains(where: { calendarTitle.contains($0) || eventTitle.contains($0) }) {
+            return true
+        }
+
+        return false
     }
 
     private func applyCalendarScheduleReturningResult(

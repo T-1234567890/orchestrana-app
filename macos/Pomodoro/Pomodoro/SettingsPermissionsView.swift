@@ -84,8 +84,7 @@ struct SettingsPermissionsView: View {
             permissionsManager.refreshAllStatuses()
             subscriptionStore.start()
             Task { @MainActor in
-                guard !featureGate.isRefreshingAllowance else { return }
-                await featureGate.refreshAllowance()
+                await featureGate.refreshSubscriptionStatusIfNeeded()
             }
         }
         .alert(localizationManager.text("permissions.calendar.denied_title"), isPresented: $permissionsManager.showCalendarDeniedAlert) {
@@ -243,6 +242,13 @@ struct SettingsPermissionsView: View {
             if let errorMessage = subscriptionStore.errorMessage,
                !errorMessage.isEmpty {
                 Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+
+            if let productLoadErrorMessage = subscriptionStore.productLoadErrorMessage,
+               !productLoadErrorMessage.isEmpty {
+                Text(productLoadErrorMessage)
                     .font(.caption)
                     .foregroundStyle(.red)
             }
@@ -601,14 +607,6 @@ struct PlansComparisonView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(maxWidth: 260)
-
-                Text("Save more")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(Color.accentColor.opacity(0.10))
-                    .clipShape(Capsule())
             }
 
             HStack(alignment: .top, spacing: 14) {
@@ -622,6 +620,8 @@ struct PlansComparisonView: View {
                         product: product(for: tier),
                         isPurchasing: activePurchaseMatches(tier: tier),
                         isRestoring: subscriptionStore.isRestoring,
+                        isLoadingProducts: subscriptionStore.isLoadingProducts,
+                        productLoadErrorMessage: subscriptionStore.productLoadErrorMessage,
                         emphasizedTier: emphasizedTier,
                         onSelectPlan: { product in
                             Task {
@@ -640,6 +640,7 @@ struct PlansComparisonView: View {
             }
         }
         .task(id: authViewModel.currentUser?.uid) {
+            await subscriptionStore.ensureProductsLoaded()
             await authViewModel.preparePurchaseReadiness()
         }
         .sheet(isPresented: purchaseLoginPromptBinding) {
@@ -843,6 +844,8 @@ struct PlanCardView: View {
     let product: Product?
     let isPurchasing: Bool
     let isRestoring: Bool
+    let isLoadingProducts: Bool
+    let productLoadErrorMessage: String?
     let emphasizedTier: PlanTier?
     let onSelectPlan: (Product) -> Void
 
@@ -929,9 +932,27 @@ struct PlanCardView: View {
             .buttonStyle(.borderedProminent)
             .disabled(isDisabled)
         } else {
-            Button("Unavailable") { }
+            VStack(alignment: .leading, spacing: 8) {
+                Button {
+                } label: {
+                    if isPurchaseBusy || isLoadingProducts {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else if productLoadErrorMessage != nil {
+                        Text("Price unavailable")
+                    } else {
+                        Text(!authViewModel.isAuthenticated ? "Sign in to continue" : "Loading…")
+                    }
+                }
                 .buttonStyle(.bordered)
                 .disabled(true)
+
+                if let productLoadErrorMessage, !productLoadErrorMessage.isEmpty {
+                    Text(productLoadErrorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
         }
     }
 
@@ -943,17 +964,29 @@ struct PlanCardView: View {
         case .free:
             return "Included"
         case .plus, .pro:
-            return billingCycle == .monthly ? "Loading…" : "Loading…"
+            if productLoadErrorMessage != nil {
+                return "Price unavailable"
+            }
+            return "Loading…"
         }
     }
 
     private var isCurrentFreePlan: Bool {
-        currentTier == .free || currentTier == .expired
+        let resolvedTier = PlanTier.from(featureTier: currentTier)
+        return resolvedTier == .free && !hasStoreKitPaidPlan
     }
 
     private var isCurrentPaidPlan: Bool {
+        let resolvedTier = PlanTier.from(featureTier: currentTier)
+        if resolvedTier == tier, resolvedTier != .free {
+            return true
+        }
         guard let product else { return false }
         return currentProductID == product.id
+    }
+
+    private var hasStoreKitPaidPlan: Bool {
+        currentProductID != nil
     }
 
     private var isHighlighted: Bool {
@@ -998,7 +1031,7 @@ struct PlanCardView: View {
     }
 
     private var showBestValueBadge: Bool {
-        billingCycle == .yearly && tier != .free
+        billingCycle == .yearly && tier == .pro
     }
 
     private var shouldCallOutUnlock: Bool {
@@ -1006,7 +1039,7 @@ struct PlanCardView: View {
     }
 
     private var isCycleHighlighted: Bool {
-        billingCycle == .yearly && tier != .free
+        billingCycle == .yearly && tier == .pro
     }
 
     private var currentCardBackground: some ShapeStyle {
@@ -1051,6 +1084,13 @@ struct SubscriptionUpgradeSheetView: View {
                 if let errorMessage = subscriptionStore.errorMessage,
                    !errorMessage.isEmpty {
                     Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
+                if let productLoadErrorMessage = subscriptionStore.productLoadErrorMessage,
+                   !productLoadErrorMessage.isEmpty {
+                    Text(productLoadErrorMessage)
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
@@ -1107,6 +1147,10 @@ struct SubscriptionUpgradeSheetView: View {
     }
 
     private var isUpgradingCurrentPlan: Bool {
+        if PlanTier.from(featureTier: featureGate.tier) == context.requiredTier,
+           context.requiredTier != .free {
+            return true
+        }
         guard let selectedUpgradeProduct else { return false }
         return subscriptionStore.currentProductID == selectedUpgradeProduct.id
     }

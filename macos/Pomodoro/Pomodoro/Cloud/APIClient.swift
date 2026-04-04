@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import CryptoKit
 import FirebaseAuth
+import FirebaseAppCheck
 import FirebaseCore
 import StoreKit
 
@@ -98,9 +99,13 @@ final class APIClient {
 /// print(response.outputText ?? "")
 /// ```
 final class AIProxyClient {
+    private static let maxRetryAttempts = 3
+
     struct PromptRequest: Encodable {
         let prompt: String
         let model: String?
+        let modelFamily: String?
+        let featureType: String?
         let temperature: Double?
         let maxOutputTokens: Int?
         let metadata: [String: String]?
@@ -108,12 +113,16 @@ final class AIProxyClient {
         init(
             prompt: String,
             model: String? = nil,
+            modelFamily: String? = nil,
+            featureType: String? = nil,
             temperature: Double? = nil,
             maxOutputTokens: Int? = nil,
             metadata: [String: String]? = nil
         ) {
             self.prompt = prompt
             self.model = model
+            self.modelFamily = modelFamily
+            self.featureType = featureType
             self.temperature = temperature
             self.maxOutputTokens = maxOutputTokens
             self.metadata = metadata
@@ -122,6 +131,8 @@ final class AIProxyClient {
         enum CodingKeys: String, CodingKey {
             case prompt
             case model
+            case modelFamily
+            case featureType
             case temperature
             case maxOutputTokens = "max_output_tokens"
             case metadata
@@ -133,6 +144,8 @@ final class AIProxyClient {
         let text: String?
         let output: String?
         let result: String?
+        let model: String?
+        let modelFamily: String?
 
         var outputText: String? {
             text ?? output ?? result
@@ -205,14 +218,40 @@ final class AIProxyClient {
     }
 
     func send<Body: Encodable, Response: Decodable>(_ body: Body, decodeAs: Response.Type = Response.self) async throws -> Response {
+        let requestBody = try JSONEncoder().encode(body)
+        var lastError: AIProxyError?
+
+        for attempt in 1...Self.maxRetryAttempts {
+            do {
+                return try await performSend(bodyData: requestBody, decodeAs: decodeAs)
+            } catch let error as AIProxyError {
+                lastError = error
+                guard shouldRetry(error), attempt < Self.maxRetryAttempts else {
+                    throw error
+                }
+                try? await Task.sleep(nanoseconds: UInt64(attempt) * 500_000_000)
+            }
+        }
+
+        if let lastError {
+            throw lastError
+        }
+        throw AIProxyError.invalidResponse
+    }
+
+    private func performSend<Response: Decodable>(bodyData: Data, decodeAs: Response.Type) async throws -> Response {
         let token = try await AuthViewModel.shared.getValidIDToken()
+        let appCheckToken = await fetchAppCheckToken()
         let endpoint = try resolveEndpointURL()
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.httpBody = try JSONEncoder().encode(body)
+        if let appCheckToken, !appCheckToken.isEmpty {
+            request.setValue(appCheckToken, forHTTPHeaderField: "X-Firebase-AppCheck")
+        }
+        request.httpBody = bodyData
 
         let data: Data
         let urlResponse: URLResponse
@@ -247,6 +286,17 @@ final class AIProxyClient {
         }
     }
 
+    private func shouldRetry(_ error: AIProxyError) -> Bool {
+        switch error {
+        case .network, .invalidResponse, .decodingFailed:
+            return true
+        case .http(let statusCode, _):
+            return statusCode >= 500
+        case .invalidEndpoint, .unauthorized, .forbidden, .quotaExceeded:
+            return false
+        }
+    }
+
     private func resolveEndpointURL() throws -> URL {
         if let explicit = Bundle.main.infoDictionary?["POMODORO_AI_PROXY_URL"] as? String,
            let url = URL(string: explicit), !explicit.isEmpty {
@@ -273,6 +323,14 @@ final class AIProxyClient {
             return raw
         }
         return nil
+    }
+
+    private func fetchAppCheckToken() async -> String? {
+        await withCheckedContinuation { continuation in
+            AppCheck.appCheck().token(forcingRefresh: false) { token, _ in
+                continuation.resume(returning: token?.token)
+            }
+        }
     }
 }
 
@@ -308,9 +366,7 @@ final class SubscriptionAPIClient {
     }
 
     private struct VerifyRequest: Encodable {
-        let changeType: String?
-        let renewalInfo: String?
-        let transaction: String
+        let transactionId: String
     }
 
     private struct ErrorEnvelope: Decodable {
@@ -340,25 +396,19 @@ final class SubscriptionAPIClient {
         }
     }
 
-    func verify(
-        transactionJWS: String,
-        renewalInfoJWS: String? = nil,
-        changeType: String? = nil
-    ) async throws -> SubscriptionEntitlement {
+    func verify(transactionId: String) async throws -> SubscriptionEntitlement {
         let token = try await AuthViewModel.shared.getValidIDToken()
+        let appCheckToken = await fetchAppCheckToken()
         let endpoint = try resolveEndpointURL()
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.httpBody = try JSONEncoder().encode(
-            VerifyRequest(
-                changeType: changeType,
-                renewalInfo: renewalInfoJWS,
-                transaction: transactionJWS
-            )
-        )
+        if let appCheckToken, !appCheckToken.isEmpty {
+            request.setValue(appCheckToken, forHTTPHeaderField: "X-Firebase-AppCheck")
+        }
+        request.httpBody = try JSONEncoder().encode(VerifyRequest(transactionId: transactionId))
 
         let data: Data
         let response: URLResponse
@@ -413,6 +463,14 @@ final class SubscriptionAPIClient {
         }
         return nil
     }
+
+    private func fetchAppCheckToken() async -> String? {
+        await withCheckedContinuation { continuation in
+            AppCheck.appCheck().token(forcingRefresh: false) { token, _ in
+                continuation.resume(returning: token?.token)
+            }
+        }
+    }
 }
 
 @MainActor
@@ -441,6 +499,7 @@ final class SubscriptionStore: ObservableObject {
     @Published private(set) var isRestoring = false
     @Published private(set) var activePurchaseProductID: String?
     @Published private(set) var lastEntitlement: SubscriptionEntitlement?
+    @Published private(set) var productLoadErrorMessage: String?
     @Published var errorMessage: String?
 
     private let productIDs = [
@@ -478,22 +537,43 @@ final class SubscriptionStore: ObservableObject {
     }
 
     func loadProducts() async {
+        guard !isLoadingProducts else { return }
         isLoadingProducts = true
         defer { isLoadingProducts = false }
+        productLoadErrorMessage = nil
 
-        do {
-            let loadedProducts = try await Product.products(for: productIDs)
-            products = loadedProducts.sorted { lhs, rhs in
-                let lhsRank = Self.productSortRank(for: lhs.id)
-                let rhsRank = Self.productSortRank(for: rhs.id)
-                if lhsRank == rhsRank {
-                    return lhs.displayPrice < rhs.displayPrice
+        let maxAttempts = 3
+        var lastError: Error?
+
+        for attempt in 1...maxAttempts {
+            do {
+                let loadedProducts = try await Product.products(for: productIDs)
+                products = loadedProducts.sorted { lhs, rhs in
+                    let lhsRank = Self.productSortRank(for: lhs.id)
+                    let rhsRank = Self.productSortRank(for: rhs.id)
+                    if lhsRank == rhsRank {
+                        return lhs.displayPrice < rhs.displayPrice
+                    }
+                    return lhsRank < rhsRank
                 }
-                return lhsRank < rhsRank
+                productLoadErrorMessage = nil
+                return
+            } catch {
+                lastError = error
+                if attempt < maxAttempts {
+                    try? await Task.sleep(nanoseconds: UInt64(attempt) * 500_000_000)
+                }
             }
-        } catch {
-            errorMessage = error.localizedDescription
         }
+
+        if let lastError {
+            productLoadErrorMessage = Self.productLoadFailureMessage(for: lastError)
+        }
+    }
+
+    func ensureProductsLoaded() async {
+        guard products.isEmpty else { return }
+        await loadProducts()
     }
 
     func purchase(_ product: Product) async {
@@ -519,20 +599,20 @@ final class SubscriptionStore: ObservableObject {
             switch result {
             case .success(let verification):
                 let transaction = try verified(verification)
-                let updatedContext = try await activeSubscriptionContext(preferredProduct: product)
-                lastEntitlement = try await apiClient.verify(
-                    transactionJWS: verification.jwsRepresentation,
-                    renewalInfoJWS: updatedContext?.renewalInfoJWS,
-                    changeType: changeKind.rawValue
-                )
-                await FeatureGate.shared.refreshAllowance()
                 await transaction.finish()
+                do {
+                    lastEntitlement = try await apiClient.verify(transactionId: String(transaction.id))
+                    await FeatureGate.shared.refreshAllowance()
+                } catch {
+                    errorMessage = "Purchase completed. Verification may take a moment."
+                    await syncCurrentEntitlements()
+                }
             case .pending:
-                break
+                errorMessage = "Purchase is pending approval."
             case .userCancelled:
-                break
+                errorMessage = nil
             @unknown default:
-                break
+                errorMessage = "Purchase status is temporarily unavailable."
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -555,20 +635,11 @@ final class SubscriptionStore: ObservableObject {
     func syncCurrentEntitlements() async {
         errorMessage = nil
         var latestEntitlement: SubscriptionEntitlement?
-        let renewalInfoJWS: String?
-        do {
-            renewalInfoJWS = try await activeSubscriptionContext()?.renewalInfoJWS
-        } catch {
-            renewalInfoJWS = nil
-        }
 
         do {
             for await verification in Transaction.currentEntitlements {
-                _ = try verified(verification)
-                latestEntitlement = try await apiClient.verify(
-                    transactionJWS: verification.jwsRepresentation,
-                    renewalInfoJWS: renewalInfoJWS
-                )
+                let transaction = try verified(verification)
+                latestEntitlement = try await apiClient.verify(transactionId: String(transaction.id))
             }
 
             lastEntitlement = latestEntitlement
@@ -584,20 +655,16 @@ final class SubscriptionStore: ObservableObject {
                 let transaction = try await MainActor.run {
                     try self.verified(verification)
                 }
-                let activeContext = try await self.activeSubscriptionContext()
+                await transaction.finish()
 
-                let entitlement = try await apiClient.verify(
-                    transactionJWS: verification.jwsRepresentation,
-                    renewalInfoJWS: activeContext?.renewalInfoJWS
-                )
+                let entitlement = try await apiClient.verify(transactionId: String(transaction.id))
                 await MainActor.run {
                     self.lastEntitlement = entitlement
                 }
                 await FeatureGate.shared.refreshAllowance()
-                await transaction.finish()
             } catch {
                 await MainActor.run {
-                    self.errorMessage = error.localizedDescription
+                    self.errorMessage = "Subscription verification is delayed. Your access will sync shortly."
                 }
             }
         }
@@ -759,6 +826,14 @@ final class SubscriptionStore: ObservableObject {
         default:
             return Int.max
         }
+    }
+
+    private static func productLoadFailureMessage(for error: Error) -> String {
+        let message = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        if message.isEmpty {
+            return "Could not load subscription prices from the App Store."
+        }
+        return "Could not load subscription prices: \(message)"
     }
 
     func product(for productID: String) -> Product? {
