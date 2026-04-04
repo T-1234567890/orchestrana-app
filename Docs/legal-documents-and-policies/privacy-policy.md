@@ -1,15 +1,15 @@
 # Privacy Policy
 
-**Effective Date:** February 27, 2026  
-**Last Updated:** February 27, 2026
+**Effective Date:** April 4, 2026  
+**Last Updated:** April 4, 2026
 
 ---
 
 ## Introduction
 
-Pomodoro App ("we," "our," or "the App") is a macOS productivity tool designed to help you focus. This Privacy Policy explains how we collect, use, and protect your information when you use our app and visit our website at https://pomodoro-app.tech.
+Pomodoro App ("we," "our," or "the Service") provides a macOS productivity application, related cloud features, and the website at https://pomodoro-app.tech. This Privacy Policy explains what information we collect, how we use it, when it is shared, and what choices you have.
 
-We are committed to transparency. Because Pomodoro App is open-source, you can verify our privacy practices by reviewing the code at https://github.com/T-1234567890/pomodoro-app.
+Because Pomodoro App includes open-source client-side code, parts of our implementation can be reviewed publicly at https://github.com/T-1234567890/pomodoro-app. Some backend systems are not public, so this policy also describes the cloud services that support authentication, subscriptions, AI features, and account-based access.
 
 ---
 
@@ -17,413 +17,339 @@ We are committed to transparency. Because Pomodoro App is open-source, you can v
 
 This policy applies to:
 
-- **The macOS application** (distributed via GitHub Releases, TestFlight, and the App Store)
-- **Our website** at https://pomodoro-app.tech
+- **The website** at https://pomodoro-app.tech
+- **The macOS application**
+- **The Pomodoro cloud backend** used for authentication-aware features, entitlement checks, subscription verification, and AI-assisted features
 
-Both are developed as an open-source project under the MIT License.
+This policy does not replace the privacy terms of third-party platforms or providers you choose to use, such as Apple, Google, GitHub, Firebase, or AI model providers.
 
 ---
 
 ## Information We Collect
 
-### Website
+## 1. Website Information
 
-When you visit our website, we collect:
+When you use our website, we may collect:
 
-**Information You Provide:**
-- Email addresses submitted through Google Forms for TestFlight waitlist and giveaway entry
-- GitHub usernames when you interact with our repository (issues, pull requests, discussions)
+- Information you submit through forms, such as waitlist or contact email addresses
+- Standard web request data, such as IP address, browser type, referring page, pages visited, and approximate device/network metadata
+- Public GitHub data that we display on the website, such as repository statistics, contributor names, avatars, issues, pull requests, and commit activity
+- Browser-side preferences such as language choice and cached website state stored in your browser
 
-**Information Collected Automatically:**
-- Standard web server data: IP address, browser type, referring page, pages visited
-- Public GitHub data: contributor avatars, repository statistics, commit history, issue counts (displayed via GitHub API)
-- Browser preferences: language selection and cached contributor data stored in your browser's localStorage (never sent to our servers)
+The website may also rely on third-party services such as Google Fonts, Google Forms, or GitHub APIs, which may process technical request data under their own policies.
 
-**Third-Party Services:**
-- **Google Forms**: Collects email addresses for waitlist management
-- **GitHub API**: Displays public repository data
-- **Google Fonts**: Provides web typography (may collect browser metadata per Google's privacy policy)
+## 2. Data Stored Locally on Your Mac
 
-### macOS Application
+Pomodoro App stores a significant amount of data locally on your device, including:
 
-The app works in two modes:
+- Timer settings and session preferences
+- UI preferences and onboarding state
+- Tasks, notes, due dates, completion state, and related planning data
+- Session history and usage history stored locally by the app
+- Local media or ambient audio preferences
+- Calendar and reminders metadata used by local integrations
+- Cached entitlement, account, or AI state needed to keep the app responsive
 
-**Local-Only Mode (Default):**  
-All your data stays on your Mac. No account required, no data sent to servers.
+This local data is generally stored in app sandbox locations such as:
 
-**Cloud-Connected Mode (Optional):**  
-When you sign in, authentication and optional cloud features become available.
+- `UserDefaults` entries used for task lists, planning items, preferences, onboarding state, duration settings, reminders sync preferences, Flow Mode background preferences, and cached app state
+- Application Support files such as local session history JSON files
+- macOS Keychain entries used for persisted authentication session data
 
-#### Data Stored Locally
+Examples reflected in the current app code include:
 
-The following data is stored on your Mac and never uploaded unless you explicitly enable cloud sync (not currently implemented):
+- Task and planning storage in `UserDefaults`
+- Flow Mode background bookmarks and preferences in `UserDefaults`
+- Session record storage in Application Support under a `PomodoroApp` directory
+- Auth session persistence in Keychain using a generic password entry
 
-**Preferences (UserDefaults):**
-- Timer settings (work duration, break duration, long break interval)
-- Audio preferences (ambient noise selection)
-- UI preferences (language, onboarding status)
-- Session presets
+## 3. Account and Sign-In Data
 
-**Task Data (JSON Files):**
-- Todo items: title, notes, due date, completion status, priority
-- Planning items: tasks and calendar-linked items
-- Session records: start time, end time, duration, linked task ID
+If you use account features, we may collect and process account data through Firebase Authentication and related providers.
 
-**Media Files:**
-- Locally stored ambient sound files
-- Music playback state (Apple Music / Spotify integration)
+Depending on the sign-in method you choose, this may include:
 
-**Storage Location:**  
-`~/Library/Application Support/Pomodoro` and `~/Library/Preferences`, protected by macOS sandboxing.
+- **Email/password sign-in**: email address, encrypted authentication credentials handled by Firebase, Firebase user ID, and session tokens
+- **Google Sign-In**: Google account email, display name, profile image URL, provider account identifier, and authentication tokens needed to complete sign-in
+- **GitHub sign-in**: GitHub account email or primary email returned by the provider, display name or username, avatar URL, provider account identifier, and authentication tokens needed to complete sign-in
+- **Apple Sign-In**: Apple account identifier, display name and email if provided by Apple, and Apple private relay email if you choose to hide your email; Apple Sign-In coverage applies when the provider is offered or enabled in the Service
 
-#### Data Collected When You Sign In (Optional)
+We also maintain account-linked metadata such as:
 
-**Firebase Authentication** processes:
-- Email address
-- Password (hashed—we never see your plaintext password)
-- User ID (Firebase-generated identifier)
-- Authentication tokens (stored in macOS Keychain)
+- Firebase user ID
+- Authentication state
+- Current plan or tier
+- Feature entitlement state
+- Subscription status and expiration metadata
+- AI allowance, quota, or reset timing
 
-**Google Sign-In** provides:
-- Google account email
-- Display name
-- Profile photo URL
+### Google Sign-In Data Usage
 
-**Feature Gate API:**  
-When signed in, the app checks your account tier and AI quota limits:
-- User tier status (free, beta, plus, pro, developer)
-- AI token quotas (DeepSeek, Gemini Flash remaining tokens)
-- Feature entitlements
-- Quota reset date
+If you choose Google Sign-In, the Service may collect or receive the following Google user data as part of authentication and account functionality:
 
-**How It Works:**
-1. App sends your Firebase ID token to our backend API
-2. Backend verifies the token with Firebase
-3. Backend returns your entitlement data
-4. App caches this information locally
+- email address
+- display name
+- profile image, if available from Google
+- Google account identifier
+- authentication tokens
 
-**System Permissions (Optional):**  
-The app requests these permissions only when you use related features:
-- **Notifications**: Display focus session alerts (local only)
-- **Calendar**: Read calendar events for planning view (read-only via EventKit)
-- **Reminders**: Sync tasks with Apple Reminders (read/write via EventKit)
+We use this Google user data only to:
 
-Calendar and Reminders data stay local unless you enable future cloud sync.
+- authenticate the user
+- create a new account or link an existing account
+- maintain login sessions
+- personalize basic account display information such as name and avatar
 
----
+We only access and use the minimum Google user data necessary for authentication and account functionality.
 
-## How We Use Your Information
+Google authentication is handled securely through Firebase Authentication and Google's OAuth systems. We do not have access to your Google password.
 
-**Website:**
-- Waitlist emails: Send TestFlight invitations and giveaway notifications (no marketing)
-- GitHub data: Acknowledge contributors and display project activity
-- Analytics: Understand traffic patterns (no third-party analytics tools)
+Authentication tokens are used only to verify identity and are not used for any other purpose.
 
-**macOS App:**
-- Authentication: Verify your identity for optional cloud features
-- Feature access: Determine which features are available to you
-- Local functionality: Power timer, tasks, session tracking, and integrations (all offline-capable)
+We do not use Google user data for advertising or marketing purposes.
+We do not sell or share Google user data with data brokers.
+We only use Google user data to provide and improve core app functionality.
 
----
+Google user data is not used for advertising, is not sold to third parties, and is not used for tracking users across apps.
 
-## AI Features (Planned)
+## 4. Subscription and Billing Data
 
-The app's code includes references to future AI features:
-- AI focus assistant
-- AI session suggestions
-- AI task writing assistance
+If you use paid features or subscriptions, we may process:
 
-**Current Status:** Not implemented. The app checks for AI quotas but makes no AI API calls yet.
+- Subscription tier and entitlement status
+- Transaction identifiers and verification results
+- Subscription start/end dates, renewal status, and plan status
+- App Store server notification data or equivalent platform verification data
+- Quota period metadata, remaining allowance, usage totals, reset dates, and related plan enforcement state
 
-**Future Behavior:**  
-When AI features launch:
-- AI requests will be sent to secure APIs (e.g., Google Gemini, DeepSeek) only when you explicitly use AI features
-- Task content may be processed by AI providers acting as data processors
-- AI providers will not use your data for model training unless you separately opt in with them
-- You will be able to disable AI features in settings
+Payments themselves are generally handled by Apple or another platform provider. We do not state that we store your full payment card number because platform billing is typically handled outside our systems.
 
-AI features will be opt-in by design.
+## 5. AI, Planning, and Scheduling Data
 
----
+If you use AI-assisted features, we may process content you submit for those features, including:
 
-## Cloud Sync (Planned)
+- Task titles, descriptions, notes, due dates, durations, and planning inputs
+- Calendar availability, calendar events, scheduling constraints, and time-block context that you choose to use with AI scheduling or rescheduling features
+- Requests for AI task breakdown, AI planning, AI-generated task descriptions, AI schedule generation, AI assistant actions, and productivity insight or summary features
+- AI responses, usage totals, quota events, model routing metadata, and safety or debugging logs
 
-The code includes placeholders for optional cloud sync. When implemented:
-- Task data may sync to a cloud database (likely Firestore)
-- Session history may be backed up to cloud storage
-- You will control sync via settings
+We only process this data when you actively use the relevant AI or cloud-assisted feature.
+We only send the minimum necessary data required to fulfill each AI request.
 
-**Current Status:** Not active. All data stays local.
+The current product includes cloud-backed AI and planning routes for features such as:
 
----
+- AI task breakdown
+- AI task planning
+- AI-generated task descriptions
+- AI assistant actions
+- AI calendar schedule generation and rescheduling
+- Productivity insight or summary requests sent through the AI proxy
 
-## Third-Party Services
+AI traffic in the current backend is routed through our backend and may be forwarded through **OpenRouter** to supported model families. The current codebase references **DeepSeek** and **Gemini** model families and tracks quota or allowance usage for those families.
 
-The app uses these services:
+### Third-Party AI Processing
 
-**Firebase (Google Cloud):**
-- **Firebase Authentication**: Manages sign-in (email, password, Google OAuth)
-- **Firebase Core**: SDK initialization
-- Data stored on Google Cloud infrastructure
-- Acts as a data processor on our behalf
-- [Firebase Privacy Policy](https://firebase.google.com/support/privacy)
+When you use AI features, relevant inputs may be sent to third-party AI providers or routing services, including providers operated by **Google** and services such as **OpenRouter**, but only to the extent needed to generate the requested response or complete the requested AI feature.
 
-**Google Sign-In SDK:**
-- Handles OAuth authentication
-- Processes Google account data
-- [Google Privacy Policy](https://policies.google.com/privacy)
+We only transmit the data reasonably necessary for the specific request. Depending on the feature, this may include task text, planning context, scheduling constraints, calendar availability, or related prompt content that you chose to submit.
 
-**VPS.Town:**
-- Infrastructure sponsor (hosts backend API for testing)
-- No access to user data
+Google or other third-party AI providers may process and temporarily store data when AI features are used. Their handling of that data is subject to their own terms and privacy policies, including Google's privacy policy where Google services or Gemini-family processing are involved.
 
-**Data Processing Terms:**  
-Firebase and Google Cloud operate under [Google Cloud's Data Processing Terms](https://cloud.google.com/terms/data-processing-addendum).
+We do not sell AI request data, prompt content, or AI-related personal data, and we do not use that data for advertising.
 
-**Important:** The `GoogleService-Info.plist` file in the public repository is a placeholder for CI/CD. Production builds use a separate, secure Firebase configuration.
+We do not use your data to train our own models.
+
+AI outputs may be inaccurate, incomplete, or unsuitable for your situation. You are responsible for reviewing and verifying AI-generated results before relying on them.
+
+Because AI requests may include the content you submit, you should avoid entering highly sensitive personal information into AI prompts or AI-assisted workflow fields unless you are comfortable with that data being processed to generate a response.
+
+## 6. Device Permissions and Local Integrations
+
+If you grant them, the app may access:
+
+- **Notifications** to send focus alerts and reminders
+- **Calendar** to read your events and support planning, display, and optional scheduling features
+- **Reminders** to support task/reminder workflows
+
+Some of this information may remain local. However, if you explicitly use cloud-backed planning or AI scheduling features, relevant task or calendar context may be transmitted to our backend and to AI providers acting on our behalf to fulfill your request.
 
 ---
 
-## What We Don't Do
+## How We Use Information
 
-**No Analytics Tracking:**  
-The app does not include:
-- Crash reporting SDKs (e.g., Firebase Crashlytics)
-- Usage analytics platforms (e.g., Firebase Analytics, Mixpanel)
-- Telemetry or behavioral tracking
-- User activity monitoring
+We use information to:
 
-**No Data Sales:**  
-We do not share, sell, or rent your data to advertisers, data brokers, or marketing platforms.
+- Operate the website and app
+- Authenticate users and maintain sessions
+- Support email/password, Google, GitHub, Apple, and other sign-in methods we make available
+- Deliver account-aware features and settings
+- Verify subscriptions and determine feature eligibility
+- Enforce quotas, rate limits, and fraud/security protections
+- Provide AI planning, task breakdown, scheduling, productivity, and assistant features that you choose to use
+- Render local and cloud-backed planning, calendar, and task experiences
+- Improve reliability, prevent abuse, diagnose errors, and maintain security
+- Respond to support requests, legal obligations, and operational needs
 
-**No Background Access:**  
-The app does not access Calendar or Reminders data in the background.
+We do not sell your personal data to advertisers or data brokers.
+
+We may also use account, quota, and entitlement data to:
+
+- determine whether a feature is available on your current plan
+- decide whether AI usage is within your allowance
+- verify whether a subscription is active, expired, renewed, or restricted
+- prevent abuse, quota bypass, or unauthorized access to paid or limited features
 
 ---
 
-## Data Storage & Security
+## When We Share Information
 
-**Website:**
-- HTTPS encryption for all pages
-- Google Forms encryption for waitlist submissions
-- localStorage data stays in your browser
+We may share information in the following situations:
 
-**macOS App:**
+## 1. Service Providers
 
-**Local Data Protection:**
-- macOS sandboxing restricts app access
-- Sensitive tokens stored in macOS Keychain (not UserDefaults)
-- All local files protected by macOS file permissions
+We use service providers and infrastructure that process data on our behalf, including:
 
-**Network Security:**
-- All API requests use HTTPS (TLS 1.2 or higher)
-- Firebase SDK enforces certificate pinning
-- Authentication tokens expire automatically (ID tokens: 1 hour, refresh tokens: 30 days)
+- **Firebase / Google Cloud** for authentication, backend infrastructure, Cloud Functions, and related account, entitlement, quota, and subscription processing
+- **Apple** for platform services, subscriptions, Sign in with Apple, App Store billing, and server-side subscription verification where applicable
+- **Google** for Google Sign-In and related provider services
+- **GitHub** for GitHub sign-in and public repository integrations
+- **OpenRouter** as an AI routing/provider layer where configured in the backend
+- **AI model providers** used behind OpenRouter or related routing infrastructure to fulfill AI requests you explicitly send through the Service
 
-**Third-Party Infrastructure:**
-- Firebase/Google Cloud: [Google Cloud Security](https://cloud.google.com/security)
-- Backend API: Hosted on secure infrastructure (VPS.Town)
+Only the information reasonably necessary to fulfill the relevant AI request or cloud feature is transmitted to those providers.
 
-**Security Limitations:**  
-No system is 100% secure. While we follow industry best practices, we cannot guarantee absolute security. You are responsible for securing your device (password, FileVault encryption, etc.).
+Backend systems reflected in the current codebase include Firebase Cloud Functions and related endpoints or callable functions used for:
+
+- `aiProxy`
+- `taskBreakdown`
+- `taskPlanning`
+- `generateTaskDescription`
+- `aiAssistant`
+- `generateCalendarSchedule`
+- `getAllowance`
+- `getMe`
+- `subscriptionVerify`
+- App Store subscription notification handling
+
+The backend also uses Firestore-backed account, quota, or subscription state in current server-side logic.
+
+## 2. Platform and Integration Providers
+
+If you enable integrations or platform-dependent features, information may also be shared with the provider needed to complete that action.
+
+## 3. Legal and Safety Reasons
+
+We may disclose information if required by law, legal process, or a valid governmental request, or if reasonably necessary to protect users, the Service, or our rights.
+
+## 4. Business Transfers
+
+If the Service or project is reorganized, transferred, merged, or sold, relevant data may be transferred as part of that transaction, subject to applicable law.
+
+---
+
+## Third-Party Sign-In Providers
+
+The Service may support the following account providers:
+
+- Email/password through Firebase Authentication
+- Google Sign-In
+- GitHub sign-in
+- Apple Sign-In
+
+Additional providers may be added over time. When you choose a sign-in method, the provider and Firebase may process your information under their own privacy terms in addition to this policy.
+
+We use provider data primarily to:
+
+- Authenticate you
+- Create or link your account
+- Display basic account profile information in the app
+- Secure purchases, entitlements, and cloud-backed features
+
+Depending on the provider and what the provider returns, this may include email address, display name, avatar/profile image URL, provider user identifier, and authentication tokens or assertions needed to complete sign-in.
 
 ---
 
 ## Data Retention
 
-**Website:**
-- Waitlist emails: Retained until invitations are sent or you request deletion
-- Browser cache: Refreshed every 5 minutes
+We retain information for as long as reasonably necessary for the purposes described in this policy, including to:
 
-**macOS App:**
-
-**Local Data:**  
-Retained on your device until you:
-- Delete items manually
-- Clear app data in settings
-- Uninstall the app
-
-**Account Data:**
-- Authentication data: Retained until you delete your account
-- Authentication tokens: Expire automatically (1 hour for ID tokens, 30 days for refresh tokens)
-- Feature gate cache: Refreshed every 5 minutes while signed in
-
-**Cloud Data (Future):**  
-When cloud sync launches, retention periods will be disclosed in an updated policy.
-
----
-
-## Data Sharing & Legal Disclosure
-
-We do not sell your personal data.
-
-**We share data only when:**
-
-**Service Providers (Data Processors):**
-- Firebase/Google Cloud: Processes authentication and may process future cloud sync data
-- Future AI providers: Process AI requests only when you use AI features
-
-**Legal Requirements:**  
-We may disclose data if required by law, court order, or legal process to:
+- Maintain your account
+- Provide subscriptions and entitlements
+- Support AI usage accounting and quota enforcement
+- Keep required logs for security, fraud prevention, and service integrity
 - Comply with legal obligations
-- Protect our rights or property
-- Investigate fraud or security issues
 
-**Business Transfers:**  
-If the project is acquired or merged, user data may be transferred to the successor. You will be notified via email and in-app notification.
+Local app data generally remains on your device until you delete it, reset the app, sign out, uninstall the app, or remove related local files. Account and backend data may remain until you request deletion, your account is removed, or retention is no longer required for operational or legal purposes.
 
----
+Retention may also vary based on the category of data, including:
 
-## Your Rights & Control
-
-### Website
-
-**Opt Out of Waitlist:**
-- Don't submit your email via the form
-- Email support@pomodoro-app.tech to remove your email
-
-**Browser Data:**
-- Clear localStorage to remove cached data
-- Disable JavaScript to prevent localStorage writes
-
-### macOS App
-
-**Manage Local Data:**
-- Delete tasks/sessions: Use in-app delete buttons
-- Clear preferences: Settings > Advanced > Reset
-- Remove all data: Uninstall the app (deletes `~/Library/Application Support/Pomodoro`)
-
-**Manage Account Data:**
-- **Sign out**: Settings > Account > Sign Out
-- **Delete account**: Email support@pomodoro-app.tech with your account email. We will:
-  - Delete your Firebase Authentication account
-  - Remove associated feature gate data
-  - Confirm deletion within 7 business days
-
-**Export Your Data:**
-- Local data is stored in JSON format. Email support@pomodoro-app.tech for export instructions
-- Cloud data export (future): Will be available in settings when cloud sync launches
-
-**Self-Service Deletion:**  
-We plan to add in-app account deletion in a future update.
+- authentication/account records
+- subscription verification records
+- quota and allowance records
+- security and abuse-prevention logs
+- AI request and response metadata
+- support and legal compliance records
 
 ---
 
-## International Users
+## Your Choices and Rights
 
-The app and website are operated from the **United States**. If you are located outside the U.S., your data may be transferred to, stored, and processed in the U.S. and other countries where our service providers operate.
+Depending on your location and applicable law, you may have rights to access, correct, delete, export, or restrict certain personal data.
 
-By using the app or website, you consent to this transfer.
+You can also:
 
-### European Users (GDPR Principles)
+- Avoid optional sign-in features by using local-only features where available
+- Sign out of your account
+- Remove local app data from your device
+- Revoke Calendar, Reminders, Notifications, or sign-in permissions through system or provider settings
+- Contact us to request deletion or account assistance
 
-While Pomodoro App is developed by an independent developer, we aim to respect GDPR principles where applicable:
+If you request account deletion, we may delete or de-identify account-linked data unless we need to retain certain records for security, billing, fraud prevention, or legal compliance.
 
-**Your Rights:**
-- **Access**: Request a copy of your data
-- **Deletion**: Request deletion of your data
-- **Rectification**: Request correction of inaccurate data
-- **Portability**: Request export of your data in JSON format
-- **Withdraw consent**: Sign out or delete your account
+---
 
-**Legal Basis for Processing:**
-- **Contract performance**: Authentication and account management
-- **Legitimate interest**: App functionality, security, and improvement
-- **Consent**: Optional features (e.g., cloud sync, AI features)
+## International Processing
 
-### California Users (CCPA)
+Your information may be processed in countries other than your own, including the United States and other locations where our providers operate. By using the Service, you understand that data may be transferred to and processed in those jurisdictions, subject to applicable safeguards and law.
 
-California residents have the right to:
-- Know what personal information is collected
-- Request deletion of personal information
-- Opt out of sale of personal information
+---
 
-**We do not sell personal information.**
+## Security
 
-**Contact:** Email support@pomodoro-app.tech to exercise your rights.
+We use reasonable technical and organizational measures to help protect personal information, including HTTPS/TLS, provider-managed authentication systems, app sandboxing, and platform security features. No system is perfectly secure, and we cannot guarantee absolute security.
+
+You are responsible for keeping your device, provider accounts, and credentials secure.
+
+Current implementation details reflected in the codebase include:
+
+- HTTPS-backed requests to backend APIs and Cloud Functions
+- Firebase Authentication tokens for authenticated cloud requests
+- Keychain-backed persisted auth session storage on device
+- provider-managed sign-in flows for Google and GitHub, and Apple provider support in backend/provider handling
+- backend quota and entitlement enforcement intended to reduce unauthorized use of paid or limited AI features
 
 ---
 
 ## Children's Privacy
 
-Pomodoro App is not directed at children under 13. We do not knowingly collect personal information from children under 13.
-
-If you are a parent or guardian and believe your child under 13 has provided us with personal information, contact us immediately at support@pomodoro-app.tech. We will delete the information within 30 days.
-
-By using the app, you represent that you are at least 13 years old (or the applicable age of digital consent in your jurisdiction).
+The Service is not directed to children under 13, and we do not knowingly collect personal information from children under 13. If you believe a child has provided personal information to us, contact us and we will investigate and take appropriate action.
 
 ---
 
 ## Changes to This Policy
 
-We may update this Privacy Policy as the app evolves. Changes will be reflected by updating the "Last Updated" date at the top.
-
-**Material Changes:**  
-Significant changes (e.g., enabling cloud sync, launching AI features, changing data retention) will be announced via:
-- GitHub repository release notes
-- In-app notification
-- Website banner
-- Email (for waitlist subscribers and signed-in users)
-
-**Continued Use:**  
-Continued use of the app or website after changes constitutes acceptance of the updated policy. If you do not agree, you may delete your account and uninstall the app.
-
-**Version History:**  
-Previous versions of this policy are available in the GitHub repository commit history.
-
----
-
-## App Store Compliance
-
-This privacy policy complies with Apple App Store requirements and accurately reflects the app's data collection practices as of the "Last Updated" date.
-
-**App Store Privacy Labels:**  
-The app's data collection practices are disclosed in the App Store privacy labels section. This policy provides additional detail.
-
-**TestFlight Users:**  
-This policy applies to both TestFlight beta builds and App Store production builds.
+We may update this Privacy Policy as the product, backend, sign-in options, subscriptions, and AI features evolve. The current version will be posted on the website with an updated effective or last-updated date.
 
 ---
 
 ## Contact
 
-For privacy-related questions, data deletion requests, or concerns:
+For privacy questions or requests:
 
 **Email:** support@pomodoro-app.tech  
 **GitHub Issues:** https://github.com/T-1234567890/pomodoro-app/issues  
 **Website:** https://pomodoro-app.tech
 
-**Response Time:** We will respond to privacy inquiries within 7 business days.
-
-**Data Protection Officer:** As an indie developer project, we do not have a dedicated DPO. Privacy inquiries are handled by the project maintainer.
-
 ---
 
-## Summary: What Data We Collect
-
-| Data Type | Website | macOS App (Local) | macOS App (Cloud) | Purpose |
-|-----------|---------|-------------------|-------------------|---------|
-| Email (waitlist) | ✅ | ❌ | ❌ | TestFlight invites |
-| GitHub username | ✅ (public) | ❌ | ❌ | Contributor acknowledgment |
-| Browser metadata | ✅ | ❌ | ❌ | Basic analytics |
-| Timer preferences | ❌ | ✅ | 🔜 (opt-in) | App functionality |
-| Tasks / session history | ❌ | ✅ | 🔜 (opt-in) | Productivity tracking |
-| Firebase auth email | ❌ | ✅ (opt-in) | ✅ (if signed in) | Account authentication |
-| Calendar / Reminders | ❌ | ✅ (opt-in) | ❌ | System integration |
-| AI request data | ❌ | ❌ | 🔜 (opt-in, future) | Smart features |
-| Feature gate data | ❌ | ❌ | ✅ (if signed in) | Entitlement verification |
-
-**Legend:**  
-✅ Currently implemented  
-❌ Not collected  
-🔜 Coming soon (not yet implemented)
-
----
-
-**Thank you for using Pomodoro App and trusting us with your time and focus.**
-
----
-
-*This privacy policy is based on the actual implementation as of February 27, 2026. For the most up-to-date information, refer to the source code at https://github.com/T-1234567890/pomodoro-app*
-
-*Open-source transparency: Because this project is open-source, you can verify our privacy claims by reviewing the code. If you find discrepancies, please report them via GitHub Issues.*
+**Thank you for using Pomodoro App.**
