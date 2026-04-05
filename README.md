@@ -14,10 +14,10 @@ It is not just a timer — it links tasks, time, and focus, adapting to task-dri
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/license/T-1234567890/pomodoro-app" alt="License" />
+  <img src="https://img.shields.io/github/license/T-1234567890/orchestrana-app" alt="License" />
   <img src="https://img.shields.io/badge/platform-macOS-blue?logo=apple" alt="Platform" />
-  <img src="https://img.shields.io/github/v/release/T-1234567890/pomodoro-app" alt="Release" />
-  <img src="https://img.shields.io/github/downloads/T-1234567890/pomodoro-app/total" alt="Downloads" />
+  <img src="https://img.shields.io/github/v/release/T-1234567890/orchestrana-app" alt="Release" />
+  <img src="https://img.shields.io/github/downloads/T-1234567890/orchestrana-app/total" alt="Downloads" />
  <a href="https://vps.town">
   <img src="https://img.shields.io/badge/Sponsored%20by-VPS.Town-3DAF7C" alt="Sponsor VPS.Town" />
 </a>
@@ -315,7 +315,7 @@ Contact us below.
 
 ## 📈 Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=T-1234567890/pomodoro-app&type=date&legend=top-left)](https://www.star-history.com/#T-1234567890/pomodoro-app&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/svg?repos=T-1234567890/orchestrana-app&type=date&legend=top-left)](https://www.star-history.com/#T-1234567890/orchestrana-app&type=date&legend=top-left)
 
 ## ⚠️ 说明/Notice
 本项目仍在持续改进中，部分功能或界面可能会发生变化。<br>

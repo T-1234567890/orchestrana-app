@@ -9,7 +9,7 @@
 
 Orchestrana™ ("we," "our," or "the Service") provides a macOS productivity application, related cloud features, and the website at https://pomodoro-app.tech. This Privacy Policy explains what information we collect, how we use it, when it is shared, and what choices you have.
 
-Because Orchestrana includes open-source client-side code, parts of our implementation can be reviewed publicly at https://github.com/T-1234567890/pomodoro-app. Some backend systems are not public, so this policy also describes the cloud services that support authentication, subscriptions, AI features, and account-based access.
+Because Orchestrana includes open-source client-side code, parts of our implementation can be reviewed publicly at https://github.com/T-1234567890/orchestrana-app. Some backend systems are not public, so this policy also describes the cloud services that support authentication, subscriptions, AI features, and account-based access.
 
 ---
 
@@ -347,7 +347,7 @@ We may update this Privacy Policy as the product, backend, sign-in options, subs
 For privacy questions or requests:
 
 **Email:** support@pomodoro-app.tech  
-**GitHub Issues:** https://github.com/T-1234567890/pomodoro-app/issues  
+**GitHub Issues:** https://github.com/T-1234567890/orchestrana-app/issues  
 **Website:** https://pomodoro-app.tech
 
 ---

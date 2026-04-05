@@ -264,7 +264,7 @@ These Terms are governed by applicable law. If you are a consumer, mandatory rig
 For questions about these Terms:
 
 **Email:** support@pomodoro-app.tech  
-**GitHub Issues:** https://github.com/T-1234567890/pomodoro-app/issues  
+**GitHub Issues:** https://github.com/T-1234567890/orchestrana-app/issues  
 **Website:** https://pomodoro-app.tech
 
 ---
