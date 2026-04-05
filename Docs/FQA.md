@@ -1,12 +1,12 @@
-# Pomodoro App · FAQ
+# Orchestrana™ · FAQ
 
-This FAQ answers common questions about Pomodoro App’s design choices, scope, and future direction.
+This FAQ answers common questions about Orchestrana’s design choices, scope, and future direction.
 
 ---
 
-## What is Pomodoro App?
+## What is Orchestrana?
 
-Pomodoro App is a **desktop-first macOS focus and planning tool**.
+Orchestrana is a **desktop-first macOS focus and planning tool**.
 
 It combines:
 - A lightweight Pomodoro / focus timer
@@ -18,11 +18,11 @@ The goal is not to replace existing tools, but to **bring focus, structure, and 
 
 ---
 
-## Is Pomodoro App free?
+## Is Orchestrana free?
 
 **Yes.**
 
-Pomodoro App is currently **free and open source**, and all core features remain free:
+Orchestrana is currently **free and open source**, and all core features remain free:
 - Timer and focus sessions
 - Tasks
 - Calendar & Reminders integration
@@ -53,18 +53,18 @@ Some future ideas (AI features, cloud services, cross-device sync) involve **ong
 
 If such features are ever introduced, a paid plan may exist **only to sustain development**, not to restrict the core app.
 
-Pomodoro App aims to avoid:
+Orchestrana aims to avoid:
 - Surprise paywalls
 - Feature removal
 - Breaking existing workflows
 
 ---
 
-## Why doesn’t Pomodoro App have an iOS or mobile app?
+## Why doesn’t Orchestrana have an iOS or mobile app?
 
 This is an intentional design choice.
 
-Pomodoro App is built for **deep work**, which is better supported on a desktop:
+Orchestrana is built for **deep work**, which is better supported on a desktop:
 - Larger screen
 - Keyboard-driven workflows
 - Fewer interruptions
@@ -72,7 +72,7 @@ Pomodoro App is built for **deep work**, which is better supported on a desktop:
 
 Mobile devices are optimized for quick interactions and notifications, which often conflict with focused work.
 
-For this reason, Pomodoro App does **not plan to offer a full mobile app** in the foreseeable future.
+For this reason, Orchestrana does **not plan to offer a full mobile app** in the foreseeable future.
 
 ---
 
@@ -83,7 +83,7 @@ Mobile workflows are supported through **Apple’s system apps**:
 - **Apple Reminders** — quick task capture
 - **Apple Calendar** — scheduling and time blocks
 
-Pomodoro App syncs with Calendar and Reminders, allowing you to:
+Orchestrana syncs with Calendar and Reminders, allowing you to:
 1. Capture tasks or events on your phone
 2. Review, organize, and focus on them later on your Mac
 
@@ -104,13 +104,13 @@ This keeps mobile usage lightweight while preserving a focused desktop experienc
 
 You can:
 - Create tasks in Apple Reminders or Calendar
-- Sync them back to Pomodoro App on macOS
+- Sync them back to Orchestrana on macOS
 
 This allows you to capture ideas on the go without using a separate mobile app.
 
 ### Task Keywords
 
-Pomodoro App supports lightweight **focus intent markers** in task text.  
+Orchestrana supports lightweight **focus intent markers** in task text.  
 These keywords help indicate that a task is meant for focused work.  
 They do **not** start timers, schedule time, or change tasks automatically.
 
@@ -124,7 +124,7 @@ Supported keywords (type this in your Apple Reminders task):
 
 ---
 
-## Does Pomodoro App sync data to the cloud?
+## Does Orchestrana sync data to the cloud?
 
 Currently:
 - Data is stored **locally**
@@ -136,7 +136,7 @@ Future cloud sync ideas (e.g. backups, optional cross-device sync) are **explora
 
 ## What is “Bring Your Own AI Key” (BYO)?
 
-In the future, Pomodoro App may support a **Bring Your Own AI Key** mode for advanced users.
+In the future, Orchestrana may support a **Bring Your Own AI Key** mode for advanced users.
 
 This would allow users to:
 - Use their own AI provider
@@ -152,7 +152,7 @@ System-level automation would remain excluded.
 
 ---
 
-## Is Pomodoro App open source?
+## Is Orchestrana open source?
 
 **Yes.**
 
@@ -162,16 +162,16 @@ If cloud or AI services are introduced in the future, those components may be se
 
 ---
 
-## Why does Pomodoro App use a task ID?
+## Why does Orchestrana use a task ID?
 
 ### Q: Why do some tasks sync correctly while others don’t?
 
-Pomodoro App uses a unique task ID (UUID) to reliably track tasks across:
+Orchestrana uses a unique task ID (UUID) to reliably track tasks across:
 - The app itself
 - Apple Reminders
 - Apple Calendar
 
-This ID allows Pomodoro App to know **which task is which**, even if titles or times change.
+This ID allows Orchestrana to know **which task is which**, even if titles or times change.
 
 ---
 
@@ -188,7 +188,7 @@ A unique ID avoids duplication, mismatch, and accidental overwrites.
 
 ### Q: What happens if a task doesn’t have an ID?
 
-Tasks without a Pomodoro task ID are treated as **external or manual entries**.
+Tasks without an Orchestrana task ID are treated as **external or manual entries**.
 
 That means:
 - They are not modified automatically
@@ -203,12 +203,12 @@ This behavior is intentional and protects your data.
 
 **No.**
 
-IDs are managed internally by Pomodoro App.
+IDs are managed internally by Orchestrana.
 You don’t need to create, copy, or understand them.
 
 Just write tasks naturally — the app handles the rest.
 
-## Is Pomodoro App available on the Mac App Store?
+## Is Orchestrana available on the Mac App Store?
 
 Not yet.
 
@@ -219,9 +219,9 @@ A signed App Store or TestFlight release may happen in the future, but it is not
 
 ---
 
-## Is Pomodoro App stable?
+## Is Orchestrana stable?
 
-Pomodoro App is under active development.
+Orchestrana is under active development.
 
 Minor releases focus on:
 - Sync stability
@@ -255,7 +255,7 @@ Even usage feedback helps guide development.
 
 ## Final note
 
-Pomodoro App is a long-term project.
+Orchestrana is a long-term project.
 
 It prioritizes:
 - Focus over feature count

@@ -1,9 +1,9 @@
-# Pomodoro App · Future Plans (Long-Term, Exploratory)
+# Orchestrana™ · Future Plans (Long-Term, Exploratory)
 
-> ⚠️ This document describes **long-term, forward-looking ideas** for Pomodoro App.  
+> ⚠️ This document describes **long-term, forward-looking ideas** for Orchestrana.  
 > None of the features below are implemented today, and **no payment is required** at the current stage.
 
-Pomodoro App started as a lightweight, local macOS focus tool.  
+Orchestrana started as a lightweight, local macOS focus tool.  
 Over time, the project may gradually explore features that require **cloud services, AI APIs, or ongoing infrastructure costs**.
 
 This document exists to:
@@ -26,7 +26,7 @@ This is a **future concept**, not a commitment.
 
 ## Why Paid Plans Might Exist (In the Far Future)
 
-Pomodoro App is designed to remain useful without payment.
+Orchestrana is designed to remain useful without payment.
 
 However, some ideas under exploration go beyond what a fully local, offline app can reasonably sustain long-term:
 
@@ -42,7 +42,7 @@ Any paid plan would exist only to **sustain development**, not to restrict core 
 
 ## Bring Your Own AI Key (Outside Subscription Plans)
 
-For advanced or experimental users, Pomodoro App may explore a **Bring Your Own AI Key** (BYO) mode.
+For advanced or experimental users, Orchestrana may explore a **Bring Your Own AI Key** (BYO) mode.
 
 This mode is intended for users who prefer to:
 - Use their own AI provider (OpenAI or compatible APIs)
@@ -112,7 +112,7 @@ Pro features are expected to arrive **significantly later** (e.g. v3.0+) and are
 
 ## Flow Mode (Core Experience)
 
-Flow Mode represents the long-term vision of Pomodoro App as a **focused workspace**, not just a timer.
+Flow Mode represents the long-term vision of Orchestrana as a **focused workspace**, not just a timer.
 
 In its more complete form, Flow Mode may include:
 - A large, customizable clock for visual time awareness
@@ -205,13 +205,13 @@ The following are **explicitly not goals**:
 - AI silently modifying calendars or tasks
 - Replacing user decision-making
 
-Pomodoro App aims to assist focus, not override it.
+Orchestrana aims to assist focus, not override it.
 
 ---
 
 ## What Is Expected to Stay Free
 
-Pomodoro App should remain useful without payment:
+Orchestrana should remain useful without payment:
 - Core timer and focus features
 - Tasks, Calendar, and Reminders integration
 - Menu bar support
@@ -257,7 +257,7 @@ The app should never become unusable without a subscription.
 
 Notes are **not part of the current 1.x or 2.x scope**.
 
-If introduced, a Notes system would arrive no earlier than **v3.0**, and would evolve Pomodoro App from a pure focus tool into a **time-aware thinking space**.
+If introduced, a Notes system would arrive no earlier than **v3.0**, and would evolve Orchestrana from a pure focus tool into a **time-aware thinking space**.
 
 ### Positioning: Time-linked Knowledge Notes
 
@@ -332,7 +332,7 @@ The goal is to support **knowledge formed through focused work**, not to store e
 
 ---
 
-> Notes are considered a **long-term evolution** of Pomodoro App,  
+> Notes are considered a **long-term evolution** of Orchestrana,  
 > extending focus into understanding — without turning the app into a general workspace.
 
 ---
@@ -341,7 +341,7 @@ The goal is to support **knowledge formed through focused work**, not to store e
 
 This plan represents **directional thinking**, not a roadmap.
 
-Pomodoro App is developed as a long-term project:
+Orchestrana is developed as a long-term project:
 - Stability over growth hacks
 - Sustainability over rapid monetization
 - Transparency over surprise changes

@@ -1,13 +1,13 @@
 # Terms of Service
 
-**Effective Date:** April 4, 2026  
-**Last Updated:** April 4, 2026
+**Effective Date:** April 5, 2026  
+**Last Updated:** April 5, 2026
 
 ---
 
 ## 1. Introduction
 
-Pomodoro App ("we," "our," or "the Service") provides a macOS productivity application, related cloud-backed functionality, and the website at https://pomodoro-app.tech. These Terms of Service ("Terms") govern your use of the website, the app, and related backend services we operate.
+Orchestrana™ ("we," "our," or "the Service") provides a macOS productivity application, related cloud-backed functionality, and the website at https://pomodoro-app.tech. These Terms of Service ("Terms") govern your use of the website, the app, and related backend services we operate.
 
 By using the Service, you agree to these Terms. If you do not agree, do not use the Service.
 
@@ -17,7 +17,7 @@ By using the Service, you agree to these Terms. If you do not agree, do not use 
 
 The Service may include:
 
-- The Pomodoro App macOS application
+- The Orchestrana macOS application
 - The website and related documentation pages
 - Account features and authentication
 - Subscription and entitlement verification
@@ -269,4 +269,4 @@ For questions about these Terms:
 
 ---
 
-**Thank you for using Pomodoro App.**
+**Thank you for using Orchestrana.**

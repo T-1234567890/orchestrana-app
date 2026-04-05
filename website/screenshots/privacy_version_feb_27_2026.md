@@ -1,15 +1,15 @@
 # Privacy Policy
 
-**Effective Date:** April 4, 2026  
-**Last Updated:** April 4, 2026
+**Effective Date:** April 5, 2026  
+**Last Updated:** April 5, 2026
 
 ---
 
 ## Introduction
 
-Pomodoro App ("we," "our," or "the Service") provides a macOS productivity application, related cloud features, and the website at https://pomodoro-app.tech. This Privacy Policy explains what information we collect, how we use it, when it is shared, and what choices you have.
+Orchestrana™ ("we," "our," or "the Service") provides a macOS productivity application, related cloud features, and the website at https://pomodoro-app.tech. This Privacy Policy explains what information we collect, how we use it, when it is shared, and what choices you have.
 
-Because Pomodoro App includes open-source client-side code, parts of our implementation can be reviewed publicly at https://github.com/T-1234567890/pomodoro-app. Some backend systems are not public, so this policy also describes the cloud services that support authentication, subscriptions, AI features, and account-based access.
+Because Orchestrana includes open-source client-side code, parts of our implementation can be reviewed publicly at https://github.com/T-1234567890/pomodoro-app. Some backend systems are not public, so this policy also describes the cloud services that support authentication, subscriptions, AI features, and account-based access.
 
 ---
 
@@ -19,7 +19,7 @@ This policy applies to:
 
 - **The website** at https://pomodoro-app.tech
 - **The macOS application**
-- **The Pomodoro cloud backend** used for authentication-aware features, entitlement checks, subscription verification, and AI-assisted features
+- **The Orchestrana cloud backend** used for authentication-aware features, entitlement checks, subscription verification, and AI-assisted features
 
 This policy does not replace the privacy terms of third-party platforms or providers you choose to use, such as Apple, Google, GitHub, Firebase, or AI model providers.
 
@@ -40,7 +40,7 @@ The website may also rely on third-party services such as Google Fonts, Google F
 
 ## 2. Data Stored Locally on Your Mac
 
-Pomodoro App stores a significant amount of data locally on your device, including:
+Orchestrana stores a significant amount of data locally on your device, including:
 
 - Timer settings and session preferences
 - UI preferences and onboarding state
@@ -352,4 +352,4 @@ For privacy questions or requests:
 
 ---
 
-**Thank you for using Pomodoro App.**
+**Thank you for using Orchestrana.**

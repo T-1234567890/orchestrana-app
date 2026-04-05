@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the unified Calendar, Reminders, and Todo system for the Pomodoro macOS app. The design prioritizes clarity, user control, and proper separation of concerns.
+This document describes the unified Calendar, Reminders, and Todo system for the Orchestrana macOS app. The design prioritizes clarity, user control, and proper separation of concerns.
 
 ## Core Design Principles
 
@@ -27,7 +27,7 @@ This document describes the unified Calendar, Reminders, and Todo system for the
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Pomodoro App                            │
+│                    Orchestrana                             │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐  │
 │  │              TodoStore (Primary)                    │  │

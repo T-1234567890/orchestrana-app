@@ -1,7 +1,7 @@
-# Pomodoro App — Detailed Roadmap  
+# Orchestrana™ — Detailed Roadmap  
 **Versions: v1.1.x → v2.0**
 
-This document outlines the development direction of **Pomodoro App** from the current 1.1.x releases toward version 2.0.
+This document outlines the development direction of **Orchestrana** from the current 1.1.x releases toward version 2.0.
 
 The roadmap focuses on **experience stability, system coherence, and long-term sustainability**, rather than rapid feature expansion.
 
@@ -12,7 +12,7 @@ The roadmap focuses on **experience stability, system coherence, and long-term s
 
 ## Flow Mode — Core Experience
 
-Flow Mode represents the long-term experiential center of Pomodoro App.
+Flow Mode represents the long-term experiential center of Orchestrana.
 
 Instead of treating focus as a timer-driven workflow, Flow Mode is designed as a **calm, immersive working state** — where time awareness exists without constant pressure.
 

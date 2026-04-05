@@ -2,7 +2,7 @@
 
 ## Quick Start
 
-The Pomodoro app now includes a unified Calendar, Reminders, and Todo system. Here's how to use it:
+The Orchestrana app now includes a unified Calendar, Reminders, and Todo system. Here's how to use it:
 
 ### Tasks View (Always Accessible)
 

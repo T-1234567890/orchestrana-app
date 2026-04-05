@@ -1,14 +1,14 @@
-# 🍅 Pomodoro App
+# 🍅 Orchestrana™
 ### Plan. Focus. Done.
 
-**Pomodoro App** is a macOS productivity app that connects focus sessions, Tasks, Reminders, and Calendar into a single workflow.  
-It is not just a timer — it links tasks, time, and focus, adapting to task-driven, time-blocking, or flow-based work styles. Pomodoro is built as a unified time system rather than a rigid productivity method, with a macOS-inspired **glass / liquid glass UI**.
+**Orchestrana** is a macOS productivity app that connects focus sessions, Tasks, Reminders, and Calendar into a single workflow.  
+It is not just a timer — it links tasks, time, and focus, adapting to task-driven, time-blocking, or flow-based work styles. Orchestrana is built as a unified time system rather than a rigid productivity method, with a macOS-inspired **glass / liquid glass UI**.
 
 <p align="center">
   <img
     width="240"
     height="240"
-    alt="Pomodoro App Logo"
+    alt="Orchestrana Logo"
     src="https://github.com/user-attachments/assets/b1b265d2-b61e-45de-b3f2-749eff5b6931"
   />
 </p>
@@ -90,11 +90,11 @@ Signed app is provided on TestFlight currently.
 - 🌙 macOS dark mode support
 - 💻 Real time menubar support on MacBooks
 
-## ✨ Why Pomodoro App is different
+## ✨ Why Orchestrana is different
 
-Pomodoro App is designed as a unified time system — not just a timer. It brings together focus sessions, tasks, reminders, and calendar blocks into **one single workflow**, so planning and execution live in the same place.
+Orchestrana is designed as a unified time system — not just a timer. It brings together focus sessions, tasks, reminders, and calendar blocks into **one single workflow**, so planning and execution live in the same place.
 
-Instead of forcing a rigid productivity method, Pomodoro App **adapts to how you actually work — whether that’s time-blocking, task-driven planning, or flow-based focus**.
+Instead of forcing a rigid productivity method, Orchestrana **adapts to how you actually work — whether that’s time-blocking, task-driven planning, or flow-based focus**.
 
 ## 🧰 Running & Developing
 
@@ -166,11 +166,11 @@ The goal of upcoming versions is to transition toward a softer, macOS-inspired l
 
 >**🚧 Distribution Status**
 >
->Pomodoro is currently under active development and available on TestFlight
+>Orchestrana is currently under active development and available on TestFlight
 >
 >**🚀 Preview Access Available**
 >
->Official Apple preview builds of Pomodoro are now available via TestFlight. <br>
+>Official Apple preview builds of Orchestrana are now available via TestFlight. <br>
 >This is an **invite-only early access program** — access is managed through a waitlist to prevent spam and ensure quality feedback.
 >
 >👉 Join the TestFlight waitlist:  
@@ -216,7 +216,7 @@ Constructive feedback is especially welcome during the current 1.x.x integration
 
 ## 🕰️ Legacy Systems (Archived)
 
-Pomodoro has gone through multiple architectural stages during its development.
+Orchestrana has gone through multiple architectural stages during its development.
 All previous implementations are preserved **for reference only** and are no longer
 part of the active product direction.
 
@@ -228,7 +228,7 @@ Legacy see: https://github.com/T-1234567890/Pomodoro-legacy
 - ❌ No longer representative of the project
 - ❌ No longer maintained
 
-The current mainline version of Pomodoro is **fully native Swift (macOS)**.
+The current mainline version of Orchestrana is **fully native Swift (macOS)**.
 
 <details>
 
@@ -271,7 +271,7 @@ This was the **original prototype** used during the earliest stages of developme
 
 ### Long-term Future Directions
 
-**Pomodoro App is free**.
+**Orchestrana is free**.
 
 A small number of long-term ideas (AI features, cloud sync, deeper analytics) are being brainstormed.  
 **No paid plan exists at this stage.**
@@ -310,7 +310,7 @@ This project is supported by partners who help keep development sustainable.
 | Tools / Integration Partner | Available |
 | Other | Available |
 
-Interested in sponsoring or partnering with Pomodoro App?
+Interested in sponsoring or partnering with Orchestrana?
 Contact us below.
 
 ## 📈 Star History
@@ -325,7 +325,8 @@ This project is under active development and some features or UI elements may ch
 If you encounter issues or have suggestions, feel free to open an issue or pull request.
 
 ## 📄 Policies
-Official legal and policy documents for the app and website.
+Official legal and policy documents for the app and website.<br>
+Orchestrana™ is a trademark of Shenzhen Tushengjin Commercial Services Co., Ltd.
 
 [Policies & Legal](https://pomodoro-app.tech/policies.html)
 
