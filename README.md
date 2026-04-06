@@ -9,9 +9,10 @@ It is not just a timer — it links tasks, time, and focus, adapting to task-dri
     width="240"
     height="240"
     alt="Orchestrana Logo"
-    src="https://github.com/user-attachments/assets/b1b265d2-b61e-45de-b3f2-749eff5b6931"
+    src="https://github.com/user-attachments/assets/2b1b1847-46ed-46e9-8c79-7366f4480794"
   />
 </p>
+
 
 <p align="center">
   <img src="https://img.shields.io/github/license/T-1234567890/orchestrana-app" alt="License" />
