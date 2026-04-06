@@ -11,14 +11,27 @@ import Foundation
 @MainActor
 struct ContentView: View {
     @EnvironmentObject private var onboardingState: OnboardingState
+    @EnvironmentObject private var flowWindowManager: FlowWindowManager
 
     var body: some View {
-        MainWindowView()
-            .sheet(isPresented: $onboardingState.isPresented, onDismiss: {
-                onboardingState.markCompleted()
-            }) {
+        ZStack {
+            if onboardingState.isPresented {
                 OnboardingFlowView()
+                    .transition(.opacity)
+            } else {
+                MainWindowView()
+                    .transition(.opacity)
             }
+        }
+        .background(
+            WindowBackgroundConfigurator(
+                chromeStyle: onboardingState.isPresented ? .onboarding : .main,
+                onResolveWindow: { window in
+                    flowWindowManager.registerMainWindow(window)
+                }
+            )
+        )
+        .animation(.easeInOut(duration: 0.22), value: onboardingState.isPresented)
     }
 }
 
@@ -71,6 +84,7 @@ struct PremiumButton: View {
             .environmentObject(audioSourceStore)
             .environmentObject(OnboardingState())
             .environmentObject(AuthViewModel.shared)
+            .environmentObject(AppTypography.shared)
     }
 }
 #endif

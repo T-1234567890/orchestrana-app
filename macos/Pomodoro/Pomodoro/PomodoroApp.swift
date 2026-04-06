@@ -7,7 +7,6 @@
 
 import SwiftUI
 import FirebaseCore
-import FirebaseAppCheck
 import AppKit
 
 @MainActor
@@ -22,12 +21,12 @@ struct PomodoroApp: App {
     @StateObject private var onboardingState: OnboardingState
     @StateObject private var authViewModel: AuthViewModel
     @StateObject private var languageManager: LanguageManager
+    @StateObject private var appTypography: AppTypography
     @StateObject private var fullscreenFocusBackdropStore: FullscreenFocusBackdropStore
     @StateObject private var flowWindowManager: FlowWindowManager
 
     init() {
         if FirebaseApp.app() == nil {
-            AppCheckBootstrap.configure()
             FirebaseApp.configure()
         }
 
@@ -49,12 +48,13 @@ struct PomodoroApp: App {
         _onboardingState = StateObject(wrappedValue: OnboardingState())
         _authViewModel = StateObject(wrappedValue: AuthViewModel.shared)
         _languageManager = StateObject(wrappedValue: LanguageManager.shared)
+        _appTypography = StateObject(wrappedValue: AppTypography.shared)
         _fullscreenFocusBackdropStore = StateObject(wrappedValue: FullscreenFocusBackdropStore())
         _flowWindowManager = StateObject(wrappedValue: FlowWindowManager())
     }
 
     var body: some Scene {
-        Window("Pomodoro", id: Self.mainWindowID) {
+        WindowGroup("Orchestrana", id: Self.mainWindowID) {
             rootContentView
         }
         .commands {
@@ -175,6 +175,7 @@ struct PomodoroApp: App {
             .environmentObject(onboardingState)
             .environmentObject(authViewModel)
             .environmentObject(languageManager)
+            .environmentObject(appTypography)
             .environmentObject(fullscreenFocusBackdropStore)
             .environmentObject(flowWindowManager)
             .background(MainWindowSceneOpenerBridge(onRegister: { action in
@@ -267,18 +268,9 @@ struct PomodoroApp: App {
     private func enforceWindowedMainWindow() {
         for window in NSApplication.shared.windows {
             if window.identifier == .pomodoroMainWindow {
-                window.applyPomodoroWindowChrome()
+                let chromeStyle: PomodoroWindowChromeStyle = onboardingState.isPresented ? .onboarding : .main
+                window.applyPomodoroWindowChrome(chromeStyle)
             }
         }
-    }
-}
-
-private enum AppCheckBootstrap {
-    static func configure() {
-#if DEBUG
-        AppCheck.setAppCheckProviderFactory(AppCheckDebugProviderFactory())
-#else
-        AppCheck.setAppCheckProviderFactory(DeviceCheckProviderFactory())
-#endif
     }
 }

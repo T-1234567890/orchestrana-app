@@ -2,7 +2,7 @@
 
 ## 🎯 Mission Accomplished
 
-This PR delivers a **complete, production-ready** unified Calendar, Reminders, and Todo system for the Pomodoro macOS app, implementing all design requirements exactly as specified.
+This PR delivers a **complete, production-ready** unified Calendar, Reminders, and Todo system for the Orchestrana macOS app, implementing all design requirements exactly as specified.
 
 ## 📦 What's Included
 

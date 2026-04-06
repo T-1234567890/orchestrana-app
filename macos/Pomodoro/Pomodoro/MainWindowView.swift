@@ -18,7 +18,9 @@ struct MainWindowView: View {
     @EnvironmentObject private var musicController: MusicController
     @EnvironmentObject private var audioSourceStore: AudioSourceStore
     @EnvironmentObject private var languageManager: LanguageManager
+    @EnvironmentObject private var appTypography: AppTypography
     @EnvironmentObject private var authViewModel: AuthViewModel
+    @EnvironmentObject private var onboardingState: OnboardingState
     @EnvironmentObject private var flowWindowManager: FlowWindowManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject private var featureGate = FeatureGate.shared
@@ -64,6 +66,7 @@ struct MainWindowView: View {
     @State private var selectablePlannedTaskEntries: [AppState.PlanExecutionEntry] = []
     @State private var insightHubResult: AIService.ProductivityInsightResult?
     @State private var isInsightHubLoading = false
+    @State private var splitViewVisibility: NavigationSplitViewVisibility = .all
     @State private var selectedSettingsPane: SettingsPane = .general
     @State private var settingsSearchText = ""
     @State private var showSettingsPlansSheet = false
@@ -84,107 +87,10 @@ struct MainWindowView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            // Real macOS wallpaper blur using NSVisualEffectView
-            // This replaces the failed Rectangle().fill(.ultraThinMaterial) approach because:
-            // - SwiftUI Material is a compositing effect, not true vibrancy
-            // - It cannot access the desktop wallpaper layer
-            // - NSVisualEffectView with .behindWindow blending is required for wallpaper blur
-            // Note: Individual UI components (popups, buttons) may still use .ultraThinMaterial
-            // for layered glass effects on top of this main background blur
-            VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow)
-                .ignoresSafeArea()
-
-            NavigationSplitView {
-                sidebar
-            } detail: {
-                detailView
-            }
-            .navigationSplitViewStyle(.balanced)
-            .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
-            .onAppear {
-                syncDurationTexts()
-                syncLongBreakInterval()
-                syncDashboardPomodoroSessionDefaults()
-                todoStore.attachPlanningStore(planningStore)
-                remindersSync.setTodoStore(todoStore)
-            }
-            .onChange(of: appState.durationConfig) { _, _ in
-                syncDurationTexts()
-                syncLongBreakInterval()
-                syncDashboardPomodoroSessionDefaults()
-            }
-            .onChange(of: sidebarSelection) { oldValue, newValue in
-                if newValue == .flow {
-                    if oldValue != .flow {
-                        lastNonFlowSelection = oldValue
-                    }
-                } else {
-                    lastNonFlowSelection = newValue
-                }
-
-                if newValue == .settings {
-                    Task { @MainActor in
-                        await featureGate.refreshSubscriptionStatusIfNeeded()
-                    }
-                }
-            }
-            .onChange(of: focusedField) { _, newValue in
-                guard newValue == nil else { return }
-                commitDuration(.work)
-                commitDuration(.shortBreak)
-                commitDuration(.longBreak)
-                commitDuration(.countdown)
-                commitDuration(.countdownSeconds)
-            }
-            .onChange(of: appState.pomodoro.state) { oldValue, newValue in
-                triggerPomodoroStateAnimation(from: oldValue, to: newValue)
-            }
-            .onChange(of: appState.countdown.state) { oldValue, newValue in
-                triggerCountdownStateAnimation(from: oldValue, to: newValue)
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .navigateToFlow)) { _ in
-                withAnimation {
-                    sidebarSelection = .flow
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .navigateToPomodoro)) { _ in
-                withAnimation {
-                    sidebarSelection = .dashboard
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .navigateToCountdown)) { _ in
-                withAnimation {
-                    sidebarSelection = .dashboard
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .navigateToTasks)) { _ in
-                withAnimation {
-                    sidebarSelection = .tasks
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .navigateToCalendar)) { _ in
-                withAnimation {
-                    sidebarSelection = .calendar
-                }
-            }
-
-            if appState.transitionPopup != nil || appState.notificationPopup != nil {
-                VStack(spacing: 8) {
-                    if let popup = appState.transitionPopup {
-                        TransitionPopupView(message: popup.message)
-                    }
-                    if let popup = appState.notificationPopup {
-                        InAppNotificationView(title: popup.title, message: popup.body)
-                    }
-                }
-                .padding(.top, 12)
-                .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
-                .allowsHitTesting(false)
-            }
+            mainWindowBackground
+            navigationShell
+            popupOverlay
         }
-        .background(WindowBackgroundConfigurator(onResolveWindow: { window in
-            flowWindowManager.registerMainWindow(window)
-        }))
         .sheet(item: $plansPaywallContext) { context in
             SubscriptionUpgradeSheetView(
                 context: context,
@@ -235,9 +141,6 @@ struct MainWindowView: View {
         } message: {
             Text("Choose which AI-generated plan to run.")
         }
-        // macOS 26 adds an opaque toolbar strip; hide that layer so the wallpaper blur flows
-        // into the title bar while keeping native window controls intact.
-        .toolbarBackground(.hidden, for: .windowToolbar)
         .animation(reduceMotion ? .linear(duration: 0.2) : .easeInOut(duration: 0.25),
                    value: appState.transitionPopup?.id)
         .animation(reduceMotion ? .linear(duration: 0.2) : .easeInOut(duration: 0.25),
@@ -252,8 +155,6 @@ struct MainWindowView: View {
             }
         }
         .listStyle(.sidebar)
-        .scrollContentBackground(.hidden)
-        .background(.ultraThinMaterial)
     }
 
     private var detailView: some View {
@@ -537,6 +438,116 @@ struct MainWindowView: View {
         }
     }
 
+    private var mainWindowBackground: some View {
+        // Real macOS wallpaper blur using NSVisualEffectView
+        // This replaces the failed Rectangle().fill(.ultraThinMaterial) approach because:
+        // - SwiftUI Material is a compositing effect, not true vibrancy
+        // - It cannot access the desktop wallpaper layer
+        // - NSVisualEffectView with .behindWindow blending is required for wallpaper blur
+        // Note: Individual UI components (popups, buttons) may still use .ultraThinMaterial
+        // for layered glass effects on top of this main background blur
+        VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow)
+            .ignoresSafeArea()
+    }
+
+    private var navigationShell: some View {
+        NavigationSplitView(columnVisibility: $splitViewVisibility) {
+            sidebar
+        } detail: {
+            detailView
+        }
+        .navigationSplitViewStyle(.balanced)
+        .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
+        .onAppear {
+            syncDurationTexts()
+            syncLongBreakInterval()
+            syncDashboardPomodoroSessionDefaults()
+            todoStore.attachPlanningStore(planningStore)
+            remindersSync.setTodoStore(todoStore)
+        }
+        .onChange(of: appState.durationConfig) { _, _ in
+            syncDurationTexts()
+            syncLongBreakInterval()
+            syncDashboardPomodoroSessionDefaults()
+        }
+        .onChange(of: sidebarSelection) { oldValue, newValue in
+            if newValue == .flow {
+                if oldValue != .flow {
+                    lastNonFlowSelection = oldValue
+                }
+            } else {
+                lastNonFlowSelection = newValue
+            }
+
+            if newValue == .settings {
+                Task { @MainActor in
+                    await featureGate.refreshSubscriptionStatusIfNeeded()
+                }
+            }
+        }
+        .onChange(of: focusedField) { _, newValue in
+            guard newValue == nil else { return }
+            commitDuration(.work)
+            commitDuration(.shortBreak)
+            commitDuration(.longBreak)
+            commitDuration(.countdown)
+            commitDuration(.countdownSeconds)
+        }
+        .onChange(of: appState.pomodoro.state) { oldValue, newValue in
+            triggerPomodoroStateAnimation(from: oldValue, to: newValue)
+        }
+        .onChange(of: appState.countdown.state) { oldValue, newValue in
+            triggerCountdownStateAnimation(from: oldValue, to: newValue)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToFlow)) { _ in
+            withAnimation {
+                splitViewVisibility = .all
+                sidebarSelection = .flow
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToPomodoro)) { _ in
+            withAnimation {
+                splitViewVisibility = .all
+                sidebarSelection = .dashboard
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToCountdown)) { _ in
+            withAnimation {
+                splitViewVisibility = .all
+                sidebarSelection = .dashboard
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToTasks)) { _ in
+            withAnimation {
+                splitViewVisibility = .all
+                sidebarSelection = .tasks
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToCalendar)) { _ in
+            withAnimation {
+                splitViewVisibility = .all
+                sidebarSelection = .calendar
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var popupOverlay: some View {
+        if appState.transitionPopup != nil || appState.notificationPopup != nil {
+            VStack(spacing: 8) {
+                if let popup = appState.transitionPopup {
+                    TransitionPopupView(message: popup.message)
+                }
+                if let popup = appState.notificationPopup {
+                    InAppNotificationView(title: popup.title, message: popup.body)
+                }
+            }
+            .padding(.top, 12)
+            .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
+            .allowsHitTesting(false)
+        }
+    }
+
     private var flowModeView: some View {
         FlowModeView(
             showsBackgroundLayer: false,
@@ -657,6 +668,10 @@ struct MainWindowView: View {
                     GlassCardView {
                         insightsAIQuickActions
                     }
+                } else {
+                    GlassCardView {
+                        insightEmptyStateCallToAction
+                    }
                 }
 
                 AdaptivePageGrid {
@@ -754,38 +769,7 @@ struct MainWindowView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    HStack(spacing: 8) {
-                        Button {
-                            Task {
-                                await runInsightHubAnalysis()
-                            }
-                        } label: {
-                            if isInsightHubLoading {
-                                ProgressView()
-                                    .controlSize(.small)
-                            } else {
-                                Text(featureGate.canUseAIDeepAnalysis ? "Run Deep Analysis" : "Generate Overview")
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(isInsightHubLoading)
-
-                        Menu("Explain Metric") {
-                            ForEach([
-                                AIService.ProductivityInsightMetric.focusQualityScore,
-                                .consistencyScore,
-                                .focusByHour,
-                                .breakFocusRatio
-                            ], id: \.rawValue) { metric in
-                                Button(metric.displayName) {
-                                    Task {
-                                        await runInsightMetricAnalysis(metric)
-                                    }
-                                }
-                            }
-                        }
-                        .disabled(isInsightHubLoading || !featureGate.canUseAIDeepAnalysis)
-                    }
+                    insightAIButtons
                 }
             }
         }
@@ -805,36 +789,7 @@ struct MainWindowView: View {
                 Spacer()
 
                 HStack(spacing: 8) {
-                    Button {
-                        Task {
-                            await runInsightHubAnalysis()
-                        }
-                    } label: {
-                        if isInsightHubLoading {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Text(featureGate.canUseAIDeepAnalysis ? "Run Deep Analysis" : "Generate Overview")
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(isInsightHubLoading)
-
-                    Menu("Explain Metric") {
-                        ForEach([
-                            AIService.ProductivityInsightMetric.focusQualityScore,
-                            .consistencyScore,
-                            .focusByHour,
-                            .breakFocusRatio
-                        ], id: \.rawValue) { metric in
-                            Button(metric.displayName) {
-                                Task {
-                                    await runInsightMetricAnalysis(metric)
-                                }
-                            }
-                        }
-                    }
-                    .disabled(isInsightHubLoading || !featureGate.canUseAIDeepAnalysis)
+                    insightAIButtons
 
                     Button("Open Workspace") {
                         withAnimation {
@@ -853,6 +808,77 @@ struct MainWindowView: View {
                     .padding(12)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
+        }
+    }
+
+    private var insightEmptyStateCallToAction: some View {
+        HStack(alignment: .top, spacing: 16) {
+            Image(systemName: "sparkles.rectangle.stack")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 36, height: 36)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Come back after a little more focus")
+                    .font(.headline)
+                Text("Start a focus session or add a few tasks first. Once you have some activity here, Insight AI will be ready with overviews and analysis.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+
+            Button("Start Focusing") {
+                withAnimation {
+                    sidebarSelection = .dashboard
+                }
+            }
+            .buttonStyle(.borderedProminent)
+        }
+    }
+
+    private var insightAIButtons: some View {
+        HStack(spacing: 8) {
+            Button {
+                Task {
+                    await runInsightWeeklyOverview()
+                }
+            } label: {
+                if isInsightHubLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Text("Generate Overview")
+                }
+            }
+            .buttonStyle(.bordered)
+            .disabled(isInsightHubLoading)
+
+            Button("Run Deep Analysis") {
+                Task {
+                    await runInsightDeepAnalysis()
+                }
+            }
+            .buttonStyle(.bordered)
+            .disabled(isInsightHubLoading)
+
+            Menu("Explain Metric") {
+                ForEach([
+                    AIService.ProductivityInsightMetric.focusQualityScore,
+                    .consistencyScore,
+                    .focusByHour,
+                    .breakFocusRatio
+                ], id: \.rawValue) { metric in
+                    Button(metric.displayName) {
+                        Task {
+                            await runInsightMetricAnalysis(metric)
+                        }
+                    }
+                }
+            }
+            .disabled(isInsightHubLoading)
         }
     }
 
@@ -1007,17 +1033,29 @@ struct MainWindowView: View {
             title: "General",
             description: "Core app behavior and defaults that affect everyday use."
         ) {
-            settingsLabeledControl(title: "Language", description: "Choose how the app should present text.") {
-                Picker(languageManager.text("settings.language.picker.label"), selection: $languageManager.currentLanguage) {
-                    Text(languageManager.text("settings.language.system"))
-                        .tag(LanguageManager.AppLanguage.auto)
-                    Text(languageManager.text("settings.language.english"))
-                        .tag(LanguageManager.AppLanguage.english)
-                    Text(languageManager.text("settings.language.chinese"))
-                        .tag(LanguageManager.AppLanguage.chinese)
+            VStack(alignment: .leading, spacing: 18) {
+                settingsLabeledControl(title: "Language", description: "Choose how the app should present text.") {
+                    Picker(languageManager.text("settings.language.picker.label"), selection: $languageManager.currentLanguage) {
+                        Text(languageManager.text("settings.language.system"))
+                            .tag(LanguageManager.AppLanguage.auto)
+                        Text(languageManager.text("settings.language.english"))
+                            .tag(LanguageManager.AppLanguage.english)
+                        Text(languageManager.text("settings.language.chinese"))
+                            .tag(LanguageManager.AppLanguage.chinese)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 320)
                 }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 320)
+
+                settingsLabeledControl(
+                    title: languageManager.text("settings.onboarding.title"),
+                    description: languageManager.text("settings.onboarding.description")
+                ) {
+                    Button(languageManager.text("settings.onboarding.reopen")) {
+                        onboardingState.reopen()
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
         }
     }
@@ -1027,7 +1065,22 @@ struct MainWindowView: View {
             title: "Appearance",
             description: "Keep the interface clean, readable, and consistent with macOS."
         ) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 18) {
+                settingsLabeledControl(
+                    title: languageManager.text("settings.appearance.font.title"),
+                    description: languageManager.text("settings.appearance.font.description")
+                ) {
+                    Picker(languageManager.text("settings.appearance.font.title"), selection: $appTypography.style) {
+                        ForEach(AppTypography.Style.allCases) { style in
+                            Text(style.title(using: languageManager)).tag(style)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 320)
+                }
+
+                Divider()
+
                 settingsInfoRow(title: "Style", value: "System materials and native controls")
                 settingsInfoRow(title: "Layout", value: "Adaptive modules that expand with window size")
             }
@@ -2620,37 +2673,52 @@ struct MainWindowView: View {
         return hasAnalyticsData || !todoStore.items.isEmpty
     }
 
-    private func ensureInsightAIUnlocked() -> Bool {
+    private func ensureInsightAIUnlocked(requiredTier: PlanTier = .plus) -> Bool {
         switch featureGate.tier {
         case .free, .expired:
             plansPaywallContext = SubscriptionPaywallContext(
-                requiredTier: .plus,
+                requiredTier: requiredTier,
                 title: "Unlock AI Workspace",
                 message: "Upgrade to Plus or Pro to use task, schedule, and insight AI from the new workspace."
             )
             return false
-        case .plus, .beta, .pro, .developer:
+        case .plus, .beta:
+            if requiredTier == .pro {
+                plansPaywallContext = SubscriptionPaywallContext(
+                    requiredTier: .pro,
+                    title: "Unlock Deeper Insight AI",
+                    message: "Deep analysis is available in Pro."
+                )
+                return false
+            }
+            return true
+        case .pro, .developer:
             return true
         }
     }
 
-    private func runInsightHubAnalysis() async {
+    private func runInsightWeeklyOverview() async {
         await featureGate.refreshSubscriptionStatusIfNeeded()
         let snapshot = summarySnapshot ?? productivityAnalyticsStore.snapshot(calendar: .current)
-        guard ensureInsightAIUnlocked() else { return }
+        guard ensureInsightAIUnlocked(requiredTier: .plus) else { return }
         isInsightHubLoading = true
-        let result: AIService.ProductivityInsightResult
-        if featureGate.canUseAIDeepAnalysis {
-            result = await AIService.shared.generateDeepAnalysis(
-                snapshot: snapshot,
-                taskSummary: summaryTaskSummary
-            )
-        } else {
-            result = await AIService.shared.generateWeeklyOverview(
-                snapshot: snapshot,
-                taskSummary: summaryTaskSummary
-            )
-        }
+        let result = await AIService.shared.generateWeeklyOverview(
+            snapshot: snapshot,
+            taskSummary: summaryTaskSummary
+        )
+        insightHubResult = result
+        isInsightHubLoading = false
+    }
+
+    private func runInsightDeepAnalysis() async {
+        await featureGate.refreshSubscriptionStatusIfNeeded()
+        let snapshot = summarySnapshot ?? productivityAnalyticsStore.snapshot(calendar: .current)
+        guard ensureInsightAIUnlocked(requiredTier: .pro) else { return }
+        isInsightHubLoading = true
+        let result = await AIService.shared.generateDeepAnalysis(
+            snapshot: snapshot,
+            taskSummary: summaryTaskSummary
+        )
         insightHubResult = result
         isInsightHubLoading = false
     }
@@ -2658,15 +2726,7 @@ struct MainWindowView: View {
     private func runInsightMetricAnalysis(_ metric: AIService.ProductivityInsightMetric) async {
         await featureGate.refreshSubscriptionStatusIfNeeded()
         guard let snapshot = summarySnapshot else { return }
-        guard ensureInsightAIUnlocked() else { return }
-        guard featureGate.canUseAIDeepAnalysis else {
-            plansPaywallContext = SubscriptionPaywallContext(
-                requiredTier: .pro,
-                title: "Unlock Deeper Insight AI",
-                message: "Metric-level explanations are available in Pro."
-            )
-            return
-        }
+        guard ensureInsightAIUnlocked(requiredTier: .plus) else { return }
         isInsightHubLoading = true
         let metricResult = await AIService.shared.analyzeMetric(
             metric,
@@ -3318,6 +3378,7 @@ private struct AdaptiveMetricGrid<Content: View>: View {
 }
 
 private struct SectionHeaderView<Trailing: View>: View {
+    @EnvironmentObject private var appTypography: AppTypography
     let title: String
     let subtitle: String?
     let trailing: Trailing
@@ -3336,7 +3397,7 @@ private struct SectionHeaderView<Trailing: View>: View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.title3.weight(.semibold))
+                    .font(appTypography.sectionHeaderFont())
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
                         .font(.subheadline)
@@ -3429,13 +3490,14 @@ private struct AIActionCard<Trailing: View>: View {
 }
 
 private struct SettingsSectionCard<Content: View>: View {
+    @EnvironmentObject private var appTypography: AppTypography
     let title: String
     @ViewBuilder var content: Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
-                .font(.system(.title3, design: .rounded).weight(.semibold))
+                .font(appTypography.cardTitleFont())
                 .foregroundStyle(.primary)
 
             VStack(alignment: .leading, spacing: 12) {
@@ -3456,6 +3518,7 @@ private struct SettingsSectionCard<Content: View>: View {
 }
 
 private struct SettingsModuleCard<Content: View>: View {
+    @EnvironmentObject private var appTypography: AppTypography
     let title: String
     let description: String?
     @ViewBuilder var content: Content
@@ -3466,7 +3529,7 @@ private struct SettingsModuleCard<Content: View>: View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)
-                    .font(.system(.title3, design: .rounded).weight(.semibold))
+                    .font(appTypography.cardTitleFont())
                 if let description, !description.isEmpty {
                     Text(description)
                         .font(.subheadline)

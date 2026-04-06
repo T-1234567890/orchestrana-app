@@ -401,11 +401,7 @@ final class AIService {
             throw AIServiceError.invalidResponse
         }
 
-        let options = HTTPSCallableOptions(requireLimitedUseAppCheckTokens: false)
-        let callable = functions.httpsCallable(
-            "generateCalendarSchedule",
-            options: options
-        )
+        let callable = functions.httpsCallable("generateCalendarSchedule")
         callable.timeoutInterval = 60
         print("[AIService] Calling callable generateCalendarSchedule in us-central1")
         let result = try await callable.call(payload)

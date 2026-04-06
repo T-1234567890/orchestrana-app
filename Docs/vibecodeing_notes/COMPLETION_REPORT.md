@@ -2,7 +2,7 @@
 
 ## Summary
 
-A complete, production-ready Calendar, Reminders, and Todo system has been implemented for the Pomodoro macOS app, following all design requirements exactly as specified.
+A complete, production-ready Calendar, Reminders, and Todo system has been implemented for the Orchestrana macOS app, following all design requirements exactly as specified.
 
 ## What Was Delivered
 

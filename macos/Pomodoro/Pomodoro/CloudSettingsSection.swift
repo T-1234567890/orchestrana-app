@@ -148,20 +148,6 @@ struct LoginView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             AuthProviderButton(
-                provider: .google,
-                title: AuthProvider.google.title(using: localizationManager),
-                isLoading: activeProvider == .google && authViewModel.isAuthenticating,
-                isDisabled: authViewModel.isAuthenticating
-            ) {
-                Task { @MainActor in
-                    authViewModel.clearError()
-                    await performProviderSignIn(provider: .google) {
-                        try await authViewModel.signInWithGoogle()
-                    }
-                }
-            }
-
-            AuthProviderButton(
                 provider: .apple,
                 title: AuthProvider.apple.title(using: localizationManager),
                 isLoading: activeProvider == .apple && authViewModel.isAuthenticating,
@@ -171,6 +157,20 @@ struct LoginView: View {
                     authViewModel.clearError()
                     await performProviderSignIn(provider: .apple) {
                         try await authViewModel.signInWithApple()
+                    }
+                }
+            }
+
+            AuthProviderButton(
+                provider: .google,
+                title: AuthProvider.google.title(using: localizationManager),
+                isLoading: activeProvider == .google && authViewModel.isAuthenticating,
+                isDisabled: authViewModel.isAuthenticating
+            ) {
+                Task { @MainActor in
+                    authViewModel.clearError()
+                    await performProviderSignIn(provider: .google) {
+                        try await authViewModel.signInWithGoogle()
                     }
                 }
             }
@@ -237,13 +237,13 @@ struct AuthProviderButton: View {
                 }
             }
             .padding(.horizontal, 16)
-            .frame(height: 42)
+            .frame(height: 48)
             .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(Color(nsColor: .controlBackgroundColor))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(Color.primary.opacity(0.12), lineWidth: 1)
             )
         }

@@ -49,7 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor [weak self] in
             await Task.yield()
             guard let self, let window = self.existingMainWindow() else { return }
-            window.applyPomodoroWindowChrome()
+            window.applyPomodoroWindowChrome(currentWindowChromeStyle())
         }
     }
 
@@ -104,8 +104,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if window.isMiniaturized {
             window.deminiaturize(nil)
         }
-        window.applyPomodoroWindowChrome()
+        window.applyPomodoroWindowChrome(currentWindowChromeStyle())
         window.makeKeyAndOrderFront(nil)
+    }
+
+    private func currentWindowChromeStyle() -> PomodoroWindowChromeStyle {
+        onboardingState?.isPresented == true ? .onboarding : .main
     }
 
     private func configureControllersIfNeeded() {

@@ -2,7 +2,7 @@
 
 ## Summary
 
-This implementation provides a unified Calendar, Reminders, and Todo system for the Pomodoro macOS app following the exact design requirements specified.
+This implementation provides a unified Calendar, Reminders, and Todo system for the Orchestrana macOS app following the exact design requirements specified.
 
 ## What Was Implemented
 

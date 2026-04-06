@@ -2,7 +2,6 @@ import Foundation
 import Combine
 import CryptoKit
 import FirebaseAuth
-import FirebaseAppCheck
 import FirebaseCore
 import StoreKit
 
@@ -241,16 +240,12 @@ final class AIProxyClient {
 
     private func performSend<Response: Decodable>(bodyData: Data, decodeAs: Response.Type) async throws -> Response {
         let token = try await AuthViewModel.shared.getValidIDToken()
-        let appCheckToken = await fetchAppCheckToken()
         let endpoint = try resolveEndpointURL()
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        if let appCheckToken, !appCheckToken.isEmpty {
-            request.setValue(appCheckToken, forHTTPHeaderField: "X-Firebase-AppCheck")
-        }
         request.httpBody = bodyData
 
         let data: Data
@@ -325,13 +320,6 @@ final class AIProxyClient {
         return nil
     }
 
-    private func fetchAppCheckToken() async -> String? {
-        await withCheckedContinuation { continuation in
-            AppCheck.appCheck().token(forcingRefresh: false) { token, _ in
-                continuation.resume(returning: token?.token)
-            }
-        }
-    }
 }
 
 struct SubscriptionEntitlement: Decodable {
@@ -398,16 +386,12 @@ final class SubscriptionAPIClient {
 
     func verify(transactionId: String) async throws -> SubscriptionEntitlement {
         let token = try await AuthViewModel.shared.getValidIDToken()
-        let appCheckToken = await fetchAppCheckToken()
         let endpoint = try resolveEndpointURL()
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        if let appCheckToken, !appCheckToken.isEmpty {
-            request.setValue(appCheckToken, forHTTPHeaderField: "X-Firebase-AppCheck")
-        }
         request.httpBody = try JSONEncoder().encode(VerifyRequest(transactionId: transactionId))
 
         let data: Data
@@ -464,13 +448,6 @@ final class SubscriptionAPIClient {
         return nil
     }
 
-    private func fetchAppCheckToken() async -> String? {
-        await withCheckedContinuation { continuation in
-            AppCheck.appCheck().token(forcingRefresh: false) { token, _ in
-                continuation.resume(returning: token?.token)
-            }
-        }
-    }
 }
 
 @MainActor
