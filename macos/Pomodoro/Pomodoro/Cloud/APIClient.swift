@@ -1,9 +1,48 @@
 import Foundation
 import Combine
 import CryptoKit
+import FirebaseAppCheck
 import FirebaseAuth
 import FirebaseCore
 import StoreKit
+
+enum AppCheckRequestAuthorizer {
+    static let headerName = "X-Firebase-AppCheck"
+
+    enum AppCheckError: LocalizedError {
+        case missingToken
+
+        var errorDescription: String? {
+            switch self {
+            case .missingToken:
+                return "App Check token is unavailable."
+            }
+        }
+    }
+
+    static func fetchToken(forceRefresh: Bool = false) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            AppCheck.appCheck().token(forcingRefresh: forceRefresh) { token, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                guard let value = token?.token, !value.isEmpty else {
+                    continuation.resume(throwing: AppCheckError.missingToken)
+                    return
+                }
+
+                continuation.resume(returning: value)
+            }
+        }
+    }
+
+    static func authorize(_ request: inout URLRequest) async throws {
+        let token = try await fetchToken()
+        request.setValue(token, forHTTPHeaderField: headerName)
+    }
+}
 
 final class APIClient {
     enum APIError: LocalizedError {
@@ -53,6 +92,7 @@ final class APIClient {
 
         let token = try await fetchIDToken()
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        try await AppCheckRequestAuthorizer.authorize(&request)
 
         return request
     }
@@ -246,6 +286,7 @@ final class AIProxyClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        try await AppCheckRequestAuthorizer.authorize(&request)
         request.httpBody = bodyData
 
         let data: Data
@@ -392,6 +433,7 @@ final class SubscriptionAPIClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        try await AppCheckRequestAuthorizer.authorize(&request)
         request.httpBody = try JSONEncoder().encode(VerifyRequest(transactionId: transactionId))
 
         let data: Data

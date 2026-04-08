@@ -6,6 +6,8 @@
 	<array>
 		<string>Default</string>
 	</array>
+	<key>com.apple.developer.devicecheck.appattest-environment</key>
+	<string>production</string>
 	<key>keychain-access-groups</key>
 	<array>
 		<string>$(AppIdentifierPrefix)dev.pomodoro.Pomodoro</string>

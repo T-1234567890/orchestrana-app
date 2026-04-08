@@ -41,6 +41,7 @@
 		7C7920B62F5C38BE00C588C1 /* FirebaseAppDistribution-Beta in Frameworks */ = {isa = PBXBuildFile; productRef = 7C7920B52F5C38BE00C588C1 /* FirebaseAppDistribution-Beta */; };
 		7C7920B82F5C38BE00C588C1 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 7C7920B72F5C38BE00C588C1 /* FirebaseAuth */; };
 		7C7920BA2F5C38BE00C588C1 /* FirebaseAuthCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 7C7920B92F5C38BE00C588C1 /* FirebaseAuthCombine-Community */; };
+		7C7920BA2F5C38BE00C588C2 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 7C7920B92F5C38BE00C588C2 /* FirebaseAppCheck */; };
 		7C7920BC2F5C38BE00C588C1 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7C7920BB2F5C38BE00C588C1 /* FirebaseCore */; };
 		7C7920BE2F5C38BE00C588C1 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 7C7920BD2F5C38BE00C588C1 /* FirebaseCrashlytics */; };
 		7C7920C02F5C38BE00C588C1 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 7C7920BF2F5C38BE00C588C1 /* FirebaseDatabase */; };
@@ -194,6 +195,7 @@
 				7C7920B02F5C38BE00C588C1 /* FirebaseAnalyticsCore in Frameworks */,
 				7C5B41642F68065A00C12AA1 /* StoreKit.framework in Frameworks */,
 				7C7920CC2F5C38BE00C588C1 /* FirebasePerformance in Frameworks */,
+				7C7920BA2F5C38BE00C588C2 /* FirebaseAppCheck in Frameworks */,
 				7C7920BA2F5C38BE00C588C1 /* FirebaseAuthCombine-Community in Frameworks */,
 				7C7920C82F5C38BE00C588C1 /* FirebaseFunctionsCombine-Community in Frameworks */,
 				7C7920BE2F5C38BE00C588C1 /* FirebaseCrashlytics in Frameworks */,
@@ -402,6 +404,7 @@
 				7C7920AF2F5C38BE00C588C1 /* FirebaseAnalyticsCore */,
 				7C7920B12F5C38BE00C588C1 /* FirebaseAnalyticsIdentitySupport */,
 				7C7920B52F5C38BE00C588C1 /* FirebaseAppDistribution-Beta */,
+				7C7920B92F5C38BE00C588C2 /* FirebaseAppCheck */,
 				7C7920B72F5C38BE00C588C1 /* FirebaseAuth */,
 				7C7920B92F5C38BE00C588C1 /* FirebaseAuthCombine-Community */,
 				7C7920BB2F5C38BE00C588C1 /* FirebaseCore */,
@@ -889,6 +892,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 7C7920AC2F5C38BE00C588C1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = "FirebaseAuthCombine-Community";
+		};
+		7C7920B92F5C38BE00C588C2 /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7C7920AC2F5C38BE00C588C1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
 		};
 		7C7920BB2F5C38BE00C588C1 /* FirebaseCore */ = {
 			isa = XCSwiftPackageProductDependency;
