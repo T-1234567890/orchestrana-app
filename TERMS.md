@@ -1,5 +1,7 @@
 Additional Terms – Firebase Configuration Usage
 
+This project is licensed under MIT for the source code. However, the GoogleService-Info.plist file provides access to a private, paid backend service. Usage of this code does not grant a license to use the maintainer's Firebase resources. Any unauthorized requests to the backend are considered a violation of these terms and may result in immediate IP-based blocking and reporting to service providers.
+
 The Firebase configuration file (GoogleService-Info.plist) included in this repository is provided solely for the operation of this project.
 
 This configuration is not covered by the open-source license of the repository.
