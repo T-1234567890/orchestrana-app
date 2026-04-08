@@ -118,20 +118,35 @@ The current version is fully native Swift; legacy Tauri/Svelte/Python versions a
 
 >## ⚠️ Firebase Config File Usage
 >
->This repository does **NOT** contain a real Firebase configuration.
+>⚠️ Important
+>	- The included GoogleService-Info.plist is for this project only
+>	- It is not intended for reuse, modification, or external environments
 >
->### ⚠️ DO NOT USE THE INCLUDED FILE
+>🚫 Do NOT
+>	- Do not use this configuration for your own Firebase projects
+>	- Do not modify or overwrite this file in commits
+>	- Do not rely on it outside of this repository
 >
->Any GoogleService-Info.plist file in this repository is a **placeholder** and exists only so the project can compile in CI.
->
->If you need to run your own Firebase instance, please follow these steps:
->1. Create your own Firebase project
->2. Download your own `GoogleService-Info.plist`
->3. Replace the existing file locally for your environment
->4. **Never commit your own plist file to the repository**
->
+>✅ If you want to use your own Firebase project
+>	1.	Create your own Firebase project
+>	2.	Download your own GoogleService-Info.plist
+>	3.	Replace the file locally only
+>	4.	Add it to your local ignore if needed
+> 
 >See Example:
 >`GoogleService-Info.plist.sample`
+> 
+>**Legal Notice**
+>
+>The Firebase configuration contained in this repository is the property of the project owner and is provided strictly for use within this project only.
+>
+>You are not permitted to:
+>	- Use this configuration in any other application or project
+>	- Send requests to the associated Firebase project outside of this application
+>	- Attempt to access, exploit, or interfere with the backend services
+> - Any types of abuses
+>
+>Any unauthorized use may result in access restrictions and may be subject to further action.
 
 ## Version status/Release Notes
 
