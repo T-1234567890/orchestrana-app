@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import FirebaseAuth
+import FirebaseCore
 import FirebaseFunctions
 
 /// Entitlement-aware feature gating for cloud-powered capabilities.
@@ -114,7 +115,7 @@ final class FeatureGate: ObservableObject {
     static let shared = FeatureGate()
 
     private var authListener: AuthStateDidChangeListenerHandle?
-    private let functions: Functions
+    private let functions: Functions?
     private let defaults: UserDefaults
     private static let cachedEntitlementKey = "feature_gate.cached_entitlement"
 
@@ -122,8 +123,10 @@ final class FeatureGate: ObservableObject {
         self.defaults = defaults
         if let functions {
             self.functions = functions
-        } else {
+        } else if FirebaseApp.app() != nil {
             self.functions = Functions.functions(region: "us-central1")
+        } else {
+            self.functions = nil
         }
         restoreCachedEntitlementIfAvailable()
         listenForAuthChanges()
@@ -384,6 +387,11 @@ final class FeatureGate: ObservableObject {
 
     @MainActor
     func refreshAllowance() async {
+        guard let functions else {
+            allowanceErrorMessage = nil
+            return
+        }
+
         guard AuthViewModel.shared.isAuthenticated else {
             resetToSignedOutState()
             return
@@ -405,6 +413,7 @@ final class FeatureGate: ObservableObject {
     }
 
     private func listenForAuthChanges() {
+        guard FirebaseApp.app() != nil else { return }
         authListener = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             guard let self else { return }
             Task { @MainActor in
@@ -436,6 +445,7 @@ final class FeatureGate: ObservableObject {
 
     @MainActor
     private func restoreCachedEntitlementIfAvailable() {
+        guard FirebaseApp.app() != nil else { return }
         guard let uid = Auth.auth().currentUser?.uid else { return }
         guard let data = defaults.data(forKey: Self.cachedEntitlementKey) else { return }
         guard let cached = try? JSONDecoder().decode(CachedEntitlement.self, from: data) else { return }
@@ -467,7 +477,7 @@ final class FeatureGate: ObservableObject {
             remaining: nil,
             resetAt: dailyAllowanceResetAt
         )
-        if let uid = Auth.auth().currentUser?.uid {
+        if FirebaseApp.app() != nil, let uid = Auth.auth().currentUser?.uid {
             persistCachedEntitlement(uid: uid, tier: tier, subscriptionEndAt: payload.subscriptionEndAt)
         }
     }

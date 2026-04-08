@@ -8,6 +8,55 @@
 import SwiftUI
 import FirebaseCore
 
+enum FirebaseBootstrap {
+    private static let knownPlaceholderGoogleAppIDs: Set<String> = [
+        "1:455801282325:ios:f98ba251e3e108e20bd31c"
+    ]
+
+    @discardableResult
+    static func configureIfPossible() -> Bool {
+        if FirebaseApp.app() != nil {
+            return true
+        }
+
+        guard let resourceURL = Bundle.main.url(forResource: "GoogleService-Info", withExtension: "plist") else {
+            print("[Firebase] Skipping configure: GoogleService-Info.plist is missing from the app bundle.")
+            return false
+        }
+
+        guard
+            let configuration = NSDictionary(contentsOf: resourceURL) as? [String: Any]
+        else {
+            print("[Firebase] Skipping configure: GoogleService-Info.plist could not be decoded.")
+            return false
+        }
+
+        let googleAppID = (configuration["GOOGLE_APP_ID"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let clientID = (configuration["CLIENT_ID"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let bundleID = (configuration["BUNDLE_ID"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let projectID = (configuration["PROJECT_ID"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let runtimeBundleID = Bundle.main.bundleIdentifier ?? ""
+
+        guard !googleAppID.isEmpty, !clientID.isEmpty else {
+            print("[Firebase] Skipping configure: plist is missing GOOGLE_APP_ID or CLIENT_ID.")
+            return false
+        }
+
+        if knownPlaceholderGoogleAppIDs.contains(googleAppID) {
+            print("[Firebase] Skipping configure: bundled plist is the repository placeholder for project \(projectID).")
+            return false
+        }
+
+        if !bundleID.isEmpty, !runtimeBundleID.isEmpty, bundleID != runtimeBundleID {
+            print("[Firebase] Skipping configure: plist bundle ID \(bundleID) does not match app bundle ID \(runtimeBundleID).")
+            return false
+        }
+
+        FirebaseApp.configure()
+        return FirebaseApp.app() != nil
+    }
+}
+
 @MainActor
 @main
 struct PomodoroApp: App {
@@ -25,9 +74,7 @@ struct PomodoroApp: App {
     @StateObject private var flowWindowManager: FlowWindowManager
 
     init() {
-        if FirebaseApp.app() == nil {
-            FirebaseApp.configure()
-        }
+        _ = FirebaseBootstrap.configureIfPossible()
 
         SubscriptionStore.shared.start()
 

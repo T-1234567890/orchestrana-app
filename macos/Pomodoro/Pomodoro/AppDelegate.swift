@@ -79,12 +79,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func configureFirebase() {
-        if FirebaseApp.app() == nil {
-            FirebaseApp.configure()
-        }
+        _ = FirebaseBootstrap.configureIfPossible()
 
         guard FirebaseApp.app() != nil else {
-            print("[Firebase] ERROR: Firebase failed to initialize. FirebaseApp.app() is nil after configure().")
+            print("[Firebase] Firebase is unavailable. Cloud auth and subscription-backed features will stay disabled.")
             return
         }
 
