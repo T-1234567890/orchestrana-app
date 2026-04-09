@@ -229,6 +229,24 @@ final class FeatureGate: ObservableObject {
         canUseCloudProxyAI
     }
 
+    var canUseEventTasks: Bool {
+        switch tier {
+        case .plus, .pro, .developer:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var canUseAIEventTasks: Bool {
+        switch tier {
+        case .pro, .developer:
+            return true
+        default:
+            return false
+        }
+    }
+
     var canUseTaskMarkdown: Bool {
         canUseAdvancedTasks
     }
@@ -258,6 +276,8 @@ final class FeatureGate: ObservableObject {
         switch action {
         case .breakdown:
             return canUseAIAssistantBreakdown
+        case .draftFromIdea:
+            return canUseAIAssistantBreakdown
         case .planning:
             return canUseAIPlanning
         case .reschedule:
@@ -274,6 +294,8 @@ final class FeatureGate: ObservableObject {
             switch action {
             case .breakdown:
                 return LocalizationManager.shared.text("tasks.ai_assistant.breakdown_requires_plus")
+            case .draftFromIdea:
+                return LocalizationManager.shared.text("tasks.ai_assistant.draft_from_idea_requires_plus")
             case .planning:
                 return LocalizationManager.shared.text("tasks.ai_assistant.planning_requires_plus")
             case .reschedule:
@@ -574,7 +596,7 @@ final class FeatureGate: ObservableObject {
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        try await AppCheckRequestAuthorizer.authorize(&request)
+        await AppCheckRequestAuthorizer.authorize(&request)
         return request
     }
 

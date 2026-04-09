@@ -2,6 +2,7 @@ import SwiftUI
 
 enum AIAssistantAction: String, CaseIterable, Identifiable {
     case breakdown
+    case draftFromIdea
     case planning
     case reschedule
 
@@ -15,7 +16,7 @@ enum AIAssistantAction: String, CaseIterable, Identifiable {
         switch self {
         case .breakdown, .planning:
             return true
-        case .reschedule:
+        case .draftFromIdea, .reschedule:
             return false
         }
     }
@@ -24,6 +25,8 @@ enum AIAssistantAction: String, CaseIterable, Identifiable {
         switch self {
         case .breakdown:
             return "list.bullet.rectangle.portrait"
+        case .draftFromIdea:
+            return "sparkles.rectangle.stack"
         case .planning:
             return "sparkles"
         case .reschedule:
@@ -265,6 +268,8 @@ struct AIAssistantView: View {
         switch action {
         case .breakdown:
             return 1
+        case .draftFromIdea:
+            return 1
         case .planning:
             let totalMinutes = tasks.compactMap(\.durationMinutes).reduce(0, +)
             return max(1, totalMinutes / 60)
@@ -277,6 +282,8 @@ struct AIAssistantView: View {
         switch action {
         case .breakdown:
             return localizationManager.text("tasks.ai_assistant.breakdown_title")
+        case .draftFromIdea:
+            return localizationManager.text("tasks.ai_assistant.draft_from_idea_title")
         case .planning:
             return localizationManager.text("tasks.ai_assistant.plan_title")
         case .reschedule:
@@ -288,6 +295,8 @@ struct AIAssistantView: View {
         switch action {
         case .breakdown:
             return localizationManager.text("tasks.ai_assistant.breakdown_description")
+        case .draftFromIdea:
+            return localizationManager.text("tasks.ai_assistant.draft_from_idea_description")
         case .planning:
             return localizationManager.text("tasks.ai_assistant.plan_description")
         case .reschedule:
@@ -299,6 +308,8 @@ struct AIAssistantView: View {
         switch action {
         case .breakdown:
             return localizationManager.text("tasks.ai_assistant.breakdown_run")
+        case .draftFromIdea:
+            return localizationManager.text("tasks.ai_assistant.draft_from_idea_run")
         case .planning:
             return localizationManager.text("tasks.ai_assistant.plan_run")
         case .reschedule:
@@ -310,6 +321,8 @@ struct AIAssistantView: View {
         switch action {
         case .breakdown:
             return localizationManager.text("tasks.ai_assistant.breakdown_prompt")
+        case .draftFromIdea:
+            return localizationManager.text("tasks.ai_assistant.draft_from_idea_description")
         case .planning:
             return localizationManager.text("tasks.ai_assistant.plan_prompt")
         case .reschedule:

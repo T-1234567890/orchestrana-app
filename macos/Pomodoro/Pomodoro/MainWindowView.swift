@@ -628,7 +628,8 @@ struct MainWindowView: View {
         CalendarView(
             calendarManager: calendarManager,
             permissionsManager: permissionsManager,
-            todoStore: todoStore
+            todoStore: todoStore,
+            planningStore: planningStore
         )
     }
 

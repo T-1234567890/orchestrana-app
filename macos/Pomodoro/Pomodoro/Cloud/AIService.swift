@@ -56,6 +56,10 @@ final class AIService {
         let focusStyle: String?
     }
 
+    struct EventTaskSuggestionResponse: Equatable {
+        let tasks: [String]
+    }
+
     struct FreeSlot: Codable, Equatable {
         let start: Date
         let end: Date
@@ -341,6 +345,51 @@ final class AIService {
         return try decodeTaskDraftResponse(from: response.outputText)
     }
 
+    func generateEventTasks(eventTitle: String, description: String?) async throws -> EventTaskSuggestionResponse {
+        let trimmedTitle = eventTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedDescription = description?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        let prompt = """
+        You are generating actionable task suggestions for a calendar event in a productivity app.
+        Return strict JSON only. No markdown fences. No commentary.
+
+        Required JSON shape:
+        {
+          "tasks": [
+            { "title": "..." },
+            { "title": "..." }
+          ]
+        }
+
+        Rules:
+        - Generate 3 to 7 tasks.
+        - Each task title must be short, concrete, and actionable.
+        - Avoid duplicates and vague items.
+        - Base the tasks only on the event title and optional description.
+
+        User input:
+        {
+          "eventTitle": \(Self.jsonStringLiteral(trimmedTitle)),
+          "description": \(Self.jsonStringLiteral(trimmedDescription))
+        }
+        """
+
+        let response: AIProxyClient.ProxyResponse = try await aiProxyClient.sendPrompt(
+            .init(
+                prompt: prompt,
+                modelFamily: "deepseek",
+                featureType: "quick_chat",
+                temperature: 0.2,
+                maxOutputTokens: 220,
+                metadata: [
+                    "insight_kind": "event_task_generation"
+                ]
+            )
+        )
+
+        return try decodeEventTaskSuggestionResponse(from: response.outputText)
+    }
+
     func calendarReschedule(
         tasks: [TodoItem],
         events: [EKEvent],
@@ -525,6 +574,32 @@ final class AIService {
             tags: Array(NSOrderedSet(array: tags)) as? [String] ?? tags,
             focusStyle: (focusStyle?.isEmpty == false) ? focusStyle : nil
         )
+    }
+
+    private func decodeEventTaskSuggestionResponse(from value: String?) throws -> EventTaskSuggestionResponse {
+        guard let json = extractJSONObjectString(from: value) else {
+            throw AIServiceError.invalidResponse
+        }
+
+        struct RawResponse: Decodable {
+            struct Task: Decodable {
+                let title: String?
+            }
+            let tasks: [Task]?
+        }
+
+        let data = Data(json.utf8)
+        let raw = try JSONDecoder().decode(RawResponse.self, from: data)
+        let tasks = (raw.tasks ?? [])
+            .compactMap { $0.title?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        let uniqueTasks = Array(NSOrderedSet(array: tasks)) as? [String] ?? tasks
+        let limitedTasks = Array(uniqueTasks.prefix(7))
+        guard !limitedTasks.isEmpty else {
+            throw AIServiceError.invalidResponse
+        }
+        return EventTaskSuggestionResponse(tasks: limitedTasks)
     }
 
     private func extractJSONObjectString(from value: String?) -> String? {

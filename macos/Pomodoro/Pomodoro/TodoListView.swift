@@ -56,6 +56,7 @@ struct TodoListView: View {
     @State private var animatingSubtaskCompletionIDs: Set<UUID> = []
     @State private var bouncingSubtaskCompletionIDs: Set<UUID> = []
     @State private var editorSubtasks: [TodoSubtask] = []
+    @State private var collapsedEventGroupIDs: Set<UUID> = []
     
     private static let taskHintDefaultsKey = "com.pomodoro.taskHintShown"
     private var taskExpansionAnimation: Animation {
@@ -91,6 +92,13 @@ struct TodoListView: View {
         case matrix
 
         var id: String { rawValue }
+    }
+
+    private struct EventTaskGroupEntry: Identifiable {
+        let id: UUID
+        let eventTitle: String
+        let eventStartDate: Date?
+        let tasks: [PlanningItem.EventTask]
     }
 
     private static let dateFormatter: DateFormatter = {
@@ -280,7 +288,7 @@ struct TodoListView: View {
                     .padding(16)
                 }
             } else {
-                if filteredItems.isEmpty {
+                if filteredItems.isEmpty && filteredEventTaskGroups.isEmpty {
                     emptyState
                 } else {
                     List {
@@ -290,6 +298,20 @@ struct TodoListView: View {
                                 .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
+                        }
+
+                        if !filteredEventTaskGroups.isEmpty {
+                            eventSectionDivider
+                                .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+
+                            ForEach(filteredEventTaskGroups) { group in
+                                eventTaskGroupRow(group)
+                                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
+                            }
                         }
                     }
                     .listStyle(.plain)
@@ -305,9 +327,6 @@ struct TodoListView: View {
         .sheet(isPresented: $showingEditor) {
             taskEditorSheet
         }
-        .sheet(isPresented: $showAITaskDraftSheet) {
-            taskDraftPromptSheet
-        }
         .sheet(isPresented: $showAILoginSheet) {
             LoginSheetView()
                 .environmentObject(authViewModel)
@@ -322,7 +341,7 @@ struct TodoListView: View {
         .sheet(isPresented: $showAIAssistant) {
             AIAssistantView(
                 tasks: toolbarAICandidateTasks,
-                availableActions: [.breakdown, .planning],
+                availableActions: [.breakdown, .draftFromIdea, .planning],
                 isLoading: isRunningAIAssistant,
                 errorMessage: aiAssistantErrorMessage,
                 isActionEnabled: { action in
@@ -957,6 +976,36 @@ struct TodoListView: View {
         }
     }
 
+    private var filteredEventTaskGroups: [EventTaskGroupEntry] {
+        planningStore.localEvents.compactMap { event in
+            let tasks = event.eventTasks.filter { task in
+                switch selectedSegment {
+                case .active:
+                    return !task.isCompleted
+                case .completed:
+                    return task.isCompleted
+                }
+            }
+
+            guard !tasks.isEmpty else { return nil }
+
+            return EventTaskGroupEntry(
+                id: event.id,
+                eventTitle: event.title,
+                eventStartDate: event.startDate,
+                tasks: tasks.sorted { $0.createdAt < $1.createdAt }
+            )
+        }
+        .sorted {
+            let lhsDate = $0.eventStartDate ?? .distantFuture
+            let rhsDate = $1.eventStartDate ?? .distantFuture
+            if lhsDate != rhsDate {
+                return lhsDate < rhsDate
+            }
+            return $0.eventTitle.localizedCaseInsensitiveCompare($1.eventTitle) == .orderedAscending
+        }
+    }
+
     private var toolbarAICandidateTasks: [TodoItem] {
         filteredItems
     }
@@ -1043,6 +1092,125 @@ struct TodoListView: View {
         }
     }
 
+    private var eventSectionDivider: some View {
+        HStack(spacing: 10) {
+            Rectangle()
+                .fill(Color.primary.opacity(0.12))
+                .frame(height: 1)
+            Text(localizationManager.text("tasks.events.section_title"))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Rectangle()
+                .fill(Color.primary.opacity(0.12))
+                .frame(height: 1)
+        }
+    }
+
+    @ViewBuilder
+    private func eventTaskGroupRow(_ group: EventTaskGroupEntry) -> some View {
+        let isExpanded = !collapsedEventGroupIDs.contains(group.id)
+
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                Button {
+                    toggleEventGroupExpanded(group.id)
+                } label: {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .frame(width: 14)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(group.eventTitle)
+                        .font(.headline)
+
+                    HStack(spacing: 8) {
+                        if let startDate = group.eventStartDate {
+                            Label(formattedEventTaskDate(startDate), systemImage: "calendar")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Text("\(group.tasks.count)")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.primary.opacity(0.08))
+                            .cornerRadius(4)
+                    }
+                }
+
+                Spacer()
+            }
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 10) {
+                    Divider()
+
+                    ForEach(group.tasks) { task in
+                        eventTaskSubtaskRow(eventID: group.id, task: task)
+                    }
+                }
+                .padding(.leading, 34)
+                .transition(subtaskExpansionTransition)
+            }
+        }
+        .padding(12)
+        .background(Color.primary.opacity(0.05))
+        .cornerRadius(8)
+        .animation(taskExpansionAnimation, value: isExpanded)
+    }
+
+    @ViewBuilder
+    private func eventTaskSubtaskRow(eventID: UUID, task: PlanningItem.EventTask) -> some View {
+        let showsCompletedState = task.isCompleted
+
+        HStack(spacing: 8) {
+            Button {
+                planningStore.toggleEventTaskCompletion(eventID: eventID, taskID: task.id)
+            } label: {
+                Image(systemName: showsCompletedState ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(showsCompletedState ? .green : .secondary)
+            }
+            .buttonStyle(.plain)
+
+            Text(task.title)
+                .font(.subheadline)
+                .strikethrough(showsCompletedState)
+                .foregroundStyle(showsCompletedState ? .secondary : .primary)
+                .opacity(showsCompletedState ? 0.72 : 1.0)
+
+            Spacer()
+
+            Text(task.source == .ai
+                 ? localizationManager.text("calendar.event_tasks.source_ai")
+                 : localizationManager.text("calendar.event_tasks.source_manual"))
+                .font(.caption2)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.purple.opacity(0.10))
+                .foregroundStyle(.purple)
+                .cornerRadius(4)
+        }
+    }
+
+    private func toggleEventGroupExpanded(_ id: UUID) {
+        withAnimation(taskExpansionAnimation) {
+            if collapsedEventGroupIDs.contains(id) {
+                collapsedEventGroupIDs.remove(id)
+            } else {
+                collapsedEventGroupIDs.insert(id)
+            }
+        }
+    }
+
+    private func formattedEventTaskDate(_ date: Date) -> String {
+        Self.dateFormatter.locale = localizationManager.effectiveLocale
+        return Self.dateFormatter.string(from: date)
+    }
+
     private func syncToRemindersIfLinked(_ item: TodoItem) {
         guard permissionsManager.isRemindersAuthorized,
               item.reminderIdentifier != nil else {
@@ -1066,229 +1234,240 @@ struct TodoListView: View {
     }
     
     private var taskEditorSheet: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(editingItem == nil ? localizationManager.text("tasks.editor.add_title") : localizationManager.text("tasks.editor.edit_title"))
-                .font(.title2)
-                .fontWeight(.semibold)
-            
-            VStack(alignment: .leading, spacing: 10) {
-                TextField(localizationManager.text("tasks.editor.title_placeholder"), text: $titleField)
-                    .textFieldStyle(.roundedBorder)
+        ZStack {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(editingItem == nil ? localizationManager.text("tasks.editor.add_title") : localizationManager.text("tasks.editor.edit_title"))
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                VStack(alignment: .leading, spacing: 10) {
+                    TextField(localizationManager.text("tasks.editor.title_placeholder"), text: $titleField)
+                        .textFieldStyle(.roundedBorder)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(localizationManager.text("tasks.ai_plan.estimated_hours"))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    Stepper(value: $aiEstimatedHours, in: 1...40) {
-                        Text(localizationManager.format("tasks.ai_plan.estimated_hours_value", aiEstimatedHours))
-                    }
-                }
-
-                if featureGate.canUseAdvancedTasks {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(localizationManager.text("tasks.editor.priority"))
+                        Text(localizationManager.text("tasks.ai_plan.estimated_hours"))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
 
-                        Picker("", selection: $priorityField) {
-                            ForEach(TodoItem.Priority.allCases, id: \.self) { priority in
-                                Text(priority.displayName).tag(priority)
+                        Stepper(value: $aiEstimatedHours, in: 1...40) {
+                            Text(localizationManager.format("tasks.ai_plan.estimated_hours_value", aiEstimatedHours))
+                        }
+                    }
+
+                    if featureGate.canUseAdvancedTasks {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(localizationManager.text("tasks.editor.priority"))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+
+                            Picker("", selection: $priorityField) {
+                                ForEach(TodoItem.Priority.allCases, id: \.self) { priority in
+                                    Text(priority.displayName).tag(priority)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                        }
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(localizationManager.text("tasks.editor.pomodoro_estimate"))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+
+                            Stepper(value: $pomodoroEstimateField, in: 1...20) {
+                                Text(localizationManager.format("tasks.pomodoro_estimate_value", pomodoroEstimateField))
                             }
                         }
-                        .pickerStyle(.segmented)
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(localizationManager.text("tasks.editor.pomodoro_estimate"))
+                    Toggle(localizationManager.text("tasks.editor.set_due_date"), isOn: $dueDateEnabled)
+                        .onChange(of: dueDateEnabled) { _, isOn in
+                            if !isOn { includeDueTime = false }
+                        }
+                    
+                    if dueDateEnabled {
+                        DatePicker(
+                            localizationManager.text("tasks.editor.due_date"),
+                            selection: $dueDateField,
+                            displayedComponents: [.date]
+                        )
+                        Toggle(localizationManager.text("tasks.editor.include_time"), isOn: $includeDueTime)
+                            .toggleStyle(.switch)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-
-                        Stepper(value: $pomodoroEstimateField, in: 1...20) {
-                            Text(localizationManager.format("tasks.pomodoro_estimate_value", pomodoroEstimateField))
+                        
+                        if includeDueTime {
+                            DatePicker(
+                                localizationManager.text("tasks.editor.time"),
+                                selection: $dueDateField,
+                                displayedComponents: [.hourAndMinute]
+                            )
+                            .datePickerStyle(.field)
+                        } else {
+                            Text(localizationManager.text("tasks.editor.date_only_hint"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
-                }
-                
-                Toggle(localizationManager.text("tasks.editor.set_due_date"), isOn: $dueDateEnabled)
-                    .onChange(of: dueDateEnabled) { _, isOn in
-                        // Default to date-only when enabling; user opts into time explicitly.
-                        if !isOn { includeDueTime = false }
+                    
+                    if featureGate.canUseTaskMarkdown {
+                        HStack(alignment: .center, spacing: 10) {
+                            Text(localizationManager.text("tasks.editor.description_markdown"))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+
+                            Spacer()
+
+                            if isGeneratingTaskAI {
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                    Text("Working…")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            } else {
+                                Menu {
+                                    Button("Improve Task Details") {
+                                        handleImproveTaskDraftTapped()
+                                    }
+                                    .disabled(titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && descriptionField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                                    Button("Draft From Idea") {
+                                        handleDraftFromIdeaTapped()
+                                    }
+
+                                    Divider()
+
+                                    Button(localizationManager.text("tasks.ai_description.button")) {
+                                        handleGenerateDescriptionTapped()
+                                    }
+                                    .disabled(titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                                } label: {
+                                    Label("Task AI", systemImage: "sparkles")
+                                }
+                                .menuStyle(.borderlessButton)
+                            }
+                        }
+
+                        TextField(localizationManager.text("tasks.editor.notes_placeholder"), text: $descriptionField, axis: .vertical)
+                            .textFieldStyle(.roundedBorder)
+                        if let aiDescriptionErrorMessage, !aiDescriptionErrorMessage.isEmpty {
+                            Text(aiDescriptionErrorMessage)
+                                .font(.footnote)
+                                .foregroundStyle(.red)
+                        }
+                        if let aiTaskDraftErrorMessage, !aiTaskDraftErrorMessage.isEmpty {
+                            Text(aiTaskDraftErrorMessage)
+                                .font(.footnote)
+                                .foregroundStyle(.red)
+                        }
+                    } else {
+                        Button {
+                            presentLockedFeatureInfo(
+                                featureName: "Markdown Descriptions",
+                                description: "Format task notes with headings, lists, and richer structure.",
+                                requiredTier: .plus
+                            )
+                        } label: {
+                            Label("Markdown Descriptions", systemImage: "lock.fill")
+                        }
+                        .buttonStyle(.bordered)
                     }
-                
-                if dueDateEnabled {
-                    DatePicker(
-                        localizationManager.text("tasks.editor.due_date"),
-                        selection: $dueDateField,
-                        displayedComponents: [.date]
-                    )
-                    Toggle(localizationManager.text("tasks.editor.include_time"), isOn: $includeDueTime)
-                        .toggleStyle(.switch)
+
+                    if featureGate.canUseSubtasks, !editorSubtasks.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(localizationManager.text("tasks.subtasks.title"))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+
+                            ForEach(editorSubtasks) { subtask in
+                                HStack(spacing: 10) {
+                                    Image(systemName: "checklist")
+                                        .foregroundStyle(.secondary)
+                                    Text(subtask.title)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    Button {
+                                        editorSubtasks.removeAll { $0.id == subtask.id }
+                                    } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(10)
+                                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            }
+                        }
+                    }
+                    
+                    Text(localizationManager.text("tasks.editor.tags_optional"))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    TextField(localizationManager.text("tasks.editor.tags_placeholder"), text: $tagsField)
+                        .textFieldStyle(.roundedBorder)
                     
-                    if includeDueTime {
-                        DatePicker(
-                            localizationManager.text("tasks.editor.time"),
-                            selection: $dueDateField,
-                            displayedComponents: [.hourAndMinute]
-                        )
-                        .datePickerStyle(.field)
-                    } else {
-                        Text(localizationManager.text("tasks.editor.date_only_hint"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    Toggle(localizationManager.text("tasks.editor.sync_to_calendar"), isOn: $syncToCalendarField)
+                        .toggleStyle(.switch)
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                        .padding(.top, 6)
+                        .help(localizationManager.text("tasks.editor.sync_to_calendar_help"))
+
+                    if let aiPlanErrorMessage, !aiPlanErrorMessage.isEmpty {
+                        Text(aiPlanErrorMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
                     }
                 }
                 
-                if featureGate.canUseTaskMarkdown {
-                    HStack(alignment: .center, spacing: 10) {
-                        Text(localizationManager.text("tasks.editor.description_markdown"))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                
+                HStack {
+                    Button(localizationManager.text("common.cancel")) {
+                        resetEditor()
+                        showingEditor = false
+                    }
+                    .buttonStyle(.bordered)
+                    
+                    Spacer()
 
-                        Spacer()
-
-                        if isGeneratingTaskAI {
+                    Button(action: handleAIPlanButtonTapped) {
+                        if isGeneratingAIPlan {
                             HStack(spacing: 8) {
                                 ProgressView()
                                     .controlSize(.small)
-                                Text("Working…")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                Text(localizationManager.text("tasks.ai_plan.loading"))
                             }
                         } else {
-                            Menu {
-                                Button("Improve Task Details") {
-                                    handleImproveTaskDraftTapped()
-                                }
-                                .disabled(titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && descriptionField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-                                Button("Draft From Idea") {
-                                    handleDraftFromIdeaTapped()
-                                }
-
-                                Divider()
-
-                                Button(localizationManager.text("tasks.ai_description.button")) {
-                                    handleGenerateDescriptionTapped()
-                                }
-                                .disabled(titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            } label: {
-                                Label("Task AI", systemImage: "sparkles")
-                            }
-                            .menuStyle(.borderlessButton)
+                            Label(localizationManager.text("tasks.ai_plan.button"), systemImage: "sparkles")
                         }
-                    }
-
-                    TextField(localizationManager.text("tasks.editor.notes_placeholder"), text: $descriptionField, axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
-                    if let aiDescriptionErrorMessage, !aiDescriptionErrorMessage.isEmpty {
-                        Text(aiDescriptionErrorMessage)
-                            .font(.footnote)
-                            .foregroundStyle(.red)
-                    }
-                    if let aiTaskDraftErrorMessage, !aiTaskDraftErrorMessage.isEmpty {
-                        Text(aiTaskDraftErrorMessage)
-                            .font(.footnote)
-                            .foregroundStyle(.red)
-                    }
-                } else {
-                    Button {
-                        presentLockedFeatureInfo(
-                            featureName: "Markdown Descriptions",
-                            description: "Format task notes with headings, lists, and richer structure.",
-                            requiredTier: .plus
-                        )
-                    } label: {
-                        Label("Markdown Descriptions", systemImage: "lock.fill")
                     }
                     .buttonStyle(.bordered)
-                }
-
-                if featureGate.canUseSubtasks, !editorSubtasks.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(localizationManager.text("tasks.subtasks.title"))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-
-                        ForEach(editorSubtasks) { subtask in
-                            HStack(spacing: 10) {
-                                Image(systemName: "checklist")
-                                    .foregroundStyle(.secondary)
-                                Text(subtask.title)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                Button {
-                                    editorSubtasks.removeAll { $0.id == subtask.id }
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundStyle(.tertiary)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            .padding(10)
-                            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .disabled(isGeneratingAIPlan || titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    
+                    Button(editingItem == nil ? localizationManager.text("common.add") : localizationManager.text("common.save")) {
+                        Task { @MainActor in
+                            await saveTask()
                         }
                     }
-                }
-                
-                Text(localizationManager.text("tasks.editor.tags_optional"))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                TextField(localizationManager.text("tasks.editor.tags_placeholder"), text: $tagsField)
-                    .textFieldStyle(.roundedBorder)
-                
-                Toggle(localizationManager.text("tasks.editor.sync_to_calendar"), isOn: $syncToCalendarField)
-                    .toggleStyle(.switch)
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
-                    .padding(.top, 6)
-                    .help(localizationManager.text("tasks.editor.sync_to_calendar_help"))
-
-                if let aiPlanErrorMessage, !aiPlanErrorMessage.isEmpty {
-                    Text(aiPlanErrorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.return, modifiers: [.command])
+                    .disabled(titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
-            
-            Spacer(minLength: 0)
-            
-            HStack {
-                Button(localizationManager.text("common.cancel")) {
-                    resetEditor()
-                    showingEditor = false
-                }
-                .buttonStyle(.bordered)
-                
-                Spacer()
+            .padding(24)
+            .frame(width: 420)
 
-                Button(action: handleAIPlanButtonTapped) {
-                    if isGeneratingAIPlan {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text(localizationManager.text("tasks.ai_plan.loading"))
-                        }
-                    } else {
-                        Label(localizationManager.text("tasks.ai_plan.button"), systemImage: "sparkles")
-                    }
-                }
-                .buttonStyle(.bordered)
-                .disabled(isGeneratingAIPlan || titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                
-                Button(editingItem == nil ? localizationManager.text("common.add") : localizationManager.text("common.save")) {
-                    Task { @MainActor in
-                        await saveTask()
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.return, modifiers: [.command])
-                .disabled(titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            if showAITaskDraftSheet {
+                Color.black.opacity(0.18)
+                    .ignoresSafeArea()
+
+                taskDraftPromptSheet
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: .black.opacity(0.12), radius: 18, y: 10)
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
         }
-        .padding(24)
-        .frame(width: 420)
         .confirmationDialog(
             localizationManager.text("tasks.ai_description.replace_title"),
             isPresented: $showReplaceDescriptionConfirmation,
@@ -1306,6 +1485,7 @@ struct TodoListView: View {
         } message: {
             Text(localizationManager.text("tasks.ai_description.replace_message"))
         }
+        .animation(reduceMotion ? .easeOut(duration: 0.15) : .easeInOut(duration: 0.18), value: showAITaskDraftSheet)
     }
 
     private var taskDraftPromptSheet: some View {
@@ -1820,6 +2000,12 @@ struct TodoListView: View {
                     description: localizationManager.text("feature_gate.paywall.ai_assistant.breakdown_description"),
                     requiredTier: .plus
                 )
+            case .draftFromIdea:
+                presentLockedFeatureInfo(
+                    featureName: localizationManager.text("feature_gate.paywall.ai_assistant.title"),
+                    description: localizationManager.text("feature_gate.paywall.ai_assistant.breakdown_description"),
+                    requiredTier: .plus
+                )
             case .planning:
                 presentLockedFeatureInfo(
                     featureName: localizationManager.text("feature_gate.paywall.smart_planning.title"),
@@ -1846,7 +2032,18 @@ struct TodoListView: View {
             return
         }
 
-        guard !selectedTasks.isEmpty else {
+        if action.requiresTaskSelection, selectedTasks.isEmpty {
+            return
+        }
+
+        if action == .draftFromIdea {
+            showAIAssistant = false
+            if !showingEditor {
+                openEditorForNew()
+            }
+            aiTaskDraftErrorMessage = nil
+            aiTaskDraftPrompt = ""
+            showAITaskDraftSheet = true
             return
         }
 
@@ -1869,6 +2066,8 @@ struct TodoListView: View {
                     deadline: Self.aiDeadlineFormatter.string(from: dueDate),
                     estimatedHours: estimatedHours
                 )
+            case .draftFromIdea:
+                return
             case .reschedule:
                 return
             }
@@ -1900,6 +2099,8 @@ struct TodoListView: View {
         switch action {
         case .breakdown:
             return tasks[0].notes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        case .draftFromIdea:
+            return ""
         case .planning:
             let titles = tasks.map(\.title).joined(separator: ", ")
             return localizationManager.format("tasks.ai_plan.generated_note", titles, tasks.count)

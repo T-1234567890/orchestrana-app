@@ -5,7 +5,9 @@ import EventKit
 struct WeekCalendarView: View {
     let days: [Date]
     let events: [EKEvent]
+    let localEvents: [PlanningItem]
     let tasks: [TodoItem]
+    let onSelectLocalEvent: (PlanningItem) -> Void
     @EnvironmentObject private var localizationManager: LocalizationManager
     
     @State private var selectedDay: Date?
@@ -20,13 +22,16 @@ struct WeekCalendarView: View {
                 HStack(alignment: .top, spacing: columnSpacing) {
                     ForEach(days, id: \.self) { day in
                         let dayEvents = eventsForDay(day)
+                        let dayLocalEvents = localEventsForDay(day)
                         let dayTasks = tasksForDay(day)
                         DayColumnView(
                             date: day,
                             events: dayEvents,
+                            localEvents: dayLocalEvents,
                             tasks: dayTasks,
                             isSelected: isSameDay(day, selectedDay),
-                            onSelect: { selectedDay = day }
+                            onSelect: { selectedDay = day },
+                            onSelectLocalEvent: onSelectLocalEvent
                         )
                         .environmentObject(localizationManager)
                         .frame(minWidth: columnWidth, maxWidth: columnWidth, alignment: .topLeading)
@@ -63,6 +68,16 @@ struct WeekCalendarView: View {
                 return l < r
             }
     }
+
+    private func localEventsForDay(_ day: Date) -> [PlanningItem] {
+        let cal = Calendar.current
+        return localEvents
+            .filter { item in
+                guard let start = item.startDate else { return false }
+                return cal.isDate(start, inSameDayAs: day)
+            }
+            .sorted { ($0.startDate ?? .distantPast) < ($1.startDate ?? .distantPast) }
+    }
     
     private func isSameDay(_ lhs: Date, _ rhs: Date?) -> Bool {
         guard let rhs else { return false }
@@ -73,9 +88,11 @@ struct WeekCalendarView: View {
 private struct DayColumnView: View {
     let date: Date
     let events: [EKEvent]
+    let localEvents: [PlanningItem]
     let tasks: [TodoItem]
     let isSelected: Bool
     let onSelect: () -> Void
+    let onSelectLocalEvent: (PlanningItem) -> Void
     @EnvironmentObject private var localizationManager: LocalizationManager
     
     private static let dayFormatter: DateFormatter = {
@@ -104,7 +121,7 @@ private struct DayColumnView: View {
                 Spacer()
             }
             
-            if events.isEmpty && tasks.isEmpty {
+            if events.isEmpty && localEvents.isEmpty && tasks.isEmpty {
                 Text(localizationManager.text("calendar.no_events"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -113,6 +130,11 @@ private struct DayColumnView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(events, id: \.eventIdentifier) { event in
                         EventCard(event: event)
+                    }
+                    ForEach(localEvents) { event in
+                        LocalEventCard(event: event, onSelect: {
+                            onSelectLocalEvent(event)
+                        })
                     }
                     ForEach(tasks, id: \.id) { task in
                         TaskCard(task: task)
@@ -131,6 +153,42 @@ private struct DayColumnView: View {
         .cornerRadius(10)
         .contentShape(Rectangle())
         .onTapGesture { onSelect() }
+    }
+
+    private struct LocalEventCard: View {
+        let event: PlanningItem
+        let onSelect: () -> Void
+        @EnvironmentObject private var localizationManager: LocalizationManager
+
+        var body: some View {
+            Button(action: onSelect) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(event.title)
+                        .font(.subheadline)
+                        .lineLimit(1)
+                    Text(timeRange)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(7)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.accentColor.opacity(0.1))
+                .cornerRadius(7)
+            }
+            .buttonStyle(.plain)
+        }
+
+        private var timeRange: String {
+            guard let start = event.startDate else {
+                return localizationManager.text("calendar.no_due_time")
+            }
+            DayColumnView.timeFormatter.locale = localizationManager.effectiveLocale
+            let formatter = DayColumnView.timeFormatter
+            guard let end = event.endDate else {
+                return formatter.string(from: start)
+            }
+            return "\(formatter.string(from: start)) – \(formatter.string(from: end))"
+        }
     }
     
     private var cardBackground: some View {

@@ -11,6 +11,7 @@ struct CalendarView: View {
     @ObservedObject var calendarManager: CalendarManager
     @ObservedObject var permissionsManager: PermissionsManager
     @ObservedObject var todoStore: TodoStore
+    @ObservedObject var planningStore: PlanningStore
     @ObservedObject private var featureGate = FeatureGate.shared
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var localizationManager: LocalizationManager
@@ -38,6 +39,7 @@ struct CalendarView: View {
     @State private var rescheduleError: String?
     @State private var showAILoginSheet = false
     @State private var upgradePaywallContext: SubscriptionPaywallContext?
+    @State private var selectedLocalEventID: UUID?
 
     // MARK: - Reschedule state
     /// Snapshot of tasks/events as they existed before the last reschedule — used for Undo.
@@ -159,6 +161,25 @@ struct CalendarView: View {
                 subscriptionStore: SubscriptionStore.shared
             )
         }
+        .sheet(isPresented: Binding(
+            get: { selectedLocalEventID != nil },
+            set: { isPresented in
+                if !isPresented {
+                    selectedLocalEventID = nil
+                }
+            }
+        )) {
+            if let selectedEventID = selectedLocalEventID {
+                EventTaskDetailSheet(
+                    eventID: selectedEventID,
+                    planningStore: planningStore,
+                    todoStore: todoStore,
+                    onClose: { selectedLocalEventID = nil }
+                )
+                .environmentObject(authViewModel)
+                .environmentObject(localizationManager)
+            }
+        }
         .sheet(isPresented: $showAIAssistant) {
             AIAssistantView(
                 tasks: todoStore.pendingItems,
@@ -180,6 +201,12 @@ struct CalendarView: View {
                             requiredTier: .plus
                         )
                     case .breakdown:
+                        presentLockedFeatureInfo(
+                            featureName: localizationManager.text("feature_gate.paywall.ai_assistant.title"),
+                            description: localizationManager.text("feature_gate.paywall.ai_assistant.breakdown_description"),
+                            requiredTier: .plus
+                        )
+                    case .draftFromIdea:
                         presentLockedFeatureInfo(
                             featureName: localizationManager.text("feature_gate.paywall.ai_assistant.title"),
                             description: localizationManager.text("feature_gate.paywall.ai_assistant.breakdown_description"),
@@ -390,7 +417,11 @@ struct CalendarView: View {
                 WeekCalendarView(
                     days: daysInWeek(from: anchorDate),
                     events: calendarManager.events,
-                    tasks: todoStore.items
+                    localEvents: planningStore.localEvents,
+                    tasks: todoStore.items,
+                    onSelectLocalEvent: { event in
+                        selectedLocalEventID = event.id
+                    }
                 )
                 .frame(maxWidth: maxWidth, alignment: .leading)
             case .month:
@@ -413,7 +444,11 @@ struct CalendarView: View {
     private func monthContent(maxWidth: CGFloat) -> some View {
         CalendarMonthView(
             date: anchorDate,
-            events: calendarManager.events
+            events: calendarManager.events,
+            localEvents: planningStore.localEvents,
+            onSelectLocalEvent: { event in
+                selectedLocalEventID = event.id
+            }
         )
         .frame(maxWidth: maxWidth, alignment: .leading)
     }
@@ -447,6 +482,8 @@ struct CalendarView: View {
                 aiAssistantErrorMessage = localizationManager.text("tasks.ai_assistant.planning_requires_plus")
             case .breakdown:
                 aiAssistantErrorMessage = localizationManager.text("tasks.ai_assistant.breakdown_requires_plus")
+            case .draftFromIdea:
+                aiAssistantErrorMessage = localizationManager.text("tasks.ai_assistant.draft_from_idea_requires_plus")
             }
             return
         }
@@ -486,6 +523,8 @@ struct CalendarView: View {
                     createAsSubtasks: false,
                     aiOrigin: .planning
                 )
+            case .draftFromIdea:
+                return
             case .reschedule:
                 await performCalendarReschedule()
             }
@@ -511,6 +550,8 @@ struct CalendarView: View {
         switch action {
         case .breakdown:
             return tasks[0].notes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        case .draftFromIdea:
+            return ""
         case .planning:
             let titles = tasks.map(\.title).joined(separator: ", ")
             return localizationManager.format("tasks.ai_plan.generated_note", titles, tasks.count)
@@ -949,16 +990,21 @@ struct CalendarView: View {
 
     private var daySummary: some View {
         let todayEvents = events(for: anchorDate)
+        let todayLocalEvents = localEvents(for: anchorDate)
         let todayTasks = tasks(for: anchorDate)
         let totalMinutes = todayEvents.reduce(0) { partial, event in
             partial + max(0, Int(event.endDate.timeIntervalSince(event.startDate) / 60))
+        } + todayLocalEvents.reduce(0) { partial, item in
+            guard let start = item.startDate else { return partial }
+            let end = item.endDate ?? start
+            return partial + max(0, Int(end.timeIntervalSince(start) / 60))
         }
 
         return VStack(alignment: .leading, spacing: 8) {
             Text(localizationManager.text("calendar.today_summary"))
                 .font(.headline)
             HStack(spacing: 12) {
-                summaryPill(title: localizationManager.text("calendar.blocks"), value: "\(todayEvents.count)")
+                summaryPill(title: localizationManager.text("calendar.blocks"), value: "\(todayEvents.count + todayLocalEvents.count)")
                 summaryPill(title: localizationManager.text("calendar.tasks"), value: "\(todayTasks.count)")
                 summaryPill(title: localizationManager.text("calendar.planned_mins"), value: "\(totalMinutes)")
             }
@@ -967,10 +1013,11 @@ struct CalendarView: View {
 
     private var dayBlocks: some View {
         let todayEvents = events(for: anchorDate)
+        let todayLocalEvents = localEvents(for: anchorDate)
         let todayTasks = tasks(for: anchorDate)
 
         return ScrollView {
-            if todayEvents.isEmpty && todayTasks.isEmpty {
+            if todayEvents.isEmpty && todayLocalEvents.isEmpty && todayTasks.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "calendar.badge.clock")
                         .font(.system(size: 32))
@@ -983,12 +1030,12 @@ struct CalendarView: View {
                 .padding(32)
             } else {
                 LazyVStack(alignment: .leading, spacing: 12) {
-                    if !todayEvents.isEmpty {
+                    if !todayEvents.isEmpty || !todayLocalEvents.isEmpty {
                         Text(localizationManager.text("calendar.time_blocks"))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        ForEach(todayEvents, id: \.eventIdentifier) { event in
-                            blockCard(event, events: todayEvents)
+                        ForEach(dayEventBlocks(events: todayEvents, localEvents: todayLocalEvents)) { block in
+                            dayEventBlockView(block, events: todayEvents)
                                 .transition(.asymmetric(
                                     insertion: .opacity.combined(with: .move(edge: .top)),
                                     removal: .opacity.combined(with: .move(edge: .bottom))
@@ -1081,6 +1128,51 @@ struct CalendarView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.primary.opacity(0.04))
         .cornerRadius(8)
+    }
+
+    @ViewBuilder
+    private func dayEventBlockView(_ block: DayEventBlock, events: [EKEvent]) -> some View {
+        switch block {
+        case .system(let event):
+            blockCard(event, events: events)
+        case .local(let item):
+            localEventCard(item)
+        }
+    }
+
+    private func localEventCard(_ item: PlanningItem) -> some View {
+        Button {
+            selectedLocalEventID = item.id
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Text(item.title)
+                        .font(.headline)
+                    if item.hasTaskMode && !item.eventTasks.isEmpty {
+                        Text("\(item.eventTasks.count)")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.accentColor.opacity(0.12))
+                            .clipShape(Capsule())
+                    }
+                }
+                Text(formattedLocalEventTime(item))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if let notes = item.notes, !notes.isEmpty {
+                    Text(notes)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.accentColor.opacity(0.06))
+            .cornerRadius(8)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Selection helpers
@@ -1229,6 +1321,38 @@ struct CalendarView: View {
         return calendarManager.events
             .filter { calendar.isDate($0.startDate, inSameDayAs: day) }
             .sorted { $0.startDate < $1.startDate }
+    }
+
+    private func localEvents(for day: Date) -> [PlanningItem] {
+        planningStore.localEvents(on: day)
+    }
+
+    private enum DayEventBlock: Identifiable {
+        case system(EKEvent)
+        case local(PlanningItem)
+
+        var id: String {
+            switch self {
+            case .system(let event):
+                return "system-\(event.eventIdentifier ?? UUID().uuidString)"
+            case .local(let item):
+                return "local-\(item.id.uuidString)"
+            }
+        }
+
+        var startDate: Date {
+            switch self {
+            case .system(let event):
+                return event.startDate
+            case .local(let item):
+                return item.startDate ?? .distantPast
+            }
+        }
+    }
+
+    private func dayEventBlocks(events: [EKEvent], localEvents: [PlanningItem]) -> [DayEventBlock] {
+        let blocks = events.map(DayEventBlock.system) + localEvents.map(DayEventBlock.local)
+        return blocks.sorted { $0.startDate < $1.startDate }
     }
 
     private func tasks(for day: Date) -> [TodoItem] {
@@ -1452,19 +1576,50 @@ struct CalendarView: View {
     
     private func saveEvent() async {
         let endDate = newEventStart.addingTimeInterval(Double(newEventDurationMinutes * 60))
-        do {
-            try await calendarManager.createEvent(
-                title: newEventTitle.isEmpty ? localizationManager.text("calendar.new_event_default_title") : newEventTitle,
-                startDate: newEventStart,
-                endDate: endDate,
-                notes: newEventNotes.isEmpty ? nil : newEventNotes
-            )
-            addEventError = nil
-            showingAddEvent = false
-            await loadEvents()
-        } catch {
-            addEventError = error.localizedDescription
+        let trimmedTitle = newEventTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else {
+            addEventError = localizationManager.text("calendar.event_tasks.title_required")
+            return
         }
+
+        _ = planningStore.addLocalEvent(
+            title: trimmedTitle,
+            notes: newEventNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : newEventNotes,
+            startDate: newEventStart,
+            endDate: endDate
+        )
+        addEventError = nil
+        showingAddEvent = false
+    }
+
+    private func formattedLocalEventTime(_ item: PlanningItem) -> String {
+        guard let start = item.startDate else {
+            return localizationManager.text("calendar.no_due_time")
+        }
+        Self.eventTimeFormatter.locale = localizationManager.effectiveLocale
+        let startText = Self.eventTimeFormatter.string(from: start)
+        guard let end = item.endDate else {
+            return startText
+        }
+        let endText = Self.eventTimeFormatter.string(from: end)
+        return "\(startText) - \(endText)"
+    }
+
+    private var selectedLocalEventBinding: Binding<PlanningItem?> {
+        Binding(
+            get: {
+                guard let selectedLocalEventID else { return nil }
+                return planningStore.localEvents.first(where: { $0.id == selectedLocalEventID })
+            },
+            set: { newValue in
+                guard let newValue else {
+                    selectedLocalEventID = nil
+                    return
+                }
+                selectedLocalEventID = newValue.id
+                planningStore.updateTask(newValue)
+            }
+        )
     }
 }
 
@@ -1544,8 +1699,308 @@ private struct RescheduleMatchedGeometry: ViewModifier {
         CalendarView(
             calendarManager: CalendarManager(permissionsManager: .shared),
             permissionsManager: .shared,
-            todoStore: TodoStore()
+            todoStore: TodoStore(),
+            planningStore: PlanningStore()
         )
         .frame(width: 700, height: 600)
+    }
+}
+
+private struct EventTaskDetailSheet: View {
+    let eventID: UUID
+    @ObservedObject var planningStore: PlanningStore
+    @ObservedObject var todoStore: TodoStore
+    let onClose: () -> Void
+
+    @EnvironmentObject private var authViewModel: AuthViewModel
+    @EnvironmentObject private var localizationManager: LocalizationManager
+    @ObservedObject private var featureGate = FeatureGate.shared
+    @ObservedObject private var subscriptionStore = SubscriptionStore.shared
+
+    @State private var manualTaskTitle = ""
+    @State private var isGenerating = false
+    @State private var errorMessage: String?
+    @State private var upgradePaywallContext: SubscriptionPaywallContext?
+
+    private let aiService = AIService.shared
+
+    var body: some View {
+        Group {
+            if let eventBinding {
+                sheetContent(event: eventBinding)
+            } else {
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .onAppear(perform: onClose)
+            }
+        }
+    }
+
+    private var eventBinding: Binding<PlanningItem>? {
+        guard planningStore.localEvents.contains(where: { $0.id == eventID }) else {
+            return nil
+        }
+
+        return Binding(
+            get: {
+                planningStore.localEvents.first(where: { $0.id == eventID })
+                ?? PlanningItem(
+                    id: eventID,
+                    title: "",
+                    startDate: nil,
+                    endDate: nil,
+                    isTask: false,
+                    isCalendarEvent: true,
+                    completed: false,
+                    source: .local
+                )
+            },
+            set: { newValue in
+                planningStore.updateTask(newValue)
+            }
+        )
+    }
+
+    private func sheetContent(event: Binding<PlanningItem>) -> some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(event.wrappedValue.title)
+                        .font(.title3.weight(.semibold))
+                    if let start = event.wrappedValue.startDate, let end = event.wrappedValue.endDate {
+                        Text("\(formatted(start)) - \(formatted(end))")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                Button(localizationManager.text("common.close"), action: onClose)
+                    .buttonStyle(.bordered)
+            }
+
+            if let notes = event.wrappedValue.notes, !notes.isEmpty {
+                Text(notes)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            Toggle(localizationManager.text("calendar.event_tasks.enable_toggle"), isOn: taskModeBinding(for: event))
+
+            if event.wrappedValue.hasTaskMode {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text(localizationManager.text("calendar.event_tasks.section_title"))
+                            .font(.headline)
+                        Spacer()
+                        Button {
+                            Task { await generateTasks(event: event) }
+                        } label: {
+                            if isGenerating {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Text(localizationManager.text("calendar.event_tasks.generate_ai"))
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isGenerating)
+                    }
+
+                    if canInteractWithEventTasks {
+                        HStack(spacing: 8) {
+                            TextField(localizationManager.text("calendar.event_tasks.add_placeholder"), text: $manualTaskTitle)
+                                .textFieldStyle(.roundedBorder)
+                            Button(localizationManager.text("calendar.event_tasks.add_button")) {
+                                Task { await addManualTask(event: event) }
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    } else {
+                        lockedEventTasksView
+                    }
+
+                    if event.wrappedValue.eventTasks.isEmpty {
+                        Text(localizationManager.text("calendar.event_tasks.empty_state"))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        List {
+                            ForEach(event.wrappedValue.eventTasks) { task in
+                                HStack(spacing: 10) {
+                                    Button {
+                                        planningStore.toggleEventTaskCompletion(eventID: eventID, taskID: task.id)
+                                    } label: {
+                                        Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                                            .foregroundStyle(task.isCompleted ? Color.accentColor : .secondary)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(!canInteractWithEventTasks)
+
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        TextField(
+                                            "",
+                                            text: taskTitleBinding(for: task),
+                                            prompt: Text(localizationManager.text("calendar.event_tasks.add_placeholder"))
+                                        )
+                                            .textFieldStyle(.plain)
+                                            .strikethrough(task.isCompleted)
+                                            .disabled(!canInteractWithEventTasks)
+                                            .onSubmit {
+                                                planningStore.updateEventTaskTitle(
+                                                    eventID: eventID,
+                                                    taskID: task.id,
+                                                    title: taskTitleBinding(for: task).wrappedValue
+                                                )
+                                            }
+                                        Text(task.source == .ai
+                                             ? localizationManager.text("calendar.event_tasks.source_ai")
+                                             : localizationManager.text("calendar.event_tasks.source_manual"))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+
+                                    Spacer()
+
+                                    Button(localizationManager.text("calendar.event_tasks.convert_to_task")) {
+                                        let todo = TodoItem(
+                                            title: task.title,
+                                            descriptionMarkdown: event.wrappedValue.notes,
+                                            dueDate: event.wrappedValue.startDate,
+                                            hasDueTime: true,
+                                            syncToCalendar: false
+                                        )
+                                        todoStore.addItem(todo)
+                                    }
+                                    .buttonStyle(.borderless)
+                                }
+                            }
+                            .onDelete { offsets in
+                                let tasks = event.wrappedValue.eventTasks
+                                for index in offsets {
+                                    planningStore.deleteEventTask(eventID: eventID, taskID: tasks[index].id)
+                                }
+                            }
+                        }
+                        .frame(minHeight: 180, maxHeight: 260)
+                    }
+
+                    if let errorMessage, !errorMessage.isEmpty {
+                        Text(errorMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+        }
+        .padding(24)
+        .frame(width: 520)
+        .sheet(item: $upgradePaywallContext) { context in
+            SubscriptionUpgradeSheetView(
+                context: context,
+                featureGate: featureGate,
+                subscriptionStore: subscriptionStore
+            )
+        }
+    }
+
+    private var canInteractWithEventTasks: Bool {
+        featureGate.canUseEventTasks
+    }
+
+    private func taskModeBinding(for event: Binding<PlanningItem>) -> Binding<Bool> {
+        Binding(
+            get: { event.wrappedValue.hasTaskMode },
+            set: { isEnabled in
+                errorMessage = nil
+                if isEnabled && !featureGate.canUseEventTasks {
+                    presentUpgrade(requiredTier: .plus, messageKey: "calendar.event_tasks.plus_required")
+                    return
+                }
+                planningStore.setEventTaskMode(for: eventID, enabled: isEnabled)
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var lockedEventTasksView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(localizationManager.text("calendar.event_tasks.plus_required"))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Button(localizationManager.text("tasks.ai_assistant.upgrade")) {
+                presentUpgrade(requiredTier: .plus, messageKey: "calendar.event_tasks.plus_required")
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
+    private func generateTasks(event: Binding<PlanningItem>) async {
+        errorMessage = nil
+
+        guard authViewModel.isAuthenticated else {
+            errorMessage = localizationManager.text("calendar.event_tasks.ai_requires_login")
+            return
+        }
+
+        guard featureGate.canUseAIEventTasks else {
+            presentUpgrade(requiredTier: .pro, messageKey: "calendar.event_tasks.ai_requires_pro")
+            return
+        }
+
+        isGenerating = true
+        defer { isGenerating = false }
+
+        do {
+            let response = try await aiService.generateEventTasks(
+                eventTitle: event.wrappedValue.title,
+                description: event.wrappedValue.notes
+            )
+            let tasks = response.tasks.map { PlanningItem.EventTask(title: $0, source: .ai) }
+            planningStore.replaceEventTasks(eventID: eventID, tasks: tasks)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func addManualTask(event: Binding<PlanningItem>) async {
+        errorMessage = nil
+        guard canInteractWithEventTasks else {
+            presentUpgrade(requiredTier: .plus, messageKey: "calendar.event_tasks.plus_required")
+            return
+        }
+        let trimmed = manualTaskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        planningStore.addEventTask(to: eventID, title: trimmed, source: .manual)
+        manualTaskTitle = ""
+    }
+
+    private func presentUpgrade(requiredTier: PlanTier, messageKey: String) {
+        upgradePaywallContext = SubscriptionPaywallContext(
+            requiredTier: requiredTier,
+            title: localizationManager.text("calendar.event_tasks.section_title"),
+            message: localizationManager.text(messageKey)
+        )
+    }
+
+    private func formatted(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.locale = localizationManager.effectiveLocale
+        return formatter.string(from: date)
+    }
+
+    private func taskTitleBinding(for task: PlanningItem.EventTask) -> Binding<String> {
+        Binding(
+            get: {
+                planningStore.localEvents
+                    .first(where: { $0.id == eventID })?
+                    .eventTasks
+                    .first(where: { $0.id == task.id })?
+                    .title ?? task.title
+            },
+            set: { newValue in
+                planningStore.updateEventTaskTitle(eventID: eventID, taskID: task.id, title: newValue)
+            }
+        )
     }
 }

@@ -34,6 +34,23 @@ final class PlanningStore: ObservableObject {
         save()
     }
 
+    @discardableResult
+    func addLocalEvent(title: String, notes: String?, startDate: Date, endDate: Date) -> PlanningItem {
+        let item = PlanningItem(
+            title: title,
+            notes: notes,
+            startDate: startDate,
+            endDate: endDate,
+            isTask: false,
+            isCalendarEvent: true,
+            completed: false,
+            source: .local
+        )
+        items.append(item)
+        save()
+        return item
+    }
+
     func upsertFromTask(_ task: TodoItem) {
         guard let due = task.dueDate else {
             removeTaskPlan(for: task.id)
@@ -128,6 +145,57 @@ final class PlanningStore: ObservableObject {
         items[index] = item
         save()
     }
+
+    func setEventTaskMode(for eventID: UUID, enabled: Bool) {
+        guard let index = items.firstIndex(where: { $0.id == eventID }) else { return }
+        items[index].hasTaskMode = enabled
+        if !enabled {
+            items[index].eventTasks = []
+        }
+        save()
+    }
+
+    func addEventTask(
+        to eventID: UUID,
+        title: String,
+        source: PlanningItem.EventTask.Source
+    ) {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty,
+              let index = items.firstIndex(where: { $0.id == eventID }) else { return }
+        items[index].hasTaskMode = true
+        items[index].eventTasks.append(.init(title: trimmedTitle, source: source))
+        save()
+    }
+
+    func toggleEventTaskCompletion(eventID: UUID, taskID: UUID) {
+        guard let eventIndex = items.firstIndex(where: { $0.id == eventID }),
+              let taskIndex = items[eventIndex].eventTasks.firstIndex(where: { $0.id == taskID }) else { return }
+        items[eventIndex].eventTasks[taskIndex].isCompleted.toggle()
+        save()
+    }
+
+    func updateEventTaskTitle(eventID: UUID, taskID: UUID, title: String) {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty,
+              let eventIndex = items.firstIndex(where: { $0.id == eventID }),
+              let taskIndex = items[eventIndex].eventTasks.firstIndex(where: { $0.id == taskID }) else { return }
+        items[eventIndex].eventTasks[taskIndex].title = trimmedTitle
+        save()
+    }
+
+    func replaceEventTasks(eventID: UUID, tasks: [PlanningItem.EventTask]) {
+        guard let index = items.firstIndex(where: { $0.id == eventID }) else { return }
+        items[index].hasTaskMode = true
+        items[index].eventTasks = tasks
+        save()
+    }
+
+    func deleteEventTask(eventID: UUID, taskID: UUID) {
+        guard let eventIndex = items.firstIndex(where: { $0.id == eventID }) else { return }
+        items[eventIndex].eventTasks.removeAll { $0.id == taskID }
+        save()
+    }
     
     func deleteTask(_ item: PlanningItem) {
         items.removeAll { $0.id == item.id }
@@ -153,6 +221,20 @@ final class PlanningStore: ObservableObject {
     func items(on day: Date) -> [PlanningItem] {
         let cal = Calendar.current
         return items.filter { item in
+            guard let start = item.startDate else { return false }
+            return cal.isDate(start, inSameDayAs: day)
+        }
+    }
+
+    var localEvents: [PlanningItem] {
+        items
+            .filter { $0.source == .local && $0.isCalendarEvent && !$0.isTask }
+            .sorted { ($0.startDate ?? .distantPast) < ($1.startDate ?? .distantPast) }
+    }
+
+    func localEvents(on day: Date) -> [PlanningItem] {
+        let cal = Calendar.current
+        return localEvents.filter { item in
             guard let start = item.startDate else { return false }
             return cal.isDate(start, inSameDayAs: day)
         }

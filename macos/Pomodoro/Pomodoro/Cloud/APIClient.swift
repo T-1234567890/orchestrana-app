@@ -38,9 +38,13 @@ enum AppCheckRequestAuthorizer {
         }
     }
 
-    static func authorize(_ request: inout URLRequest) async throws {
-        let token = try await fetchToken()
-        request.setValue(token, forHTTPHeaderField: headerName)
+    static func authorize(_ request: inout URLRequest) async {
+        do {
+            let token = try await fetchToken()
+            request.setValue(token, forHTTPHeaderField: headerName)
+        } catch {
+            print("[AppCheck] Token unavailable. Continuing without App Check header: \(error.localizedDescription)")
+        }
     }
 }
 
@@ -92,7 +96,7 @@ final class APIClient {
 
         let token = try await fetchIDToken()
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        try await AppCheckRequestAuthorizer.authorize(&request)
+        await AppCheckRequestAuthorizer.authorize(&request)
 
         return request
     }
@@ -286,7 +290,7 @@ final class AIProxyClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        try await AppCheckRequestAuthorizer.authorize(&request)
+        await AppCheckRequestAuthorizer.authorize(&request)
         request.httpBody = bodyData
 
         let data: Data
@@ -363,6 +367,225 @@ final class AIProxyClient {
 
 }
 
+final class EventTasksAPIClient {
+    struct EventTaskPayload: Decodable {
+        let id: UUID
+        let title: String
+        let isCompleted: Bool
+        let createdAt: Date
+        let source: PlanningItem.EventTask.Source
+    }
+
+    struct EventStatePayload: Decodable {
+        let eventId: UUID
+        let eventTitle: String?
+        let eventDescription: String?
+        let startTime: Date?
+        let endTime: Date?
+        let hasTaskMode: Bool
+        let eventTasks: [EventTaskPayload]
+    }
+
+    private struct SyncRequest: Encodable {
+        struct EncodedTask: Encodable {
+            let id: UUID
+            let title: String
+            let isCompleted: Bool
+            let createdAt: Date
+            let source: String
+        }
+
+        let eventId: UUID
+        let eventTitle: String
+        let eventDescription: String?
+        let startTime: Date?
+        let endTime: Date?
+        let hasTaskMode: Bool
+        let eventTasks: [EncodedTask]
+
+        init(event: PlanningItem) {
+            self.eventId = event.id
+            self.eventTitle = event.title
+            self.eventDescription = event.notes
+            self.startTime = event.startDate
+            self.endTime = event.endDate
+            self.hasTaskMode = event.hasTaskMode
+            self.eventTasks = event.eventTasks.map {
+                EncodedTask(
+                    id: $0.id,
+                    title: $0.title,
+                    isCompleted: $0.isCompleted,
+                    createdAt: $0.createdAt,
+                    source: $0.source.rawValue
+                )
+            }
+        }
+    }
+
+    private struct GenerateRequest: Encodable {
+        let eventId: UUID
+        let eventTitle: String
+        let eventDescription: String?
+        let startTime: Date?
+        let endTime: Date?
+    }
+
+    enum EventTasksError: LocalizedError {
+        case invalidEndpoint
+        case invalidResponse
+        case unauthorized
+        case forbidden(message: String?)
+        case network(Swift.Error)
+        case http(statusCode: Int, message: String?)
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidEndpoint:
+                return LocalizationManager.shared.text("api.error.invalid_endpoint")
+            case .invalidResponse:
+                return LocalizationManager.shared.text("api.error.aiproxy_invalid_response")
+            case .unauthorized:
+                return LocalizationManager.shared.text("api.error.auth_required")
+            case .forbidden(let message):
+                return message ?? LocalizationManager.shared.text("api.error.aiproxy_forbidden")
+            case .network(let error):
+                return error.localizedDescription
+            case .http(_, let message):
+                return message ?? LocalizationManager.shared.text("api.error.aiproxy_invalid_response")
+            }
+        }
+    }
+
+    private struct ErrorEnvelope: Decodable {
+        struct InnerError: Decodable {
+            let message: String?
+        }
+
+        let error: InnerError?
+        let message: String?
+    }
+
+    private let session: URLSession
+    private let region: String
+
+    init(session: URLSession = .shared, region: String? = nil) {
+        self.session = session
+        if let region {
+            self.region = region
+        } else if let configured = Bundle.main.infoDictionary?["POMODORO_CLOUD_FUNCTION_REGION"] as? String,
+                  !configured.isEmpty {
+            self.region = configured
+        } else {
+            self.region = "us-central1"
+        }
+    }
+
+    func fetchState(eventID: UUID) async throws -> EventStatePayload {
+        let endpoint = try resolveEndpointURL(functionName: "getEventTasks", queryItems: [
+            URLQueryItem(name: "eventId", value: eventID.uuidString)
+        ])
+        var request = try await authorizedRequest(url: endpoint, method: "GET")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        return try await send(request, decodeAs: EventStatePayload.self)
+    }
+
+    func sync(event: PlanningItem) async throws -> EventStatePayload {
+        let endpoint = try resolveEndpointURL(functionName: "syncEventTasks")
+        var request = try await authorizedRequest(url: endpoint, method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        request.httpBody = try encoder.encode(SyncRequest(event: event))
+        return try await send(request, decodeAs: EventStatePayload.self)
+    }
+
+    func generateTasks(for event: PlanningItem) async throws -> EventStatePayload {
+        let endpoint = try resolveEndpointURL(functionName: "generateEventTasks")
+        var request = try await authorizedRequest(url: endpoint, method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        request.httpBody = try encoder.encode(
+            GenerateRequest(
+                eventId: event.id,
+                eventTitle: event.title,
+                eventDescription: event.notes,
+                startTime: event.startDate,
+                endTime: event.endDate
+            )
+        )
+        return try await send(request, decodeAs: EventStatePayload.self)
+    }
+
+    private func authorizedRequest(url: URL, method: String) async throws -> URLRequest {
+        let token = try await AuthViewModel.shared.getValidIDToken()
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        await AppCheckRequestAuthorizer.authorize(&request)
+        return request
+    }
+
+    private func send<Response: Decodable>(_ request: URLRequest, decodeAs: Response.Type) async throws -> Response {
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw EventTasksError.network(error)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw EventTasksError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 200...299:
+            do {
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601
+                return try decoder.decode(Response.self, from: data)
+            } catch {
+                throw EventTasksError.invalidResponse
+            }
+        case 401:
+            throw EventTasksError.unauthorized
+        case 403:
+            throw EventTasksError.forbidden(message: extractErrorMessage(from: data))
+        default:
+            throw EventTasksError.http(statusCode: httpResponse.statusCode, message: extractErrorMessage(from: data))
+        }
+    }
+
+    private func resolveEndpointURL(functionName: String, queryItems: [URLQueryItem] = []) throws -> URL {
+        guard let projectID = FirebaseApp.app()?.options.projectID,
+              !projectID.isEmpty,
+              var components = URLComponents(string: "https://\(region)-\(projectID).cloudfunctions.net/\(functionName)") else {
+            throw EventTasksError.invalidEndpoint
+        }
+        if !queryItems.isEmpty {
+            components.queryItems = queryItems
+        }
+        guard let url = components.url else {
+            throw EventTasksError.invalidEndpoint
+        }
+        return url
+    }
+
+    private func extractErrorMessage(from data: Data) -> String? {
+        if let decoded = try? JSONDecoder().decode(ErrorEnvelope.self, from: data) {
+            return decoded.error?.message ?? decoded.message
+        }
+        if let raw = String(data: data, encoding: .utf8),
+           !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return raw
+        }
+        return nil
+    }
+}
+
 struct SubscriptionEntitlement: Decodable {
     let effectiveProductId: String?
     let tier: String
@@ -433,7 +656,7 @@ final class SubscriptionAPIClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        try await AppCheckRequestAuthorizer.authorize(&request)
+        await AppCheckRequestAuthorizer.authorize(&request)
         request.httpBody = try JSONEncoder().encode(VerifyRequest(transactionId: transactionId))
 
         let data: Data

@@ -6,6 +6,8 @@ import EventKit
 struct CalendarMonthView: View {
     let date: Date
     let events: [EKEvent]
+    let localEvents: [PlanningItem]
+    let onSelectLocalEvent: (PlanningItem) -> Void
     @EnvironmentObject private var localizationManager: LocalizationManager
     
     private let monthColumns: [GridItem] = Array(repeating: GridItem(.flexible(minimum: 70), spacing: 8), count: 7)
@@ -62,6 +64,14 @@ struct CalendarMonthView: View {
             calendar.isDate(event.startDate, inSameDayAs: day)
         }
     }
+
+    private func localEvents(for day: Date) -> [PlanningItem] {
+        let calendar = Calendar.current
+        return localEvents.filter { event in
+            guard let start = event.startDate else { return false }
+            return calendar.isDate(start, inSameDayAs: day)
+        }
+    }
     
     @ViewBuilder
     private func monthCell(for day: Date?) -> some View {
@@ -69,6 +79,7 @@ struct CalendarMonthView: View {
             let calendar = Calendar.current
             let isToday = calendar.isDateInToday(day)
             let dayEvents = events(for: day)
+            let dayLocalEvents = localEvents(for: day)
             
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
@@ -88,6 +99,14 @@ struct CalendarMonthView: View {
                         Text(event.title ?? localizationManager.text("common.untitled"))
                             .font(.caption)
                             .lineLimit(1)
+                    }
+                    ForEach(dayLocalEvents.prefix(max(0, 3 - dayEvents.count))) { event in
+                        Button(event.title) {
+                            onSelectLocalEvent(event)
+                        }
+                        .buttonStyle(.plain)
+                        .font(.caption)
+                        .lineLimit(1)
                     }
                 }
                 Spacer(minLength: 0)
