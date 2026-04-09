@@ -2,7 +2,6 @@ import Foundation
 import Combine
 import FirebaseAuth
 import FirebaseCore
-import FirebaseFunctions
 
 /// Entitlement-aware feature gating for cloud-powered capabilities.
 final class FeatureGate: ObservableObject {
@@ -115,19 +114,11 @@ final class FeatureGate: ObservableObject {
     static let shared = FeatureGate()
 
     private var authListener: AuthStateDidChangeListenerHandle?
-    private let functions: Functions?
     private let defaults: UserDefaults
     private static let cachedEntitlementKey = "feature_gate.cached_entitlement"
 
-    private init(functions: Functions? = nil, defaults: UserDefaults = .standard) {
+    private init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        if let functions {
-            self.functions = functions
-        } else if FirebaseApp.app() != nil {
-            self.functions = Functions.functions(region: "us-central1")
-        } else {
-            self.functions = nil
-        }
         restoreCachedEntitlementIfAvailable()
         listenForAuthChanges()
     }
@@ -387,7 +378,7 @@ final class FeatureGate: ObservableObject {
 
     @MainActor
     func refreshAllowance() async {
-        guard let functions else {
+        guard FirebaseApp.app() != nil else {
             allowanceErrorMessage = nil
             return
         }
@@ -402,10 +393,16 @@ final class FeatureGate: ObservableObject {
         defer { isRefreshingAllowance = false }
 
         do {
-            let result = try await functions
-                .httpsCallable("getAllowance")
-                .call()
-            let payload = try decodeAllowancePayload(from: result.data)
+            let request = try await makeAllowanceRequest()
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw GateError.invalidResponse
+            }
+            guard (200...299).contains(httpResponse.statusCode) else {
+                throw GateError.http(statusCode: httpResponse.statusCode)
+            }
+            let object = try JSONSerialization.jsonObject(with: data)
+            let payload = try decodeAllowancePayload(from: object)
             apply(payload: payload)
         } catch {
             allowanceErrorMessage = error.localizedDescription
@@ -528,6 +525,9 @@ final class FeatureGate: ObservableObject {
     private enum GateError: LocalizedError {
         case invalidResponse
         case decodingFailed
+        case invalidEndpoint
+        case missingAuthToken
+        case http(statusCode: Int)
 
         var errorDescription: String? {
             switch self {
@@ -535,8 +535,47 @@ final class FeatureGate: ObservableObject {
                 return LocalizationManager.shared.text("feature_gate.error.invalid_allowance_response")
             case .decodingFailed:
                 return LocalizationManager.shared.text("feature_gate.error.decoding_failed")
+            case .invalidEndpoint:
+                return LocalizationManager.shared.text("feature_gate.error.invalid_allowance_response")
+            case .missingAuthToken:
+                return LocalizationManager.shared.text("api.error.auth_required")
+            case .http(let statusCode):
+                return "Allowance request failed with status \(statusCode)."
             }
         }
+    }
+
+    private func makeAllowanceRequest() async throws -> URLRequest {
+        guard let app = FirebaseApp.app(),
+              let projectID = app.options.projectID,
+              !projectID.isEmpty,
+              let url = URL(string: "https://us-central1-\(projectID).cloudfunctions.net/getAllowanceHttp") else {
+            throw GateError.invalidEndpoint
+        }
+        guard let user = Auth.auth().currentUser else {
+            throw GateError.missingAuthToken
+        }
+
+        let token: String = try await withCheckedThrowingContinuation { continuation in
+            user.getIDTokenForcingRefresh(false) { token, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let token, !token.isEmpty else {
+                    continuation.resume(throwing: GateError.missingAuthToken)
+                    return
+                }
+                continuation.resume(returning: token)
+            }
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        try await AppCheckRequestAuthorizer.authorize(&request)
+        return request
     }
 
     private struct AllowanceResponse: Decodable {
