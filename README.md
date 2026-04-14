@@ -18,7 +18,6 @@ It is not just a timer — it links tasks, time, and focus, adapting to task-dri
   <img src="https://img.shields.io/github/license/T-1234567890/orchestrana-app" alt="License" />
   <img src="https://img.shields.io/badge/platform-macOS-blue?logo=apple" alt="Platform" />
   <img src="https://img.shields.io/github/v/release/T-1234567890/orchestrana-app" alt="Release" />
-  <img src="https://img.shields.io/github/downloads/T-1234567890/orchestrana-app/total" alt="Downloads" />
  <a href="https://vps.town">
   <img src="https://img.shields.io/badge/Sponsored%20by-VPS.Town-3DAF7C" alt="Sponsor VPS.Town" />
 </a>
