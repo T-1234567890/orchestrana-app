@@ -123,17 +123,13 @@ final class AuthManager {
         guard FirebaseApp.app() != nil else {
             throw AuthManagerError.firebaseNotConfigured
         }
-        guard let window = presentingWindow() else {
-            throw AuthManagerError.missingPresentingWindow
+        guard activeAppleSignInCoordinator == nil, currentAuthorizationController == nil else {
+            throw AuthManagerError.appleSignInAlreadyInProgress
         }
 
-        print("[Auth] Starting Apple sign-in on main thread: true")
-        print("[Auth] Apple presentation window before activation: \(window)")
-        activate(window: window)
-
         let nonce = try randomNonceString()
+        let hashedNonce = sha256(nonce)
         let coordinator = AppleSignInCoordinator(
-            window: window,
             controllerDidChange: { [weak self] controller in
                 self?.currentAuthorizationController = controller
             }
@@ -142,33 +138,15 @@ final class AuthManager {
 
         do {
             print("[Auth] Apple nonce generated")
-            let authorization = try await coordinator.beginSignIn(nonce: nonce)
+            let authorization = try await coordinator.beginSignIn(hashedNonce: hashedNonce)
             defer {
                 activeAppleSignInCoordinator = nil
                 currentAuthorizationController = nil
             }
 
-            guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else {
-                throw AuthManagerError.missingResult
-            }
-
             print("[Auth] Apple authorization completed")
 
-            guard let identityTokenData = appleIDCredential.identityToken,
-                  let identityToken = String(data: identityTokenData, encoding: .utf8),
-                  !identityToken.isEmpty else {
-                throw AuthManagerError.missingAppleIdentityToken
-            }
-
-            print("[Auth] Apple Firebase credential created")
-            let credential = OAuthProvider.appleCredential(
-                withIDToken: identityToken,
-                rawNonce: nonce,
-                fullName: appleIDCredential.fullName
-            )
-            let authResult = try await signIn(with: credential)
-            print("[Auth] Apple sign-in succeeded for uid: \(authResult.user.uid)")
-            return authResult.user.uid
+            return try await completeAppleSignIn(authorization: authorization, nonce: nonce)
         } catch {
             activeAppleSignInCoordinator = nil
             currentAuthorizationController = nil
@@ -255,6 +233,43 @@ final class AuthManager {
         }
     }
 
+    private static func resolvedPresentationWindow() -> NSWindow? {
+        let candidates = [
+            NSApplication.shared.keyWindow,
+            NSApplication.shared.mainWindow
+        ] + NSApplication.shared.windows
+
+        return candidates
+            .compactMap { $0 }
+            .first { window in
+                window.isVisible &&
+                !window.isMiniaturized &&
+                (window.canBecomeKey || window.canBecomeMain)
+            }
+    }
+
+    private func completeAppleSignIn(authorization: ASAuthorization, nonce: String) async throws -> String {
+        guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+            throw AuthManagerError.missingResult
+        }
+
+        guard let identityTokenData = appleIDCredential.identityToken,
+              let identityToken = String(data: identityTokenData, encoding: .utf8),
+              !identityToken.isEmpty else {
+            throw AuthManagerError.missingAppleIdentityToken
+        }
+
+        print("[Auth] Apple Firebase credential created")
+        let credential = OAuthProvider.appleCredential(
+            withIDToken: identityToken,
+            rawNonce: nonce,
+            fullName: appleIDCredential.fullName
+        )
+        let authResult = try await signIn(with: credential)
+        print("[Auth] Apple sign-in succeeded for uid: \(authResult.user.uid)")
+        return authResult.user.uid
+    }
+
     private func presentingWindow() -> NSWindow? {
         if let keyWindow = NSApplication.shared.keyWindow {
             return keyWindow
@@ -296,6 +311,9 @@ final class AuthManager {
 
     private func activate(window: NSWindow) {
         NSApplication.shared.activate(ignoringOtherApps: true)
+        if window.isMiniaturized {
+            window.deminiaturize(nil)
+        }
         window.makeKeyAndOrderFront(nil)
     }
 
@@ -343,36 +361,59 @@ final class AuthManager {
 
     @MainActor
     private final class AppleSignInCoordinator: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
-        private let window: NSWindow
         private let controllerDidChange: (ASAuthorizationController?) -> Void
         private var controller: ASAuthorizationController?
         private var continuation: CheckedContinuation<ASAuthorization, Error>?
 
-        init(window: NSWindow, controllerDidChange: @escaping (ASAuthorizationController?) -> Void) {
-            self.window = window
+        init(controllerDidChange: @escaping (ASAuthorizationController?) -> Void) {
             self.controllerDidChange = controllerDidChange
         }
 
-        func beginSignIn(nonce: String) async throws -> ASAuthorization {
-            print("[Auth] Apple beginSignIn on main thread: true")
+        func beginSignIn(hashedNonce: String) async throws -> ASAuthorization {
+            print("[Auth] Apple beginSignIn on main actor")
             return try await withCheckedThrowingContinuation { continuation in
                 self.continuation = continuation
-
-                let provider = ASAuthorizationAppleIDProvider()
-                let request = provider.createRequest()
-                request.requestedScopes = [.fullName, .email]
-                request.nonce = AuthManager.shared.sha256(nonce)
-
-                let controller = ASAuthorizationController(authorizationRequests: [request])
-                controller.delegate = self
-                controller.presentationContextProvider = self
-                self.controller = controller
-                controllerDidChange(controller)
-                print("[Auth] Apple controller configured with delegate and presentation context provider")
-                print("[Auth] Apple controller retained: \(String(describing: self.controller))")
-                print("[Auth] Performing Apple authorization request")
-                controller.performRequests()
+                Task { @MainActor in
+                    await self.performSignInRequest(hashedNonce: hashedNonce)
+                }
             }
+        }
+
+        private func performSignInRequest(hashedNonce: String) async {
+            dispatchPrecondition(condition: .onQueue(.main))
+
+            // Give SwiftUI/AppKit one pass to attach the hosting view and promote the active window.
+            try? await Task.sleep(nanoseconds: 150_000_000)
+
+            guard let window = AuthManager.resolvedPresentationWindow() else {
+                fail(with: AuthManagerError.missingPresentingWindow)
+                return
+            }
+
+            AuthManager.shared.activate(window: window)
+            guard let readyWindow = AuthManager.resolvedPresentationWindow() else {
+                fail(with: AuthManagerError.missingPresentingWindow)
+                return
+            }
+
+            print("[Auth] Apple presentation window before request: \(readyWindow)")
+            print("[Auth] Apple presentation window visible: \(readyWindow.isVisible), key: \(readyWindow.isKeyWindow), main: \(readyWindow.isMainWindow), miniaturized: \(readyWindow.isMiniaturized)")
+
+            let provider = ASAuthorizationAppleIDProvider()
+            let request = provider.createRequest()
+            request.requestedScopes = [.fullName, .email]
+            request.requestedOperation = .operationLogin
+            request.nonce = hashedNonce
+
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = self
+            controller.presentationContextProvider = self
+            self.controller = controller
+            controllerDidChange(controller)
+            print("[Auth] Apple controller configured with delegate and presentation context provider")
+            print("[Auth] Apple controller retained: \(String(describing: self.controller))")
+            print("[Auth] Performing Apple authorization request")
+            controller.performRequests()
         }
 
         @MainActor
@@ -398,10 +439,21 @@ final class AuthManager {
 
         @MainActor
         func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-            let anchor = NSApplication.shared.keyWindow ?? NSApplication.shared.windows.first ?? window
+            guard let anchor = AuthManager.resolvedPresentationWindow() else {
+                preconditionFailure("Sign in with Apple requested a presentation anchor without an active NSWindow.")
+            }
             print("[Auth] Apple presentation anchor: \(anchor)")
+            print("[Auth] Apple presentation anchor visible: \(anchor.isVisible), key: \(anchor.isKeyWindow), main: \(anchor.isMainWindow), miniaturized: \(anchor.isMiniaturized)")
             print("[Auth] Apple presentation anchor on main thread: \(Thread.isMainThread)")
             return anchor
+        }
+
+        private func fail(with error: Error) {
+            print("[Auth] Apple authorization failed before performRequests: \((error as NSError).localizedDescription)")
+            controller = nil
+            controllerDidChange(nil)
+            continuation?.resume(throwing: error)
+            continuation = nil
         }
     }
 }
@@ -415,6 +467,7 @@ enum AuthManagerError: LocalizedError {
     case missingResult
     case missingAppleIdentityToken
     case nonceGenerationFailed
+    case appleSignInAlreadyInProgress
 
     var errorDescription: String? {
         switch self {
@@ -434,6 +487,8 @@ enum AuthManagerError: LocalizedError {
             return "Sign in with Apple did not return an identity token."
         case .nonceGenerationFailed:
             return "Unable to generate a secure sign-in nonce."
+        case .appleSignInAlreadyInProgress:
+            return "Sign in with Apple is already in progress."
         }
     }
 }

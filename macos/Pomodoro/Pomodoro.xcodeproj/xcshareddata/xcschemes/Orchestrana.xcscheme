@@ -16,8 +16,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "7C360D372F191F17007313D3"
-               BuildableName = "Pomodoro.app"
-               BlueprintName = "Pomodoro"
+               BuildableName = "Orchestrana.app"
+               BlueprintName = "Orchestrana"
                ReferencedContainer = "container:Pomodoro.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -45,8 +45,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7C360D372F191F17007313D3"
-            BuildableName = "Pomodoro.app"
-            BlueprintName = "Pomodoro"
+            BuildableName = "Orchestrana.app"
+            BlueprintName = "Orchestrana"
             ReferencedContainer = "container:Pomodoro.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -62,8 +62,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7C360D372F191F17007313D3"
-            BuildableName = "Pomodoro.app"
-            BlueprintName = "Pomodoro"
+            BuildableName = "Orchestrana.app"
+            BlueprintName = "Orchestrana"
             ReferencedContainer = "container:Pomodoro.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

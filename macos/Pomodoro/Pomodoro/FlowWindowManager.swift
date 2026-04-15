@@ -136,7 +136,7 @@ final class FlowWindowManager: ObservableObject {
         guard let rootView = makeFlowRootView() else { return nil }
 
         let hostingController = NSHostingController(rootView: rootView)
-        let window = NSWindow(contentViewController: hostingController)
+        let window = FlowWindow(contentViewController: hostingController)
         window.identifier = Self.flowWindowIdentifier
         window.title = ""
         window.titleVisibility = .hidden
@@ -299,7 +299,10 @@ final class FlowWindowManager: ObservableObject {
             isFullscreenPresentation = true
             return
         }
+        let flowWindow = window as? FlowWindow
+        flowWindow?.allowsProgrammaticFullscreenToggle = true
         window.toggleFullScreen(nil)
+        flowWindow?.allowsProgrammaticFullscreenToggle = false
     }
 
     private func leaveFullscreen() {
@@ -388,5 +391,16 @@ final class FlowWindowManager: ObservableObject {
         premiumPreviewTask?.cancel()
         premiumPreviewTask = nil
         activePremiumPreview = nil
+    }
+
+    private final class FlowWindow: NSWindow {
+        var allowsProgrammaticFullscreenToggle = false
+
+        override func toggleFullScreen(_ sender: Any?) {
+            guard allowsProgrammaticFullscreenToggle || styleMask.contains(.fullScreen) else {
+                return
+            }
+            super.toggleFullScreen(sender)
+        }
     }
 }

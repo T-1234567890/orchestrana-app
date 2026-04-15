@@ -1,11 +1,12 @@
 //
-//  PomodoroApp.swift
-//  Pomodoro
+//  OrchestranaApp.swift
+//  Orchestrana
 //
 //  Created by Zhengyang Hu on 1/15/26.
 //
 
 import SwiftUI
+import AppKit
 import FirebaseCore
 import FirebaseAppCheck
 
@@ -66,7 +67,7 @@ enum FirebaseBootstrap {
 
 @MainActor
 @main
-struct PomodoroApp: App {
+struct OrchestranaApp: App {
     static let mainWindowID = "main-window"
 
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
@@ -237,6 +238,7 @@ struct PomodoroApp: App {
             .background(MainWindowSceneOpenerBridge(onRegister: { action in
                 appDelegate.registerMainWindowSceneOpener(action)
             }))
+            .background(MainWindowFullscreenGuard())
             .task(id: ObjectIdentifier(appState)) {
                 appDelegate.appState = appState
                 appDelegate.musicController = musicController
@@ -265,9 +267,49 @@ struct PomodoroApp: App {
                 .allowsHitTesting(false)
                 .onAppear {
                     onRegister {
-                        openWindow(id: PomodoroApp.mainWindowID)
+                        openWindow(id: OrchestranaApp.mainWindowID)
                     }
                 }
+        }
+    }
+
+    private struct MainWindowFullscreenGuard: NSViewRepresentable {
+        func makeCoordinator() -> Coordinator {
+            Coordinator()
+        }
+
+        func makeNSView(context: Context) -> NSView {
+            let view = NSView()
+            configureWindow(for: view, context: context)
+            return view
+        }
+
+        func updateNSView(_ nsView: NSView, context: Context) {
+            configureWindow(for: nsView, context: context)
+        }
+
+        private func configureWindow(for view: NSView, context: Context) {
+            DispatchQueue.main.async {
+                guard let window = view.window else { return }
+                window.collectionBehavior.remove(.fullScreenPrimary)
+                window.collectionBehavior.remove(.fullScreenAuxiliary)
+                window.collectionBehavior.insert(.fullScreenNone)
+                if let zoomButton = window.standardWindowButton(.zoomButton) {
+                    zoomButton.target = window
+                    zoomButton.action = #selector(NSWindow.performZoom(_:))
+                    zoomButton.image = NSImage(named: NSImage.addTemplateName)
+                    zoomButton.alternateImage = zoomButton.image
+                    zoomButton.imagePosition = .imageOnly
+                    zoomButton.needsDisplay = true
+                }
+                window.delegate = context.coordinator
+            }
+        }
+
+        final class Coordinator: NSObject, NSWindowDelegate {
+            func windowWillUseStandardFrame(_ window: NSWindow, defaultFrame newFrame: NSRect) -> NSRect {
+                newFrame
+            }
         }
     }
 

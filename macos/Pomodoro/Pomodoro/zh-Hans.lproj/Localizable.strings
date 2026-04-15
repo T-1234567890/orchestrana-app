@@ -245,6 +245,15 @@
 "settings.account.signed_in" = "已登录";
 "settings.account.subtitle" = "仅在功能需要时登录。";
 "settings.account.title" = "账户";
+"settings.account.delete_account_body" = "删除你的 Orchestrana 账户和关联到该账户的服务器记录。此操作不会取消 App Store 订阅；请在 App Store 账户设置中管理订阅。";
+"settings.account.delete_account_button" = "删除账户";
+"settings.account.delete_account_title" = "删除账户";
+"settings.account.delete_confirm_button" = "删除账户";
+"settings.account.delete_confirm_message" = "这会永久删除你的 Firebase 账户和关联到该账户的服务器记录。本机上的本地应用数据不会自动移除。";
+"settings.account.delete_confirm_title" = "确定要删除吗？";
+"settings.account.delete_purchases_continue" = "继续";
+"settings.account.delete_purchases_message" = "这会从 Orchestrana 服务器删除关联到该账户的购买记录。它不能取消 App Store 订阅或退款。";
+"settings.account.delete_purchases_title" = "删除购买记录和账户数据？";
 "settings.advanced.account_tools" = "高级：账户工具";
 "settings.language.chinese" = "中文";
 "settings.language.english" = "English";

@@ -98,6 +98,11 @@ p {
   letter-spacing: -0.02em;
 }
 
+.logo-link {
+  color: var(--text);
+  text-decoration: none;
+}
+
 .logo-icon {
   width: 42px;
   height: 42px;
@@ -891,6 +896,113 @@ body.lang-switching-in [data-en] {
   border-left: 1px solid rgba(0,0,0,0.03);
   font-weight: 700;
   color: #2c1f19;
+}
+.comparison-page .comparison-content {
+  display: grid;
+  gap: 14px;
+  width: min(1120px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: clamp(12px, 2vw, 18px) 0;
+}
+.comparison-page .privacy-header {
+  max-width: 760px;
+  margin-inline: auto;
+}
+.comparison-page .privacy-header h1 {
+  font-size: clamp(30px, 5vw, 46px);
+}
+.comparison-page .legal-nav {
+  margin-top: 16px;
+}
+.comparison-page .compare-wrapper {
+  padding: 0;
+  overflow-x: auto;
+}
+.billing-notice {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.06);
+  background: rgba(255, 244, 235, 0.74);
+  color: var(--text);
+}
+.billing-notice strong {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+.billing-notice p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+  font-size: 14px;
+}
+.plan-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.plan-summary-card {
+  padding: 14px;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 14px;
+  background: rgba(255, 244, 235, 0.56);
+}
+.plan-summary-card h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+.plan-summary-card p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+.full-plan-table {
+  min-width: 1080px;
+}
+.full-plan-table th,
+.full-plan-table td {
+  padding: 8px 9px;
+  font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'San Francisco', sans-serif;
+}
+.full-plan-table th {
+  font-size: 14px;
+}
+.full-plan-table td {
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+.full-plan-table th:first-child,
+.full-plan-table td:first-child {
+  text-align: left;
+  width: 22%;
+}
+.full-plan-table th:nth-child(2),
+.full-plan-table td:nth-child(2) {
+  text-align: left;
+  width: 34%;
+}
+.full-plan-table td:not(:first-child),
+.full-plan-table th:not(:first-child) {
+  width: 14.666%;
+}
+.full-plan-table td:nth-child(2),
+.full-plan-table th:nth-child(2) {
+  width: 34%;
+}
+.full-plan-table .feature-category td {
+  padding: 10px 9px 7px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7a5d50;
+  background: rgba(255, 235, 220, 0.78);
+}
+@media (max-width: 760px) {
+  .plan-summary-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Waitlist */

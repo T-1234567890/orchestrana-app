@@ -592,6 +592,7 @@ struct PlansComparisonView: View {
     @ObservedObject var featureGate: FeatureGate
     @ObservedObject var subscriptionStore: SubscriptionStore
     @EnvironmentObject private var authViewModel: AuthViewModel
+    @Environment(\.openURL) private var openURL
     var emphasizedTier: PlanTier? = nil
     var billingCycleSelection: Binding<PlanBillingCycle>? = nil
     @State private var billingCycle: PlanBillingCycle = .yearly
@@ -633,10 +634,31 @@ struct PlansComparisonView: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(PlanFeatureSection.allCases) { section in
-                    comparisonSection(section)
+            billingNotice
+
+            keyComparisonSection
+
+            HStack(spacing: 12) {
+                Button {
+                    Task {
+                        await subscriptionStore.restorePurchases()
+                    }
+                } label: {
+                    if subscriptionStore.isRestoring {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text("Restore Purchases")
+                    }
                 }
+                .buttonStyle(.bordered)
+                .disabled(subscriptionStore.isRestoring)
+
+                Button("View Full Comparison") {
+                    guard let url = URL(string: "https://pomodoro-app.tech/comparison.html") else { return }
+                    openURL(url)
+                }
+                .buttonStyle(.bordered)
             }
         }
         .task(id: authViewModel.currentUser?.uid) {
@@ -669,6 +691,50 @@ struct PlansComparisonView: View {
                 }
             }
         )
+    }
+
+    private var billingNotice: some View {
+        Text("Subscriptions are billed through the Apple App Store and renew automatically unless canceled at least 24 hours before the current period ends. Manage or cancel in your App Store account settings.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.primary.opacity(0.04))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var keyComparisonSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Key comparison")
+                .font(.subheadline.weight(.semibold))
+
+            ForEach(keyComparisonRows) { row in
+                HStack(alignment: .center, spacing: 12) {
+                    Text(row.title)
+                        .font(.subheadline)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    comparisonCell(row.availability(for: .free))
+                    comparisonCell(row.availability(for: .plus))
+                    comparisonCell(row.availability(for: .pro))
+                }
+                .padding(.vertical, 5)
+            }
+        }
+        .padding(14)
+        .background(Color.primary.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var keyComparisonRows: [PlanFeatureRow] {
+        [
+            PlanFeatureRow(title: "Core timer and tasks", freeAvailability: .available, plusAvailability: .available, proAvailability: .available),
+            PlanFeatureRow(title: "AI task drafting", freeAvailability: .unavailable, plusAvailability: .available, proAvailability: .available),
+            PlanFeatureRow(title: "Insight summaries", freeAvailability: .unavailable, plusAvailability: .limited("DeepSeek"), proAvailability: .limited("Gemini")),
+            PlanFeatureRow(title: "Deep analysis", freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available),
+            PlanFeatureRow(title: "AI scheduling", freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available)
+        ]
     }
 
     private func product(for tier: PlanTier) -> Product? {

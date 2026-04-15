@@ -130,6 +130,117 @@ final class APIClient {
     }
 }
 
+final class AccountDeletionAPIClient {
+    enum AccountDeletionError: LocalizedError {
+        case invalidEndpoint
+        case invalidResponse
+        case network(Swift.Error)
+        case http(statusCode: Int, message: String?)
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidEndpoint:
+                return LocalizationManager.shared.text("api.error.invalid_endpoint")
+            case .invalidResponse:
+                return LocalizationManager.shared.text("api.error.aiproxy_invalid_response")
+            case .network(let error):
+                return error.localizedDescription
+            case .http(_, let message):
+                return message ?? LocalizationManager.shared.text("api.error.aiproxy_invalid_response")
+            }
+        }
+    }
+
+    private struct DeleteResponse: Decodable {
+        let ok: Bool
+    }
+
+    private struct ErrorEnvelope: Decodable {
+        struct InnerError: Decodable {
+            let message: String?
+        }
+
+        let error: InnerError?
+        let message: String?
+    }
+
+    private let session: URLSession
+    private let region: String
+
+    init(session: URLSession = .shared, region: String? = nil) {
+        self.session = session
+        if let region {
+            self.region = region
+        } else if let configured = Bundle.main.infoDictionary?["POMODORO_CLOUD_FUNCTION_REGION"] as? String,
+                  !configured.isEmpty {
+            self.region = configured
+        } else {
+            self.region = "us-central1"
+        }
+    }
+
+    func deleteAccount() async throws {
+        let token = try await AuthViewModel.shared.getValidIDToken()
+        let endpoint = try resolveEndpointURL()
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        await AppCheckRequestAuthorizer.authorize(&request)
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw AccountDeletionError.network(error)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AccountDeletionError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 200...299:
+            guard (try? JSONDecoder().decode(DeleteResponse.self, from: data).ok) == true else {
+                throw AccountDeletionError.invalidResponse
+            }
+        default:
+            throw AccountDeletionError.http(
+                statusCode: httpResponse.statusCode,
+                message: extractErrorMessage(from: data)
+            )
+        }
+    }
+
+    private func resolveEndpointURL() throws -> URL {
+        if let explicit = Bundle.main.infoDictionary?["POMODORO_DELETE_ACCOUNT_URL"] as? String,
+           let url = URL(string: explicit),
+           !explicit.isEmpty {
+            return url
+        }
+
+        guard let projectID = FirebaseApp.app()?.options.projectID,
+              !projectID.isEmpty,
+              let url = URL(string: "https://\(region)-\(projectID).cloudfunctions.net/deleteAccount") else {
+            throw AccountDeletionError.invalidEndpoint
+        }
+
+        return url
+    }
+
+    private func extractErrorMessage(from data: Data) -> String? {
+        if let decoded = try? JSONDecoder().decode(ErrorEnvelope.self, from: data) {
+            return decoded.error?.message ?? decoded.message
+        }
+        if let raw = String(data: data, encoding: .utf8),
+           !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return raw
+        }
+        return nil
+    }
+}
+
 /// Typed client for calling the Firebase HTTPS function `aiProxy`.
 ///
 /// Example usage:

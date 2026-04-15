@@ -744,11 +744,11 @@ extension AIService {
         }
 
         var featureType: String {
-            isComplex ? "insights_metric_complex" : "insights_metric_simple"
+            "insights_metric_simple"
         }
 
         var modelFamily: String {
-            isComplex ? "gemini" : "deepseek"
+            "deepseek"
         }
 
         var displayName: String {
@@ -775,15 +775,14 @@ extension AIService {
         let fallback = summarySectionFallback(section, snapshot: snapshot, taskSummary: taskSummary)
         let input = ProductivityAIInput(snapshot: snapshot, taskSummary: taskSummary)
         let payload = StructuredSummaryInsightPayload(section: section, input: input)
-        let isProAnalysis = FeatureGate.shared.canUseAIDeepAnalysis
         let canRunLightweight = FeatureGate.shared.canUseAIWeeklyOverview
-        let cacheKey = "summary-section-\(section.cacheKey)-\(isProAnalysis ? "pro" : "plus")-\(cacheDayKey(for: now))-\(payload.cacheHash)"
+        let cacheKey = "summary-section-\(section.cacheKey)-deepseek-\(cacheDayKey(for: now))-\(payload.cacheHash)"
 
         if let cached = insightsCache.cachedResult(for: cacheKey, now: now) {
             return cached
         }
 
-        guard isProAnalysis || canRunLightweight else {
+        guard canRunLightweight else {
             return ProductivityInsightResult(
                 text: fallback,
                 usedModelFamily: nil,
@@ -793,38 +792,18 @@ extension AIService {
             )
         }
 
-        let prompt: String
-        let modelFamily: String
-        let featureType: String
-        let maxOutputTokens: Int
+        let prompt = """
+        You are writing a brief productivity insight for one Summary section in a Pomodoro app.
+        Focus only on \(section.displayName).
+        Keep the answer to 1-3 short sentences.
+        Describe patterns simply and directly. Do not use deep reasoning.
 
-        if isProAnalysis {
-            prompt = """
-            You are analyzing one Summary section from a Pomodoro productivity app.
-            Focus only on \(section.displayName).
-            Return 2-4 concise sentences with clear observations and one actionable suggestion if useful.
-            Do not generate a full report and do not reference missing raw logs.
-
-            Structured input:
-            \(payload.jsonString)
-            """
-            modelFamily = "gemini"
-            featureType = "insights_deep_analysis"
-            maxOutputTokens = 180
-        } else {
-            prompt = """
-            You are writing a brief productivity insight for one Summary section in a Pomodoro app.
-            Focus only on \(section.displayName).
-            Keep the answer to 1-3 short sentences.
-            Describe patterns simply and directly. Do not use deep reasoning.
-
-            Structured input:
-            \(payload.jsonString)
-            """
-            modelFamily = "deepseek"
-            featureType = "insights_weekly_overview"
-            maxOutputTokens = 110
-        }
+        Structured input:
+        \(payload.jsonString)
+        """
+        let modelFamily = "deepseek"
+        let featureType = "insights_weekly_overview"
+        let maxOutputTokens = 110
 
         do {
             let response: AIProxyClient.ProxyResponse = try await aiProxyClient.sendPrompt(
@@ -880,35 +859,65 @@ extension AIService {
         }
 
         let input = ProductivityAIInput(snapshot: snapshot, taskSummary: taskSummary)
+        let isProSummary = FeatureGate.shared.canUseAIDeepAnalysis
         let payload = StructuredInsightPayload(
             kind: "weekly_overview",
             input: input,
             metric: nil
         )
-        let cacheKey = "weekly-overview-\(cacheWeekKey(for: now))-\(payload.cacheHash)"
+        let cacheKey = "weekly-overview-\(isProSummary ? "gemini" : "deepseek")-\(cacheWeekKey(for: now))-\(payload.cacheHash)"
         if let cached = insightsCache.cachedResult(for: cacheKey, now: now) {
             return cached
         }
 
-        let prompt = """
-        You are writing a weekly productivity overview for a Pomodoro app user.
-        Keep the answer to 3-5 short sentences.
-        Describe trends clearly. Do not provide deep reasoning, chain-of-thought, or long explanations.
-        Prefer observations like trend direction, best focus window, streaks, task completion, overload risk, imbalance, and task drift when supported by the data.
-        If data is mixed, stay specific and neutral.
+        let prompt: String
+        let model: String?
+        let modelFamily: String
+        let featureType: String
+        let maxOutputTokens: Int
 
-        Structured input:
-        \(payload.jsonString)
-        """
+        if isProSummary {
+            prompt = """
+            You are writing a premium weekly summary for a Pomodoro app user.
+            Keep the answer to 4-6 concise sentences.
+            Summarize the week as a clear executive-style readout, not a deep analysis report.
+            Prefer trends like best focus window, consistency, quality, completion, overload risk, imbalance, and task drift when supported by the data.
+            Do not explain individual metrics or small sections.
+            Do not provide chain-of-thought.
+
+            Structured input:
+            \(payload.jsonString)
+            """
+            model = Self.proDeepAnalysisModel
+            modelFamily = "gemini"
+            featureType = "insights_summary"
+            maxOutputTokens = 220
+        } else {
+            prompt = """
+            You are writing a weekly productivity overview for a Pomodoro app user.
+            Keep the answer to 3-5 short sentences.
+            Describe trends clearly. Do not provide deep reasoning, chain-of-thought, or long explanations.
+            Prefer observations like trend direction, best focus window, streaks, task completion, overload risk, imbalance, and task drift when supported by the data.
+            If data is mixed, stay specific and neutral.
+
+            Structured input:
+            \(payload.jsonString)
+            """
+            model = nil
+            modelFamily = "deepseek"
+            featureType = "insights_weekly_overview"
+            maxOutputTokens = 140
+        }
 
         do {
             let response: AIProxyClient.ProxyResponse = try await aiProxyClient.sendPrompt(
                 .init(
                     prompt: prompt,
-                    modelFamily: "deepseek",
-                    featureType: "insights_weekly_overview",
+                    model: model,
+                    modelFamily: modelFamily,
+                    featureType: featureType,
                     temperature: 0.2,
-                    maxOutputTokens: 140,
+                    maxOutputTokens: maxOutputTokens,
                     metadata: [
                         "insight_kind": "weekly_overview",
                         "analytics_level": FeatureGate.shared.analyticsLevel.rawValue
@@ -918,7 +927,7 @@ extension AIService {
             let text = sanitizeInsightText(response.outputText) ?? fallback
             let result = ProductivityInsightResult(
                 text: text,
-                usedModelFamily: response.modelFamily ?? "deepseek",
+                usedModelFamily: response.modelFamily ?? modelFamily,
                 generatedAt: now,
                 isFallback: text == fallback,
                 cacheKey: cacheKey
@@ -1042,7 +1051,7 @@ extension AIService {
         now: Date = Date()
     ) async -> ProductivityInsightResult {
         let fallback = metricFallback(metric, snapshot: snapshot, taskSummary: taskSummary)
-        guard FeatureGate.shared.canUseAIDeepAnalysis else {
+        guard FeatureGate.shared.canUseAIWeeklyOverview else {
             return ProductivityInsightResult(
                 text: fallback,
                 usedModelFamily: nil,
@@ -1078,7 +1087,7 @@ extension AIService {
             let response: AIProxyClient.ProxyResponse = try await aiProxyClient.sendPrompt(
                 .init(
                     prompt: prompt,
-                    model: metric.isComplex ? Self.proDeepAnalysisModel : nil,
+                    model: nil,
                     modelFamily: metric.modelFamily,
                     featureType: metric.featureType,
                     temperature: 0.2,

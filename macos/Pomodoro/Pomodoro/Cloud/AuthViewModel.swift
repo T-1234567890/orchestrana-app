@@ -11,6 +11,7 @@ final class AuthViewModel: ObservableObject {
     @Published private(set) var currentUser: User?
     @Published private(set) var isLoading = false
     @Published private(set) var isAuthenticating = false
+    @Published private(set) var isDeletingAccount = false
     @Published private(set) var isPreparingPurchase = false
     @Published private(set) var hasValidPurchaseToken = false
     @Published var isPurchaseLoginPromptPresented = false
@@ -19,10 +20,12 @@ final class AuthViewModel: ObservableObject {
     private var authStateListener: AuthStateDidChangeListenerHandle?
     private var auth: Auth?
     private let authManager: AuthManager
+    private let accountDeletionClient: AccountDeletionAPIClient
     private var purchaseTokenWarmupTask: Task<Void, Never>?
 
     private init() {
         authManager = .shared
+        accountDeletionClient = AccountDeletionAPIClient()
         if FirebaseApp.app() != nil {
             let auth = Auth.auth()
             self.auth = auth
@@ -92,6 +95,11 @@ final class AuthViewModel: ObservableObject {
         try await performAuthenticationFlow {
             _ = try await authManager.signInWithApple()
         }
+    }
+
+    func recordAuthenticationError(_ error: Error) {
+        let mappedError = mapAuthError(error)
+        authError = (mappedError as NSError).localizedDescription
     }
 
     func signUpWithEmail(email: String, password: String) async throws {
@@ -168,6 +176,35 @@ final class AuthViewModel: ObservableObject {
             handleAuthStateChange(authManager.currentUser())
         } catch {
             // performExclusiveAuthOperation already updates authError.
+        }
+    }
+
+    func deleteAccount() async {
+        startListeningIfNeeded()
+        guard currentUser != nil else {
+            authError = AuthViewModelError.notAuthenticated.localizedDescription
+            return
+        }
+        guard !isAuthenticating, !isDeletingAccount else {
+            authError = AuthViewModelError.authenticationInProgress.localizedDescription
+            return
+        }
+
+        isDeletingAccount = true
+        isLoading = true
+        authError = nil
+        defer {
+            isDeletingAccount = false
+            isLoading = false
+        }
+
+        do {
+            try await accountDeletionClient.deleteAccount()
+            try? authManager.signOut()
+            handleAuthStateChange(nil)
+        } catch {
+            let mappedError = mapAuthError(error)
+            authError = (mappedError as NSError).localizedDescription
         }
     }
 

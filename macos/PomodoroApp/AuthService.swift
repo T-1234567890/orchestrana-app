@@ -35,7 +35,7 @@ final class AuthService {
     private let session: URLSession
 
     init(
-        baseURL: URL = URL(string: "http://localhost:8080")!,
+        baseURL: URL = URL(string: "https://us-central1-pomodoro-app1.cloudfunctions.net")!,
         session: URLSession = .shared
     ) {
         self.baseURL = baseURL

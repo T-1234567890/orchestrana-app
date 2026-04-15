@@ -20,7 +20,7 @@
 		7C360D592F191F17007313D3 /* PomodoroTimerEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D522F191F17007313D3 /* PomodoroTimerEngine.swift */; };
 		7C360D5A2F191F17007313D3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D532F191F17007313D3 /* ContentView.swift */; };
 		7C360D5B2F191F17007313D3 /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D542F191F17007313D3 /* MainWindowView.swift */; };
-		7C360D5C2F191F17007313D3 /* PomodoroApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D552F191F17007313D3 /* PomodoroApp.swift */; };
+		7C360D5C2F191F17007313D3 /* OrchestranaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D552F191F17007313D3 /* OrchestranaApp.swift */; };
 		7C360D5D2F191F17007313D3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7C360D562F191F17007313D3 /* Assets.xcassets */; };
 		7C360D6A2F191F17007313D3 /* MenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D692F191F17007313D3 /* MenuBarController.swift */; };
 		7C360D6B2F191F17007313D3 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D6C2F191F17007313D3 /* AppDelegate.swift */; };
@@ -111,13 +111,13 @@
 		379E0B0F492E771413BBB197 /* AuthStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthStore.swift; sourceTree = "<group>"; };
 		4BDE965F88F54754BCBB5DF2 /* CalendarDayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarDayView.swift; sourceTree = "<group>"; };
 		7C217B302F3F89DD0076D4DA /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-		7C360D382F191F17007313D3 /* Pomodoro.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pomodoro.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7C360D382F191F17007313D3 /* Orchestrana.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Orchestrana.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C360D502F191F17007313D3 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		7C360D512F191F17007313D3 /* CountdownTimerEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountdownTimerEngine.swift; sourceTree = "<group>"; };
 		7C360D522F191F17007313D3 /* PomodoroTimerEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroTimerEngine.swift; sourceTree = "<group>"; };
 		7C360D532F191F17007313D3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		7C360D542F191F17007313D3 /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
-		7C360D552F191F17007313D3 /* PomodoroApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroApp.swift; sourceTree = "<group>"; };
+		7C360D552F191F17007313D3 /* OrchestranaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrchestranaApp.swift; sourceTree = "<group>"; };
 		7C360D562F191F17007313D3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7C360D692F191F17007313D3 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
 		7C360D6C2F191F17007313D3 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -130,7 +130,7 @@
 		7C360D972F191F17007313D3 /* SystemMediaController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemMediaController.swift; sourceTree = "<group>"; };
 		7C360D982F191F17007313D3 /* MusicPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicPanelView.swift; sourceTree = "<group>"; };
 		7C46B6F92F5C49420042C61E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		7C4C2FDF2F38D57200994D30 /* Pomodoro.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Pomodoro.entitlements; sourceTree = "<group>"; };
+		7C4C2FDF2F38D57200994D30 /* Orchestrana.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Orchestrana.entitlements; sourceTree = "<group>"; };
 		7C5B41632F68065A00C12AA1 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		7C6BDD432F82B793001A1E6D /* Orchestranaicon1.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = Orchestranaicon1.icon; sourceTree = "<group>"; };
 		83E7FB46B7CF8A7C0F510CF4 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
@@ -225,7 +225,7 @@
 		7C360D392F191F17007313D3 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				7C360D382F191F17007313D3 /* Pomodoro.app */,
+				7C360D382F191F17007313D3 /* Orchestrana.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -234,7 +234,7 @@
 			isa = PBXGroup;
 			children = (
 				7C46B6F92F5C49420042C61E /* Info.plist */,
-				7C4C2FDF2F38D57200994D30 /* Pomodoro.entitlements */,
+				7C4C2FDF2F38D57200994D30 /* Orchestrana.entitlements */,
 				7C217B302F3F89DD0076D4DA /* GoogleService-Info.plist */,
 				7C6BDD432F82B793001A1E6D /* Orchestranaicon1.icon */,
 				7C360D5E2F191F17007313D3 /* App */,
@@ -251,7 +251,7 @@
 		7C360D5E2F191F17007313D3 /* App */ = {
 			isa = PBXGroup;
 			children = (
-				7C360D552F191F17007313D3 /* PomodoroApp.swift */,
+				7C360D552F191F17007313D3 /* OrchestranaApp.swift */,
 				7C360D6C2F191F17007313D3 /* AppDelegate.swift */,
 				7C360D692F191F17007313D3 /* MenuBarController.swift */,
 			);
@@ -386,9 +386,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		7C360D372F191F17007313D3 /* Pomodoro */ = {
+		7C360D372F191F17007313D3 /* Orchestrana */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7C360D432F191F17007313D3 /* Build configuration list for PBXNativeTarget "Pomodoro" */;
+			buildConfigurationList = 7C360D432F191F17007313D3 /* Build configuration list for PBXNativeTarget "Orchestrana" */;
 			buildPhases = (
 				7C360D342F191F17007313D3 /* Sources */,
 				7C360D352F191F17007313D3 /* Frameworks */,
@@ -398,7 +398,7 @@
 			);
 			dependencies = (
 			);
-			name = Pomodoro;
+			name = Orchestrana;
 			packageProductDependencies = (
 				7C7920AD2F5C38BE00C588C1 /* FirebaseAnalytics */,
 				7C7920AF2F5C38BE00C588C1 /* FirebaseAnalyticsCore */,
@@ -420,8 +420,8 @@
 				7C7920CF2F5C38BE00C588C1 /* FirebaseStorageCombine-Community */,
 				7C46B6F52F5C3C180042C61E /* GoogleSignIn */,
 			);
-			productName = Pomodoro;
-			productReference = 7C360D382F191F17007313D3 /* Pomodoro.app */;
+			productName = Orchestrana;
+			productReference = 7C360D382F191F17007313D3 /* Orchestrana.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -458,7 +458,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				7C360D372F191F17007313D3 /* Pomodoro */,
+				7C360D372F191F17007313D3 /* Orchestrana */,
 			);
 		};
 /* End PBXProject section */
@@ -493,7 +493,7 @@
 				F0F0F0F12FFF000000000001 /* FlowModeView.swift in Sources */,
 				2F0C10012BCD000000000001 /* FlowWindowManager.swift in Sources */,
 				7C360D922F191F17007313D3 /* MusicPanelView.swift in Sources */,
-				7C360D5C2F191F17007313D3 /* PomodoroApp.swift in Sources */,
+				7C360D5C2F191F17007313D3 /* OrchestranaApp.swift in Sources */,
 				7C360D6B2F191F17007313D3 /* AppDelegate.swift in Sources */,
 				7C360D6A2F191F17007313D3 /* MenuBarController.swift in Sources */,
 				C9E56B409BCB40FCA8485A09 /* LocalMediaPlayer.swift in Sources */,
@@ -702,7 +702,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				AUTOMATION_APPLE_EVENTS = NO;
-				CODE_SIGN_ENTITLEMENTS = Pomodoro/Pomodoro.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Pomodoro/Orchestrana.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -725,6 +725,8 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Pomodoro/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Orchestrana;
+				INFOPLIST_KEY_CFBundleName = Orchestrana;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "Allow access to read your calendars for scheduling.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -737,7 +739,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MARKETING_VERSION = 1.7.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.pomodoro.Pomodoro;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = Orchestrana;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
@@ -762,7 +764,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				AUTOMATION_APPLE_EVENTS = NO;
-				CODE_SIGN_ENTITLEMENTS = Pomodoro/Pomodoro.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Pomodoro/Orchestrana.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -785,6 +787,8 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Pomodoro/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Orchestrana;
+				INFOPLIST_KEY_CFBundleName = Orchestrana;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "Allow access to read your calendars for scheduling.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -797,7 +801,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MARKETING_VERSION = 1.7.1;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.pomodoro.Pomodoro;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = Orchestrana;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
@@ -827,7 +831,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7C360D432F191F17007313D3 /* Build configuration list for PBXNativeTarget "Pomodoro" */ = {
+		7C360D432F191F17007313D3 /* Build configuration list for PBXNativeTarget "Orchestrana" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7C360D442F191F17007313D3 /* Debug */,

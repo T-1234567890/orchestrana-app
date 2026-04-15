@@ -2734,7 +2734,7 @@ struct MainWindowView: View {
 
     private func runInsightMetricAnalysis(_ metric: AIService.ProductivityInsightMetric) async {
         await featureGate.refreshSubscriptionStatusIfNeeded()
-        guard let snapshot = summarySnapshot else { return }
+        let snapshot = summarySnapshot ?? productivityAnalyticsStore.snapshot(calendar: .current)
         guard ensureInsightAIUnlocked(requiredTier: .plus) else { return }
         isInsightHubLoading = true
         let metricResult = await AIService.shared.analyzeMetric(

@@ -27,6 +27,7 @@ enum AuthProvider: CaseIterable, Identifiable {
 struct CloudSettingsSection: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var localizationManager: LocalizationManager
+    @State private var deleteConfirmationStep: DeleteAccountConfirmationStep?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -42,6 +43,30 @@ struct CloudSettingsSection: View {
         .padding(16)
         .background(Color.primary.opacity(0.05))
         .cornerRadius(12)
+        .alert(item: $deleteConfirmationStep) { step in
+            switch step {
+            case .deletePurchases:
+                return Alert(
+                    title: Text(localizationManager.text("settings.account.delete_purchases_title")),
+                    message: Text(localizationManager.text("settings.account.delete_purchases_message")),
+                    primaryButton: .destructive(Text(localizationManager.text("settings.account.delete_purchases_continue"))) {
+                        deleteConfirmationStep = .areYouSure
+                    },
+                    secondaryButton: .cancel(Text(localizationManager.text("common.cancel")))
+                )
+            case .areYouSure:
+                return Alert(
+                    title: Text(localizationManager.text("settings.account.delete_confirm_title")),
+                    message: Text(localizationManager.text("settings.account.delete_confirm_message")),
+                    primaryButton: .destructive(Text(localizationManager.text("settings.account.delete_confirm_button"))) {
+                        Task { @MainActor in
+                            await authViewModel.deleteAccount()
+                        }
+                    },
+                    secondaryButton: .cancel(Text(localizationManager.text("common.cancel")))
+                )
+            }
+        }
     }
 
     private var loggedInSection: some View {
@@ -65,7 +90,31 @@ struct CloudSettingsSection: View {
                 }
             }
             .buttonStyle(.bordered)
-            .disabled(authViewModel.isAuthenticating)
+            .disabled(authViewModel.isAuthenticating || authViewModel.isDeletingAccount)
+
+            Divider()
+                .padding(.vertical, 2)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(localizationManager.text("settings.account.delete_account_title"))
+                    .font(.subheadline.weight(.semibold))
+                Text(localizationManager.text("settings.account.delete_account_body"))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                Button(role: .destructive) {
+                    deleteConfirmationStep = .deletePurchases
+                } label: {
+                    if authViewModel.isDeletingAccount {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text(localizationManager.text("settings.account.delete_account_button"))
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(authViewModel.isAuthenticating || authViewModel.isDeletingAccount)
+            }
 
             if let message = authViewModel.authError, !message.isEmpty {
                 Text(message)
@@ -136,6 +185,20 @@ struct CloudSettingsSection: View {
             return String(first).uppercased()
         }
         return nil
+    }
+}
+
+private enum DeleteAccountConfirmationStep: Identifiable {
+    case deletePurchases
+    case areYouSure
+
+    var id: String {
+        switch self {
+        case .deletePurchases:
+            return "deletePurchases"
+        case .areYouSure:
+            return "areYouSure"
+        }
     }
 }
 
@@ -222,33 +285,47 @@ struct AuthProviderButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
-                AuthProviderIcon(provider: provider)
-
-                Text(title)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.primary)
-
-                Spacer()
-
-                if isLoading, provider == .google || provider == .github || provider == .apple {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-            }
-            .padding(.horizontal, 16)
-            .frame(height: 48)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(nsColor: .controlBackgroundColor))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+            AuthProviderButtonChrome(
+                provider: provider,
+                title: title,
+                isLoading: isLoading
             )
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
+    }
+}
+
+private struct AuthProviderButtonChrome: View {
+    let provider: AuthProvider
+    let title: String
+    var isLoading: Bool = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            AuthProviderIcon(provider: provider)
+
+            Text(title)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.primary)
+
+            Spacer()
+
+            if isLoading, provider == .google || provider == .github || provider == .apple {
+                ProgressView()
+                    .controlSize(.small)
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 48)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+        )
     }
 }
 

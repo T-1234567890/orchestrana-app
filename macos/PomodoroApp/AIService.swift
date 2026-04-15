@@ -28,7 +28,7 @@ final class AIService {
     private let session: URLSession
 
     init(
-        baseURL: URL = URL(string: "http://localhost:8080")!,
+        baseURL: URL = URL(string: "https://us-central1-pomodoro-app1.cloudfunctions.net")!,
         session: URLSession = .shared
     ) {
         self.baseURL = baseURL
@@ -48,7 +48,7 @@ final class AIService {
             return
         }
 
-        guard let url = URL(string: "/ai/proxy", relativeTo: baseURL) else {
+        guard let url = URL(string: "/aiProxy", relativeTo: baseURL) else {
             completion(.failure(ServiceError.invalidEndpoint))
             return
         }
