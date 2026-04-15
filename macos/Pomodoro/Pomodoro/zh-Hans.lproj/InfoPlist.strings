@@ -1,3 +1,5 @@
+"CFBundleDisplayName" = "Orchestrana";
+"CFBundleName" = "Orchestrana";
 "NSCalendarsUsageDescription" = "允许访问你的日历以用于排程。";
 "NSRemindersUsageDescription" = "允许访问并同步你的提醒事项与任务。";
 "NSUserNotificationUsageDescription" = "允许通知，以便我们提醒你计时器和任务状态。";
