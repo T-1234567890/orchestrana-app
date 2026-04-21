@@ -9,9 +9,27 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
+  <style>
+    body.legal-document main {
+      padding-top: 24px;
+    }
+
+    .comparison-page {
+      padding-top: 0;
+    }
+
+    @media (max-width: 760px) {
+      body.legal-document main {
+        padding-top: 40px;
+      }
+    }
+  </style>
 </head>
 <body class="legal-document">
-  <header class="topbar glass">
+  <div class="webgl-shell" aria-hidden="true">
+    <canvas id="glass-canvas" class="glass-canvas"></canvas>
+  </div>
+  <header class="topbar glass" data-glass-panel>
     <a class="logo logo-link" href="index.html#overview">
       <img class="logo-icon" src="screenshots/Orchestrana%20icon%201.png" alt="Orchestrana icon" />
       <span data-en="Orchestrana™" data-zh="Orchestrana™">Orchestrana™</span>
@@ -19,15 +37,17 @@
     <nav class="nav-links">
       <a href="index.html#overview" data-en="Overview" data-zh="概览">Overview</a>
       <a href="index.html#features" data-en="Features" data-zh="功能">Features</a>
+      <a href="index.html#screenshots" data-en="Focus Cycle" data-zh="专注循环">Focus Cycle</a>
       <a href="comparison.html" data-en="Comparison" data-zh="对比">Comparison</a>
       <a href="index.html#docs" data-en="Docs" data-zh="文档">Docs</a>
       <a href="index.html#download" data-en="Download" data-zh="下载">Download</a>
+      <a href="https://github.com/T-1234567890/orchestrana-app" target="_blank" rel="noreferrer" data-en="GitHub" data-zh="GitHub">GitHub</a>
       <button id="lang-toggle" aria-label="Switch language" data-en="EN / 中文" data-zh="中文 / EN">EN / 中文</button>
     </nav>
   </header>
 
   <main>
-    <section class="privacy-shell comparison-page">
+    <section class="privacy-shell comparison-page" id="comparison-top">
       <div class="privacy-header reveal">
         <p class="eyebrow" data-en="Plans" data-zh="套餐">Plans</p>
         <h1 data-en="Compare Orchestrana plans" data-zh="对比 Orchestrana 套餐">Compare Orchestrana plans</h1>

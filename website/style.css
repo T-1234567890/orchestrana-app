@@ -148,6 +148,7 @@ main a:not(.primary-btn):not(.ghost-btn):not(.doc-link):not(.logo):not(.nav-link
 }
 
 main { position: relative; z-index: 1; padding-top: 120px; }
+body.legal-document main { padding-top: 56px; }
 
 :root {
   --lang-out: 140ms;
@@ -904,9 +905,12 @@ body.lang-switching-in [data-en] {
   margin: 0 auto;
   padding: clamp(12px, 2vw, 18px) 0;
 }
+.comparison-page {
+  padding-top: 0;
+}
 .comparison-page .privacy-header {
   max-width: 760px;
-  margin-inline: auto;
+  margin: 0 auto 18px;
 }
 .comparison-page .privacy-header h1 {
   font-size: clamp(30px, 5vw, 46px);
@@ -1439,6 +1443,7 @@ body.lang-switching-in [data-en] {
     margin: 0 auto;
   }
   main { padding-top: 160px; }
+  body.legal-document main { padding-top: 72px; }
   .hero, .features, .rhythm, .docs, .download, .story, .faq, .join-us, #join { scroll-margin-top: 150px; }
   .nav-links { flex-wrap: wrap; justify-content: center; }
   .hero {
