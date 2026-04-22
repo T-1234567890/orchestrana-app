@@ -23,6 +23,7 @@ struct MainWindowView: View {
     @EnvironmentObject private var onboardingState: OnboardingState
     @EnvironmentObject private var flowWindowManager: FlowWindowManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject private var featureGate = FeatureGate.shared
     @ObservedObject private var subscriptionStore = SubscriptionStore.shared
     @State private var workMinutesText = ""
@@ -68,6 +69,7 @@ struct MainWindowView: View {
     @State private var isInsightHubLoading = false
     @State private var splitViewVisibility: NavigationSplitViewVisibility = .all
     @State private var selectedSettingsPane: SettingsPane = .general
+    @AppStorage(AppearanceMode.appStorageKey) private var appearanceModeRawValue = AppearanceMode.standard.rawValue
     @State private var settingsSearchText = ""
     @State private var showSettingsPlansSheet = false
     
@@ -87,7 +89,7 @@ struct MainWindowView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            AppBackground()
+            MainInterfaceBackground()
             navigationShell
             popupOverlay
         }
@@ -804,10 +806,16 @@ struct MainWindowView: View {
             if let insightHubResult {
                 Text(insightHubResult.text)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(currentAppearanceMode.secondaryTextColor(for: colorScheme))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .appRoundedSurface(
+                        mode: currentAppearanceMode,
+                        cornerRadius: 12,
+                        glassMaterial: .thinMaterial,
+                        standardLevel: .inset,
+                        showsShadow: false
+                    )
             }
         }
     }
@@ -816,16 +824,22 @@ struct MainWindowView: View {
         HStack(alignment: .top, spacing: 16) {
             Image(systemName: "sparkles.rectangle.stack")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(currentAppearanceMode.secondaryTextColor(for: colorScheme))
                 .frame(width: 36, height: 36)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .appRoundedSurface(
+                    mode: currentAppearanceMode,
+                    cornerRadius: 12,
+                    glassMaterial: .thinMaterial,
+                    standardLevel: .inset,
+                    showsShadow: false
+                )
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Come back after a little more focus")
                     .font(.headline)
                 Text("Start a focus session or add a few tasks first. Once you have some activity here, Insight AI will be ready with overviews and analysis.")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(currentAppearanceMode.secondaryTextColor(for: colorScheme))
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -990,10 +1004,12 @@ struct MainWindowView: View {
         .padding(16)
         .frame(width: 250)
         .frame(maxHeight: .infinity, alignment: .topLeading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
+        .appRoundedSurface(
+            mode: currentAppearanceMode,
+            cornerRadius: 18,
+            glassMaterial: .regularMaterial,
+            standardLevel: .panel,
+            showsShadow: currentAppearanceMode == .standard
         )
     }
 
@@ -1082,9 +1098,47 @@ struct MainWindowView: View {
 
                 Divider()
 
+                settingsLabeledControl(
+                    title: languageManager.text("settings.appearance.mode.title"),
+                    description: languageManager.text("settings.appearance.mode.description")
+                ) {
+                    Picker(languageManager.text("settings.appearance.mode.title"), selection: appearanceModeSelection) {
+                        ForEach(AppearanceMode.allCases) { mode in
+                            Text(title(for: mode)).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.radioGroup)
+                }
+
+                Divider()
+
                 settingsInfoRow(title: "Style", value: "System materials and native controls")
                 settingsInfoRow(title: "Layout", value: "Adaptive modules that expand with window size")
             }
+        }
+    }
+
+    private var appearanceModeSelection: Binding<AppearanceMode> {
+        Binding(
+            get: {
+                currentAppearanceMode
+            },
+            set: { newValue in
+                appearanceModeRawValue = newValue.rawValue
+            }
+        )
+    }
+
+    private var currentAppearanceMode: AppearanceMode {
+        AppearanceMode.resolved(from: appearanceModeRawValue)
+    }
+
+    private func title(for mode: AppearanceMode) -> String {
+        switch mode {
+        case .glass:
+            return languageManager.text("settings.appearance.mode.glass")
+        case .standard:
+            return languageManager.text("settings.appearance.mode.standard")
         }
     }
 
@@ -1847,12 +1901,17 @@ struct MainWindowView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(.thinMaterial)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(tint)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(currentAppearanceMode == .glass ? tint : tint.opacity(0.10))
         )
-        .cornerRadius(10)
+        .appRoundedSurface(
+            mode: currentAppearanceMode,
+            cornerRadius: 10,
+            glassMaterial: .thinMaterial,
+            standardLevel: .inset,
+            showsShadow: false
+        )
     }
 
     private func countdownDurationField(
@@ -2244,35 +2303,50 @@ struct MainWindowView: View {
     }
 
     private struct TransitionPopupView: View {
+        @AppStorage(AppearanceMode.appStorageKey) private var appearanceModeRawValue = AppearanceMode.standard.rawValue
         let message: String
 
         var body: some View {
+            let appearanceMode = AppearanceMode.resolved(from: appearanceModeRawValue)
+
             Text(message)
                 .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(.primary)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .background(.ultraThinMaterial, in: Capsule())
-                .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+                .appRoundedSurface(
+                    mode: appearanceMode,
+                    cornerRadius: 999,
+                    glassMaterial: .ultraThinMaterial,
+                    standardLevel: .overlay
+                )
         }
     }
 
     private struct InAppNotificationView: View {
+        @AppStorage(AppearanceMode.appStorageKey) private var appearanceModeRawValue = AppearanceMode.standard.rawValue
+        @Environment(\.colorScheme) private var colorScheme
         let title: String
         let message: String
 
         var body: some View {
+            let appearanceMode = AppearanceMode.resolved(from: appearanceModeRawValue)
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.system(.subheadline, design: .rounded).weight(.semibold))
                 Text(message)
                     .font(.system(.subheadline, design: .rounded))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(appearanceMode.secondaryTextColor(for: colorScheme))
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+            .appRoundedSurface(
+                mode: appearanceMode,
+                cornerRadius: 12,
+                glassMaterial: .ultraThinMaterial,
+                standardLevel: .overlay
+            )
         }
     }
 
@@ -2547,11 +2621,16 @@ struct MainWindowView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(message)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(currentAppearanceMode.secondaryTextColor(for: colorScheme))
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.thinMaterial)
-                .cornerRadius(10)
+                .appRoundedSurface(
+                    mode: currentAppearanceMode,
+                    cornerRadius: 10,
+                    glassMaterial: .thinMaterial,
+                    standardLevel: .inset,
+                    showsShadow: false
+                )
         }
     }
     
@@ -3274,20 +3353,24 @@ private struct PlanTaskSelectionSheet: View {
     let onSelect: (AppState.PlanExecutionEntry) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @AppStorage(AppearanceMode.appStorageKey) private var appearanceModeRawValue = AppearanceMode.standard.rawValue
 
     var body: some View {
+        let appearanceMode = AppearanceMode.resolved(from: appearanceModeRawValue)
+
         VStack(alignment: .leading, spacing: 18) {
             Text("Choose a Planned Task")
                 .font(.title3.weight(.semibold))
 
             Text("Pick the task you want to work on first. Pomodoro will start with that task's saved estimate.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(appearanceMode.secondaryTextColor(for: colorScheme))
 
             if entries.isEmpty {
                 Text("No planned tasks available.")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(appearanceMode.secondaryTextColor(for: colorScheme))
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
@@ -3303,7 +3386,7 @@ private struct PlanTaskSelectionSheet: View {
                                             .multilineTextAlignment(.leading)
                                         Text("\(entry.pomodoros) Pomodoros")
                                             .font(.subheadline)
-                                            .foregroundStyle(.secondary)
+                                            .foregroundStyle(appearanceMode.secondaryTextColor(for: colorScheme))
                                     }
                                     Spacer()
                                     Image(systemName: "play.circle.fill")
@@ -3312,7 +3395,13 @@ private struct PlanTaskSelectionSheet: View {
                                 }
                                 .padding(14)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .appRoundedSurface(
+                                    mode: appearanceMode,
+                                    cornerRadius: 16,
+                                    glassMaterial: .regularMaterial,
+                                    standardLevel: .panel,
+                                    showsShadow: false
+                                )
                             }
                             .buttonStyle(.plain)
                         }
@@ -3335,6 +3424,7 @@ private struct PlanTaskSelectionSheet: View {
 }
 
 private struct GlassCardView<Content: View>: View {
+    @AppStorage(AppearanceMode.appStorageKey) private var appearanceModeRawValue = AppearanceMode.standard.rawValue
     let content: Content
 
     init(@ViewBuilder content: () -> Content) {
@@ -3342,22 +3432,21 @@ private struct GlassCardView<Content: View>: View {
     }
 
     var body: some View {
+        let appearanceMode = AppearanceMode.resolved(from: appearanceModeRawValue)
+
         content
             .padding(18)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(.ultraThinMaterial)
+            .appRoundedSurface(
+                mode: appearanceMode,
+                cornerRadius: 18,
+                glassMaterial: .ultraThinMaterial,
+                standardLevel: .panel
             )
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.05), radius: 22, x: 0, y: 14)
     }
 }
 
 private struct DashboardPanel<Content: View>: View {
+    @AppStorage(AppearanceMode.appStorageKey) private var appearanceModeRawValue = AppearanceMode.standard.rawValue
     let content: Content
 
     init(@ViewBuilder content: () -> Content) {
@@ -3365,13 +3454,17 @@ private struct DashboardPanel<Content: View>: View {
     }
 
     var body: some View {
+        let appearanceMode = AppearanceMode.resolved(from: appearanceModeRawValue)
+
         content
             .padding(20)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+            .appRoundedSurface(
+                mode: appearanceMode,
+                cornerRadius: 16,
+                glassMaterial: .ultraThinMaterial,
+                standardLevel: .panel,
+                showsShadow: appearanceMode == .standard
             )
             .frame(maxWidth: .infinity, minHeight: 248, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -3531,10 +3624,13 @@ private struct AIActionCard<Trailing: View>: View {
 
 private struct SettingsSectionCard<Content: View>: View {
     @EnvironmentObject private var appTypography: AppTypography
+    @AppStorage(AppearanceMode.appStorageKey) private var appearanceModeRawValue = AppearanceMode.standard.rawValue
     let title: String
     @ViewBuilder var content: Content
 
     var body: some View {
+        let appearanceMode = AppearanceMode.resolved(from: appearanceModeRawValue)
+
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(appTypography.cardTitleFont())
@@ -3544,13 +3640,12 @@ private struct SettingsSectionCard<Content: View>: View {
                 content
             }
             .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(.thinMaterial)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+            .appRoundedSurface(
+                mode: appearanceMode,
+                cornerRadius: 12,
+                glassMaterial: .thinMaterial,
+                standardLevel: .inset,
+                showsShadow: false
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -3559,6 +3654,8 @@ private struct SettingsSectionCard<Content: View>: View {
 
 private struct SettingsModuleCard<Content: View>: View {
     @EnvironmentObject private var appTypography: AppTypography
+    @AppStorage(AppearanceMode.appStorageKey) private var appearanceModeRawValue = AppearanceMode.standard.rawValue
+    @Environment(\.colorScheme) private var colorScheme
     let title: String
     let description: String?
     @ViewBuilder var content: Content
@@ -3566,6 +3663,8 @@ private struct SettingsModuleCard<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        let appearanceMode = AppearanceMode.resolved(from: appearanceModeRawValue)
+
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)
@@ -3573,7 +3672,7 @@ private struct SettingsModuleCard<Content: View>: View {
                 if let description, !description.isEmpty {
                     Text(description)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(appearanceMode.secondaryTextColor(for: colorScheme))
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -3584,15 +3683,13 @@ private struct SettingsModuleCard<Content: View>: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(.regularMaterial)
+        .appRoundedSurface(
+            mode: appearanceMode,
+            cornerRadius: 18,
+            glassMaterial: .regularMaterial,
+            standardLevel: .panel,
+            isEmphasized: isHovering
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(isHovering ? 0.18 : 0.12), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(isHovering ? 0.07 : 0.05), radius: isHovering ? 18 : 14, y: isHovering ? 10 : 8)
         .scaleEffect(isHovering ? 1.004 : 1.0)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: isHovering)
         .onHover { hovering in
@@ -3605,8 +3702,11 @@ private struct SettingsPlansSheet: View {
     @ObservedObject var featureGate: FeatureGate
     @ObservedObject var subscriptionStore: SubscriptionStore
     @Environment(\.dismiss) private var dismiss
+    @AppStorage(AppearanceMode.appStorageKey) private var appearanceModeRawValue = AppearanceMode.standard.rawValue
 
     var body: some View {
+        let appearanceMode = AppearanceMode.resolved(from: appearanceModeRawValue)
+
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
@@ -3650,9 +3750,11 @@ private struct SettingsPlansSheet: View {
         }
         .padding(24)
         .frame(minWidth: 760, minHeight: 640)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.regularMaterial)
+        .appRoundedSurface(
+            mode: appearanceMode,
+            cornerRadius: 24,
+            glassMaterial: .regularMaterial,
+            standardLevel: .panel
         )
     }
 }
@@ -3682,10 +3784,21 @@ extension Notification.Name {
             externalMonitor: externalMonitor,
             externalController: externalController
         )
+        let onboardingDefaults = UserDefaults(suiteName: "MainWindowViewPreview")!
+        onboardingDefaults.set(true, forKey: "onboarding.completed")
+        onboardingDefaults.set(true, forKey: "onboarding.calendarPermissionsPrompted")
+        onboardingDefaults.set(true, forKey: "onboarding.menuBarTipSeen")
+        onboardingDefaults.set(true, forKey: "onboarding.eventKitRequestCalled")
+        let onboardingState = OnboardingState(userDefaults: onboardingDefaults)
         return MainWindowView()
             .environmentObject(appState)
             .environmentObject(musicController)
             .environmentObject(audioSourceStore)
+            .environmentObject(LanguageManager.shared)
+            .environmentObject(AppTypography.shared)
+            .environmentObject(AuthViewModel.shared)
+            .environmentObject(onboardingState)
+            .environmentObject(FlowWindowManager())
     }
 }
 #endif

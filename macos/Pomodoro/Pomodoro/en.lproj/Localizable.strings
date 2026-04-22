@@ -265,6 +265,10 @@
 "settings.appearance.font.description" = "Choose between the classic app typography and the editorial serif style used in onboarding headings.";
 "settings.appearance.font.classic" = "Classic";
 "settings.appearance.font.editorial" = "Editorial";
+"settings.appearance.mode.title" = "Mode";
+"settings.appearance.mode.description" = "Standard mode uses a solid background for improved clarity.";
+"settings.appearance.mode.glass" = "Glass";
+"settings.appearance.mode.standard" = "Standard";
 "settings.notifications.title" = "Notifications";
 "settings.permissions_sync.title" = "Permissions";
 "summary.active_count" = "%d active";

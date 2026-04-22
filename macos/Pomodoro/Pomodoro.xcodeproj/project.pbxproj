@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		18D4E01A4A3F4C07A9E05001 /* AppTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18D4E0194A3F4C07A9E05001 /* AppTypography.swift */; };
+		18D4E01C4A3F4C07A9E05001 /* AppAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18D4E01B4A3F4C07A9E05001 /* AppAppearance.swift */; };
 		1C500AF364889EDC9C8772BC /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83E7FB46B7CF8A7C0F510CF4 /* AuthManager.swift */; };
 		1C500AF464889EDC9C8772BC /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83E7FB47B7CF8A7C0F510CF4 /* AuthViewModel.swift */; };
 		1C500AF564889EDC9C8772BC /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83E7FB48B7CF8A7C0F510CF4 /* AIService.swift */; };
@@ -105,6 +106,7 @@
 		05F639B95E5345199E439834 /* LocalMediaPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalMediaPlayer.swift; sourceTree = "<group>"; };
 		0D409152AD794BA998253C35 /* DailyStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyStats.swift; sourceTree = "<group>"; };
 		18D4E0194A3F4C07A9E05001 /* AppTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTypography.swift; sourceTree = "<group>"; };
+		18D4E01B4A3F4C07A9E05001 /* AppAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearance.swift; sourceTree = "<group>"; };
 		27A07A256CDE64E28DB5028F /* FeatureGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureGate.swift; sourceTree = "<group>"; };
 		2F0C10002BCD000000000001 /* FlowWindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowWindowManager.swift; sourceTree = "<group>"; };
 		36B4A1D0B6904D3B9A1E8353 /* VisualEffectBlur.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualEffectBlur.swift; sourceTree = "<group>"; };
@@ -298,6 +300,7 @@
 			isa = PBXGroup;
 			children = (
 				7C360D532F191F17007313D3 /* ContentView.swift */,
+				18D4E01B4A3F4C07A9E05001 /* AppAppearance.swift */,
 				18D4E0194A3F4C07A9E05001 /* AppTypography.swift */,
 				E2A1B0401A2B3C4D5E6F7001 /* LanguageManager.swift */,
 				7C360D542F191F17007313D3 /* MainWindowView.swift */,
@@ -486,6 +489,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7C360D5A2F191F17007313D3 /* ContentView.swift in Sources */,
+				18D4E01C4A3F4C07A9E05001 /* AppAppearance.swift in Sources */,
 				18D4E01A4A3F4C07A9E05001 /* AppTypography.swift in Sources */,
 				E2A1B0301A2B3C4D5E6F7001 /* LanguageManager.swift in Sources */,
 				AB9F279C180740EE9216C649 /* MediaControlBar.swift in Sources */,
@@ -635,7 +639,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG PREVIEWS_ENABLED $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;

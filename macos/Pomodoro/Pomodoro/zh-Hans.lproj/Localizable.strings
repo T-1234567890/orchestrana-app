@@ -265,6 +265,10 @@
 "settings.appearance.font.description" = "可在经典应用字体与引导页面使用的编辑风格衬线标题之间切换。";
 "settings.appearance.font.classic" = "经典";
 "settings.appearance.font.editorial" = "编辑风格";
+"settings.appearance.mode.title" = "模式";
+"settings.appearance.mode.description" = "标准模式使用实色背景，以获得更清晰的视觉效果。";
+"settings.appearance.mode.glass" = "Glass";
+"settings.appearance.mode.standard" = "Standard";
 "settings.notifications.title" = "通知";
 "settings.permissions_sync.title" = "权限";
 "summary.active_count" = "%d 进行中";

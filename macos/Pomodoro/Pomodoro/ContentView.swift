@@ -69,13 +69,21 @@ struct PremiumButton: View {
             externalMonitor: externalMonitor,
             externalController: externalController
         )
+        let onboardingDefaults = UserDefaults(suiteName: "ContentViewPreview")!
+        onboardingDefaults.set(true, forKey: "onboarding.completed")
+        onboardingDefaults.set(true, forKey: "onboarding.calendarPermissionsPrompted")
+        onboardingDefaults.set(true, forKey: "onboarding.menuBarTipSeen")
+        onboardingDefaults.set(true, forKey: "onboarding.eventKitRequestCalled")
+        let onboardingState = OnboardingState(userDefaults: onboardingDefaults)
         return ContentView()
             .environmentObject(appState)
             .environmentObject(musicController)
             .environmentObject(audioSourceStore)
-            .environmentObject(OnboardingState())
+            .environmentObject(onboardingState)
             .environmentObject(AuthViewModel.shared)
+            .environmentObject(LanguageManager.shared)
             .environmentObject(AppTypography.shared)
+            .environmentObject(FullscreenFocusBackdropStore())
             .environmentObject(FlowWindowManager())
     }
 }
