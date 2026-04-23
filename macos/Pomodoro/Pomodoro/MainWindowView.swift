@@ -480,6 +480,10 @@ struct MainWindowView: View {
                     await featureGate.refreshSubscriptionStatusIfNeeded()
                 }
             }
+
+            if newValue == .dashboard || newValue == .insights {
+                refreshSummaryMetrics()
+            }
         }
         .onChange(of: focusedField) { _, newValue in
             guard newValue == nil else { return }
@@ -703,18 +707,17 @@ struct MainWindowView: View {
     }
 
     private var workspaceView: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                SectionHeaderView(
-                    title: "Workspace",
-                    subtitle: "One place for task planning, scheduling, and AI-assisted analysis."
-                )
-
-                aiWorkspaceSection
-            }
-            .padding(24)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(spacing: 14) {
+            Text("Workspace Coming soon")
+                .font(.system(size: 34, weight: .semibold, design: .rounded))
+                .multilineTextAlignment(.center)
+            Text("Your future thinking workspace is coming.")
+                .font(.system(size: 18, weight: .regular, design: .rounded))
+                .foregroundStyle(currentAppearanceMode.secondaryTextColor(for: colorScheme))
+                .multilineTextAlignment(.center)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(24)
     }
 
     private var aiWorkspaceSection: some View {
@@ -1590,6 +1593,8 @@ struct MainWindowView: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
+                    .frame(minWidth: 160, alignment: .leading)
+                    .layoutPriority(1)
 
                     Spacer()
 
@@ -1642,10 +1647,14 @@ struct MainWindowView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(type.displayName)
                                 .font(.system(.title3, design: .rounded).weight(.semibold))
+                                .lineLimit(1)
                             Text(languageManager.text("audio.ambient_local"))
                                 .font(.system(.subheadline, design: .rounded))
                                 .foregroundStyle(.secondary)
+                                .lineLimit(1)
                         }
+                        .frame(minWidth: 160, alignment: .leading)
+                        .layoutPriority(1)
 
                         Spacer()
 
@@ -1706,7 +1715,10 @@ struct MainWindowView: View {
                             Text(media.source.displayName)
                                 .font(.system(.caption, design: .rounded))
                                 .foregroundStyle(.secondary)
+                                .lineLimit(1)
                         }
+                        .frame(minWidth: 160, alignment: .leading)
+                        .layoutPriority(1)
 
                         Spacer()
 
@@ -1756,10 +1768,15 @@ struct MainWindowView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("No media playing")
                                 .font(.system(.title3, design: .rounded).weight(.semibold))
+                                .lineLimit(1)
                             Text(languageManager.text("audio.start_external_hint"))
                                 .font(.system(.subheadline, design: .rounded))
                                 .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
+                        .frame(minWidth: 160, alignment: .leading)
+                        .layoutPriority(1)
 
                         Spacer()
 
@@ -2728,8 +2745,17 @@ struct MainWindowView: View {
 
     private func refreshSummaryMetrics() {
         let calendar = Calendar.current
-        let snapshot = productivityAnalyticsStore.snapshot(calendar: calendar)
-        let todayAggregate = productivityAnalyticsStore.aggregate(for: Date(), calendar: calendar)
+        let snapshot: ProductivityAnalyticsSnapshot
+        let todayAggregate: DailyProductivityAggregate
+
+        if shouldUseMockInsights {
+            snapshot = developerMockInsightsSnapshot(calendar: calendar)
+            todayAggregate = developerMockTodayAggregate(calendar: calendar)
+        } else {
+            snapshot = productivityAnalyticsStore.snapshot(calendar: calendar)
+            todayAggregate = productivityAnalyticsStore.aggregate(for: Date(), calendar: calendar)
+        }
+
         summarySnapshot = snapshot
         todayFocusMinutes = todayAggregate.totalFocusSeconds / 60
 
@@ -2749,9 +2775,143 @@ struct MainWindowView: View {
         focusByHourPoints = snapshot.focusByHour
         sessionLengthDistributionPoints = snapshot.sessionLengthDistribution
 
-        let totalTasks = todoStore.items.count
-        let completed = todoStore.items.filter { $0.isCompleted }.count
-        completionRate = totalTasks == 0 ? 0 : Double(completed) / Double(totalTasks)
+        if shouldUseMockInsights {
+            completionRate = snapshot.insights.completionRate
+        } else {
+            let totalTasks = todoStore.items.count
+            let completed = todoStore.items.filter { $0.isCompleted }.count
+            completionRate = totalTasks == 0 ? 0 : Double(completed) / Double(totalTasks)
+        }
+    }
+
+    private var shouldUseMockInsights: Bool {
+        featureGate.tier == .developer && sidebarSelection == .insights
+    }
+
+    private func developerMockTodayAggregate(calendar: Calendar) -> DailyProductivityAggregate {
+        let today = calendar.startOfDay(for: Date())
+        return developerMockInsightsSnapshot(calendar: calendar).dailyAggregates.first(where: {
+            calendar.isDate($0.dayStart, inSameDayAs: today)
+        }) ?? DailyProductivityAggregate(dayStart: today)
+    }
+
+    private func developerMockInsightsSnapshot(calendar: Calendar) -> ProductivityAnalyticsSnapshot {
+        let today = calendar.startOfDay(for: Date())
+        let mockDays: [(offset: Int, focusMinutes: Int, breakMinutes: Int, sessions: Int, completed: Int)] = [
+            (-6, 92, 18, 4, 3),
+            (-5, 138, 24, 5, 4),
+            (-4, 74, 12, 3, 2),
+            (-3, 164, 28, 6, 5),
+            (-2, 126, 22, 5, 4),
+            (-1, 151, 26, 6, 5),
+            (0, 118, 20, 4, 4)
+        ]
+
+        let dailyAggregates = mockDays.compactMap { entry -> DailyProductivityAggregate? in
+            guard let date = calendar.date(byAdding: .day, value: entry.offset, to: today) else { return nil }
+            return developerMockAggregate(
+                dayStart: date,
+                focusMinutes: entry.focusMinutes,
+                breakMinutes: entry.breakMinutes,
+                totalSessions: entry.sessions,
+                completedSessions: entry.completed
+            )
+        }
+
+        let focusTrend7Days = dailyAggregates.map {
+            ProductivityTrendPoint(date: $0.dayStart, value: Double($0.totalFocusSeconds / 60))
+        }
+
+        let focusTrend30Days: [ProductivityTrendPoint] = (0..<30).compactMap { index in
+            guard let date = calendar.date(byAdding: .day, value: -(29 - index), to: today) else { return nil }
+            let waveform = sin(Double(index) * 0.55) * 28
+            let baseline = 104.0 + waveform + Double((index % 4) * 6)
+            return ProductivityTrendPoint(date: date, value: max(48, baseline))
+        }
+
+        let focusByHour: [FocusHourPoint] = [
+            FocusHourPoint(hour: 7, focusSeconds: 0, sessionCount: 0),
+            FocusHourPoint(hour: 8, focusSeconds: 2_400, sessionCount: 1),
+            FocusHourPoint(hour: 9, focusSeconds: 6_300, sessionCount: 2),
+            FocusHourPoint(hour: 10, focusSeconds: 8_400, sessionCount: 3),
+            FocusHourPoint(hour: 11, focusSeconds: 5_100, sessionCount: 2),
+            FocusHourPoint(hour: 12, focusSeconds: 1_800, sessionCount: 1),
+            FocusHourPoint(hour: 13, focusSeconds: 3_600, sessionCount: 1),
+            FocusHourPoint(hour: 14, focusSeconds: 7_200, sessionCount: 3),
+            FocusHourPoint(hour: 15, focusSeconds: 6_000, sessionCount: 2),
+            FocusHourPoint(hour: 16, focusSeconds: 4_500, sessionCount: 2),
+            FocusHourPoint(hour: 17, focusSeconds: 2_100, sessionCount: 1),
+            FocusHourPoint(hour: 18, focusSeconds: 0, sessionCount: 0)
+        ]
+
+        let sessionLengthDistribution: [SessionLengthDistributionPoint] = [
+            SessionLengthDistributionPoint(bucket: .under15, sessionCount: 2),
+            SessionLengthDistributionPoint(bucket: .between15And25, sessionCount: 8),
+            SessionLengthDistributionPoint(bucket: .between25And45, sessionCount: 12),
+            SessionLengthDistributionPoint(bucket: .over45, sessionCount: 5)
+        ]
+
+        let insights = ProductivityInsights(
+            streakDays: 6,
+            completionRate: 0.82,
+            focusQualityScore: 84,
+            shortSessionRatio: 0.12,
+            consistencyScore: 78,
+            breakFocusRatio: 0.18,
+            averageSessionLengthSeconds: 31 * 60,
+            longestSessionSeconds: 58 * 60
+        )
+
+        return ProductivityAnalyticsSnapshot(
+            dailyAggregates: dailyAggregates,
+            focusTrend7Days: focusTrend7Days,
+            focusTrend30Days: focusTrend30Days,
+            focusByHour: focusByHour,
+            sessionLengthDistribution: sessionLengthDistribution,
+            insights: insights
+        )
+    }
+
+    private func developerMockAggregate(
+        dayStart: Date,
+        focusMinutes: Int,
+        breakMinutes: Int,
+        totalSessions: Int,
+        completedSessions: Int
+    ) -> DailyProductivityAggregate {
+        DailyProductivityAggregate(
+            dayStart: dayStart,
+            totalFocusSeconds: focusMinutes * 60,
+            totalBreakSeconds: breakMinutes * 60,
+            totalSessions: totalSessions,
+            completedSessions: completedSessions,
+            totalSessionSeconds: (focusMinutes + breakMinutes) * 60,
+            longestSessionSeconds: max(25 * 60, (focusMinutes * 60) / max(1, totalSessions)),
+            totalInterruptions: 2,
+            shortSessions: max(0, totalSessions / 4),
+            focusSessions: totalSessions,
+            breakSessions: max(1, totalSessions / 2),
+            focusByHour: developerMockFocusByHour(for: focusMinutes),
+            sessionLengthBuckets: developerMockSessionBuckets(for: totalSessions)
+        )
+    }
+
+    private func developerMockFocusByHour(for focusMinutes: Int) -> [Int] {
+        var values = Array(repeating: 0, count: 24)
+        values[9] = focusMinutes * 18
+        values[10] = focusMinutes * 16
+        values[14] = focusMinutes * 14
+        values[15] = focusMinutes * 12
+        return values
+    }
+
+    private func developerMockSessionBuckets(for totalSessions: Int) -> [Int] {
+        [
+            max(1, totalSessions / 5),
+            max(1, totalSessions / 3),
+            max(1, totalSessions / 2),
+            max(0, totalSessions / 4)
+        ]
     }
 
     private var summaryTaskSummary: AIService.ProductivityTaskSummary {

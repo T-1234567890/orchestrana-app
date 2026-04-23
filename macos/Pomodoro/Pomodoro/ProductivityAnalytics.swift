@@ -112,6 +112,41 @@ struct DailyProductivityAggregate: Codable, Identifiable, Equatable {
         self.sessionLengthBuckets = Array(repeating: 0, count: SessionLengthBucket.allCases.count)
     }
 
+    init(
+        dayStart: Date,
+        totalFocusSeconds: Int,
+        totalBreakSeconds: Int,
+        totalSessions: Int,
+        completedSessions: Int,
+        totalSessionSeconds: Int,
+        longestSessionSeconds: Int,
+        totalInterruptions: Int,
+        shortSessions: Int,
+        focusSessions: Int,
+        breakSessions: Int,
+        focusByHour: [Int],
+        sessionLengthBuckets: [Int]
+    ) {
+        self.dayStart = dayStart
+        self.totalFocusSeconds = totalFocusSeconds
+        self.totalBreakSeconds = totalBreakSeconds
+        self.totalSessions = totalSessions
+        self.completedSessions = completedSessions
+        self.totalSessionSeconds = totalSessionSeconds
+        self.longestSessionSeconds = longestSessionSeconds
+        self.totalInterruptions = totalInterruptions
+        self.shortSessions = shortSessions
+        self.focusSessions = focusSessions
+        self.breakSessions = breakSessions
+        self.focusByHour = focusByHour.count == 24
+            ? focusByHour
+            : Array(focusByHour.prefix(24)) + Array(repeating: 0, count: max(0, 24 - focusByHour.count))
+        self.sessionLengthBuckets = sessionLengthBuckets.count == SessionLengthBucket.allCases.count
+            ? sessionLengthBuckets
+            : Array(sessionLengthBuckets.prefix(SessionLengthBucket.allCases.count))
+                + Array(repeating: 0, count: max(0, SessionLengthBucket.allCases.count - sessionLengthBuckets.count))
+    }
+
     var averageSessionLengthSeconds: Double {
         guard totalSessions > 0 else { return 0 }
         return Double(totalSessionSeconds) / Double(totalSessions)
