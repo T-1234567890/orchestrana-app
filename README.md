@@ -32,7 +32,7 @@ Explore the project website for design philosophies, documentation, and download
 👉  https://orchestrana.app
 
 ## Screenshot
-<img width="1027" height="728" alt="Screenshot 2026-01-30 at 4 25 25 PM" src="https://github.com/user-attachments/assets/e04529ad-dacf-4675-bb06-88fdf5a2a7cf" />
+<img width="2880" height="1800" alt="App Store Screenshot 1" src="https://github.com/user-attachments/assets/7865f7fb-0c85-4602-aa60-034f310ec0ff" />
 
 ## 🎁 Giveaway Event
 
