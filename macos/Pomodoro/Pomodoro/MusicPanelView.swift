@@ -19,17 +19,17 @@ struct MusicPanelView: View {
                     Button(action: { localMusicPlayer.previous() }) {
                         Image(systemName: "backward.fill")
                     }
-                    .buttonStyle(.borderless)
+                    .orchestranaButton(.subtle)
 
                     Button(action: togglePlayback) {
                         Image(systemName: localMusicPlayer.isPlaying ? "pause.fill" : "play.fill")
                     }
-                    .buttonStyle(.borderless)
+                    .orchestranaButton(.subtle)
 
                     Button(action: { localMusicPlayer.next() }) {
                         Image(systemName: "forward.fill")
                     }
-                    .buttonStyle(.borderless)
+                    .orchestranaButton(.subtle)
                 }
                 .font(.system(size: 18, weight: .semibold))
 
@@ -40,7 +40,7 @@ struct MusicPanelView: View {
                 Button(localizationManager.text("audio.choose_music")) {
                     localMusicPlayer.loadFiles()
                 }
-                .buttonStyle(.borderedProminent)
+                .orchestranaButton(.primary)
             }
         }
         .padding(20)

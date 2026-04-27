@@ -94,6 +94,26 @@ struct TodoListView: View {
         var id: String { rawValue }
     }
 
+    private var taskSegmentOptions: [OrchestranaSelectorOption<Segment>] {
+        [
+            OrchestranaSelectorOption(localizationManager.text("tasks.segment.active"), value: .active, systemImage: "circle"),
+            OrchestranaSelectorOption(localizationManager.text("tasks.segment.completed"), value: .completed, systemImage: "checkmark.circle")
+        ]
+    }
+
+    private var taskViewModeOptions: [OrchestranaSelectorOption<TaskViewMode>] {
+        [
+            OrchestranaSelectorOption(localizationManager.text("tasks.view.list"), value: .list, systemImage: "list.bullet"),
+            OrchestranaSelectorOption(localizationManager.text("tasks.view.matrix"), value: .matrix, systemImage: "square.grid.2x2")
+        ]
+    }
+
+    private var priorityOptions: [OrchestranaSelectorOption<TodoItem.Priority>] {
+        TodoItem.Priority.allCases.map { priority in
+            OrchestranaSelectorOption(priority.displayName, value: priority)
+        }
+    }
+
     private struct EventTaskGroupEntry: Identifiable {
         let id: UUID
         let eventTitle: String
@@ -173,7 +193,7 @@ struct TodoListView: View {
                 Button(action: { openEditorForNew() }) {
                     Label(localizationManager.text("tasks.add_task"), systemImage: "plus")
                 }
-                .buttonStyle(.borderedProminent)
+                .orchestranaButton(.primary)
                 
                 if permissionsManager.isRemindersAuthorized {
                     Button {
@@ -189,7 +209,7 @@ struct TodoListView: View {
                             Label(localizationManager.text("tasks.sync_all_tasks"), systemImage: "arrow.triangle.2.circlepath")
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .orchestranaButton(.primary)
                     .disabled(remindersSync.isSyncing)
                 }
 
@@ -209,17 +229,18 @@ struct TodoListView: View {
                         }
                     }
                 } label: {
-                    Label(localizationManager.text("tasks.ai_assistant.button"), systemImage: "sparkles")
+                    Label(localizationManager.text("tasks.ai_assistant.button"), systemImage: "list.bullet.rectangle")
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
                 
                 Spacer()
 
-                Picker("", selection: $taskViewMode) {
-                    Text(localizationManager.text("tasks.view.list")).tag(TaskViewMode.list)
-                    Text(localizationManager.text("tasks.view.matrix")).tag(TaskViewMode.matrix)
-                }
-                .pickerStyle(.segmented)
+                OrchestranaSelector(
+                    selection: $taskViewMode,
+                    options: taskViewModeOptions,
+                    minOptionWidth: 86,
+                    accessibilityLabel: localizationManager.text("tasks.title")
+                )
                 .frame(maxWidth: 220)
                 .onChange(of: taskViewMode) { _, newMode in
                     guard newMode == .matrix else { return }
@@ -235,11 +256,12 @@ struct TodoListView: View {
                     }
                 }
                 
-                Picker("", selection: $selectedSegment) {
-                    Text(localizationManager.text("tasks.segment.active")).tag(Segment.active)
-                    Text(localizationManager.text("tasks.segment.completed")).tag(Segment.completed)
-                }
-                .pickerStyle(.segmented)
+                OrchestranaSelector(
+                    selection: $selectedSegment,
+                    options: taskSegmentOptions,
+                    minOptionWidth: 92,
+                    accessibilityLabel: localizationManager.text("tasks.title")
+                )
                 .frame(maxWidth: 220)
             }
             .padding(.horizontal, 32)
@@ -408,7 +430,7 @@ struct TodoListView: View {
                     await permissionsManager.requestRemindersPermission()
                 }
             }
-            .buttonStyle(.bordered)
+            .orchestranaButton(.secondary)
         }
         .padding(12)
         .background(Color.orange.opacity(0.1))
@@ -763,14 +785,14 @@ struct TodoListView: View {
                             set: { subtaskDrafts[item.id] = $0 }
                         )
                     )
-                    .textFieldStyle(.roundedBorder)
+                    .orchestranaTextField()
 
                     Button(localizationManager.text("common.add")) {
                         let draft = subtaskDrafts[item.id] ?? ""
                         todoStore.addSubtask(to: item.id, title: draft)
                         subtaskDrafts[item.id] = ""
                     }
-                    .buttonStyle(.bordered)
+                    .orchestranaButton(.secondary)
                     .disabled((subtaskDrafts[item.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             } else {
@@ -783,7 +805,7 @@ struct TodoListView: View {
                 } label: {
                     Label("Subtasks", systemImage: "lock.fill")
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
             }
         }
         .padding(.leading, 34)
@@ -1242,16 +1264,18 @@ struct TodoListView: View {
                 
                 VStack(alignment: .leading, spacing: 10) {
                     TextField(localizationManager.text("tasks.editor.title_placeholder"), text: $titleField)
-                        .textFieldStyle(.roundedBorder)
+                        .orchestranaTextField()
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text(localizationManager.text("tasks.ai_plan.estimated_hours"))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
 
-                        Stepper(value: $aiEstimatedHours, in: 1...40) {
-                            Text(localizationManager.format("tasks.ai_plan.estimated_hours_value", aiEstimatedHours))
-                        }
+                        OrchestranaStepControl(
+                            value: $aiEstimatedHours,
+                            in: 1...40,
+                            valueText: { localizationManager.format("tasks.ai_plan.estimated_hours_value", $0) }
+                        )
                     }
 
                     if featureGate.canUseAdvancedTasks {
@@ -1260,12 +1284,12 @@ struct TodoListView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
 
-                            Picker("", selection: $priorityField) {
-                                ForEach(TodoItem.Priority.allCases, id: \.self) { priority in
-                                    Text(priority.displayName).tag(priority)
-                                }
-                            }
-                            .pickerStyle(.segmented)
+                            OrchestranaSelector(
+                                selection: $priorityField,
+                                options: priorityOptions,
+                                minOptionWidth: 72,
+                                accessibilityLabel: localizationManager.text("tasks.editor.priority")
+                            )
                         }
 
                         VStack(alignment: .leading, spacing: 6) {
@@ -1273,9 +1297,11 @@ struct TodoListView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
 
-                            Stepper(value: $pomodoroEstimateField, in: 1...20) {
-                                Text(localizationManager.format("tasks.pomodoro_estimate_value", pomodoroEstimateField))
-                            }
+                            OrchestranaStepControl(
+                                value: $pomodoroEstimateField,
+                                in: 1...20,
+                                valueText: { localizationManager.format("tasks.pomodoro_estimate_value", $0) }
+                            )
                         }
                     }
 
@@ -1343,14 +1369,14 @@ struct TodoListView: View {
                                     }
                                     .disabled(titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                                 } label: {
-                                    Label("Task AI", systemImage: "sparkles")
+                                    Label("Task AI", systemImage: "text.badge.plus")
                                 }
                                 .menuStyle(.borderlessButton)
                             }
                         }
 
                         TextField(localizationManager.text("tasks.editor.notes_placeholder"), text: $descriptionField, axis: .vertical)
-                            .textFieldStyle(.roundedBorder)
+                            .orchestranaTextField()
                         if let aiDescriptionErrorMessage, !aiDescriptionErrorMessage.isEmpty {
                             Text(aiDescriptionErrorMessage)
                                 .font(.footnote)
@@ -1371,7 +1397,7 @@ struct TodoListView: View {
                         } label: {
                             Label("Markdown Descriptions", systemImage: "lock.fill")
                         }
-                        .buttonStyle(.bordered)
+                        .orchestranaButton(.secondary)
                     }
 
                     if featureGate.canUseSubtasks, !editorSubtasks.isEmpty {
@@ -1404,7 +1430,7 @@ struct TodoListView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     TextField(localizationManager.text("tasks.editor.tags_placeholder"), text: $tagsField)
-                        .textFieldStyle(.roundedBorder)
+                        .orchestranaTextField()
                     
                     Toggle(localizationManager.text("tasks.editor.sync_to_calendar"), isOn: $syncToCalendarField)
                         .toggleStyle(.switch)
@@ -1427,7 +1453,7 @@ struct TodoListView: View {
                         resetEditor()
                         showingEditor = false
                     }
-                    .buttonStyle(.bordered)
+                    .orchestranaButton(.secondary)
                     
                     Spacer()
 
@@ -1439,10 +1465,10 @@ struct TodoListView: View {
                                 Text(localizationManager.text("tasks.ai_plan.loading"))
                             }
                         } else {
-                            Label(localizationManager.text("tasks.ai_plan.button"), systemImage: "sparkles")
+                            Label(localizationManager.text("tasks.ai_plan.button"), systemImage: "calendar.badge.clock")
                         }
                     }
-                    .buttonStyle(.bordered)
+                    .orchestranaButton(.secondary)
                     .disabled(isGeneratingAIPlan || titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     
                     Button(editingItem == nil ? localizationManager.text("common.add") : localizationManager.text("common.save")) {
@@ -1450,7 +1476,7 @@ struct TodoListView: View {
                             await saveTask()
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .orchestranaButton(.primary)
                     .keyboardShortcut(.return, modifiers: [.command])
                     .disabled(titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
@@ -1513,7 +1539,7 @@ struct TodoListView: View {
                 Button(localizationManager.text("common.cancel")) {
                     showAITaskDraftSheet = false
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
 
                 Spacer()
 
@@ -1532,7 +1558,7 @@ struct TodoListView: View {
                         Text("Generate Draft")
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .orchestranaButton(.primary)
                 .disabled(isGeneratingAITaskDraft || aiTaskDraftPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
@@ -2285,14 +2311,14 @@ extension TodoListView {
             } label: {
                 Label(localizationManager.text("common.move"), systemImage: "arrow.right.circle")
             }
-            .buttonStyle(.bordered)
+            .orchestranaButton(.secondary)
             
             Button {
                 applyBatchClearDate()
             } label: {
                 Label(localizationManager.text("tasks.action.clear_date"), systemImage: "calendar.badge.minus")
             }
-            .buttonStyle(.bordered)
+            .orchestranaButton(.secondary)
             
             Spacer()
             
@@ -2301,8 +2327,7 @@ extension TodoListView {
             } label: {
                 Label(localizationManager.text("common.delete"), systemImage: "trash")
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.red)
+            .orchestranaButton(.destructive)
         }
         .alert(localizationManager.format("tasks.batch.delete_confirmation_title", selectedTaskIDs.count), isPresented: $showBatchDeleteConfirmation) {
             Button(localizationManager.text("common.delete"), role: .destructive) {

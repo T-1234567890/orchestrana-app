@@ -237,7 +237,7 @@ struct SettingsPermissionsView: View {
                         Text("Restore & Sync Subscription")
                     }
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
                 .disabled(subscriptionStore.isRestoring)
             }
 
@@ -281,7 +281,7 @@ struct SettingsPermissionsView: View {
                         message: localizationManager.text("settings.ai_planning.free_description")
                     )
                 }
-                .buttonStyle(.borderedProminent)
+                .orchestranaButton(.primary)
             }
         case .deepSeek:
             VStack(alignment: .leading, spacing: 8) {
@@ -383,7 +383,7 @@ struct SettingsPermissionsView: View {
     @ViewBuilder
     private func modelRow(_ title: String) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: "sparkles")
+            Image(systemName: "cpu")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             Text(title)
@@ -433,14 +433,14 @@ struct SettingsPermissionsView: View {
                         .font(.subheadline)
                         .fontWeight(.medium)
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
             } else {
                 Button(action: action) {
                     Text(localizationManager.text("permissions.enable"))
                         .font(.subheadline)
                         .fontWeight(.medium)
                 }
-                .buttonStyle(.borderedProminent)
+                .orchestranaButton(.primary)
             }
         }
     }
@@ -608,12 +608,14 @@ struct PlansComparisonView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center, spacing: 10) {
-                Picker("Billing", selection: selectedBillingCycle) {
-                    ForEach(PlanBillingCycle.allCases) { cycle in
-                        Text(cycle.title).tag(cycle)
-                    }
-                }
-                .pickerStyle(.segmented)
+                OrchestranaSelector(
+                    selection: selectedBillingCycle,
+                    options: PlanBillingCycle.allCases.map {
+                        OrchestranaSelectorOption($0.title, value: $0)
+                    },
+                    minOptionWidth: 96,
+                    accessibilityLabel: "Billing"
+                )
                 .frame(maxWidth: 260)
             }
 
@@ -658,14 +660,14 @@ struct PlansComparisonView: View {
                         Text("Restore & Sync Subscription")
                     }
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
                 .disabled(subscriptionStore.isRestoring)
 
                 Button("View Full Comparison") {
                     guard let url = URL(string: "https://orchestrana.app/comparison.html") else { return }
                     openURL(url)
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
             }
         }
         .task(id: authViewModel.currentUser?.uid) {
@@ -989,7 +991,7 @@ struct PlanCardView: View {
     private var ctaSection: some View {
         if tier == .free {
             Button(isCurrentFreePlan ? "Current Plan" : "Free") { }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
                 .disabled(true)
         } else if let product {
             Button {
@@ -1002,7 +1004,7 @@ struct PlanCardView: View {
                     Text(buttonTitle)
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .orchestranaButton(.primary)
             .disabled(isDisabled)
         } else {
             VStack(alignment: .leading, spacing: 8) {
@@ -1017,7 +1019,7 @@ struct PlanCardView: View {
                         Text(!authViewModel.isAuthenticated ? "Sign in to continue" : "Loading…")
                     }
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
                 .disabled(true)
 
                 if let productLoadErrorMessage, !productLoadErrorMessage.isEmpty {
@@ -1172,7 +1174,7 @@ struct SubscriptionUpgradeSheetView: View {
                     Button(localizationManager.text("common.cancel")) {
                         dismiss()
                     }
-                    .buttonStyle(.bordered)
+                    .orchestranaButton(.secondary)
 
                     Spacer()
 
@@ -1183,7 +1185,7 @@ struct SubscriptionUpgradeSheetView: View {
                             await subscriptionStore.purchase(product)
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .orchestranaButton(.primary)
                     .disabled(isPurchaseButtonDisabled)
                 }
             }
@@ -1291,7 +1293,7 @@ struct PurchaseAuthenticationSheet: View {
                     authViewModel.dismissPurchaseLoginPrompt()
                     dismiss()
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
             }
         }
         .padding(24)

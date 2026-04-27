@@ -23,6 +23,8 @@ struct ContentView: View {
             }
         }
         .animation(.easeInOut(duration: 0.22), value: onboardingState.isPresented)
+        .buttonStyle(OrchestranaButtonStyle(.secondary))
+        .textFieldStyle(OrchestranaTextFieldStyle())
     }
 }
 

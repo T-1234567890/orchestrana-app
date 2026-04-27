@@ -125,7 +125,7 @@ struct OnboardingFlowView: View {
                 Button(topActionTitle) {
                     handleTopAction()
                 }
-                .buttonStyle(.borderless)
+                .orchestranaButton(.subtle)
                 .font(.system(size: 13, weight: .medium))
             }
         }
@@ -409,7 +409,7 @@ struct OnboardingFlowView: View {
                 Button(localizationManager.text("common.open_system_settings")) {
                     openNotificationSettings()
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
                 .controlSize(.large)
             }
         }
@@ -650,7 +650,7 @@ struct OnboardingFlowView: View {
         VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 14) {
                 upgradeFeatureRow(
-                    symbol: "sparkles",
+                    symbol: "cpu",
                     title: localizationManager.text("onboarding.upgrade.feature.models_title"),
                     detail: localizationManager.text("onboarding.upgrade.feature.models_body")
                 )
@@ -687,7 +687,7 @@ struct OnboardingFlowView: View {
                     message: localizationManager.text("onboarding.upgrade.view_plans_body")
                 )
             }
-            .buttonStyle(.bordered)
+            .orchestranaButton(.secondary)
         }
     }
 
@@ -722,7 +722,7 @@ struct OnboardingFlowView: View {
                     Button(localizationManager.text("onboarding.back")) {
                         back()
                     }
-                    .buttonStyle(.bordered)
+                    .orchestranaButton(.secondary)
                     .controlSize(.large)
                     .font(onboardingPrimaryLabelFont)
                     .frame(minWidth: 112, minHeight: 46)
@@ -732,7 +732,7 @@ struct OnboardingFlowView: View {
                     Button(footerActionTitle) {
                         performFooterAction()
                     }
-                    .buttonStyle(.borderedProminent)
+                    .orchestranaButton(.primary)
                     .controlSize(.large)
                     .font(onboardingPrimaryLabelFont)
                     .frame(minWidth: 168, minHeight: 46)
@@ -1183,7 +1183,7 @@ private enum WelcomePreviewItem: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .ai:
-            return "sparkles"
+            return "cpu"
         case .focus:
             return "timer"
         case .calendar:
