@@ -1,19 +1,54 @@
-Additional Terms – Firebase Configuration Usage
+## Additional Terms – Firebase Configuration Usage
 
-This project is licensed under MIT for the source code. However, the GoogleService-Info.plist file provides access to a private, paid backend service. Usage of this code does not grant a license to use the maintainer's Firebase resources. Any unauthorized requests to the backend are considered a violation of these terms and may result in immediate IP-based blocking and reporting to service providers.
+This repository is licensed under the MIT License for its source code.  
+However, the included Firebase configuration file (`GoogleService-Info.plist`) provides access to a private, paid backend service operated by the project owner.
 
-The Firebase configuration file (GoogleService-Info.plist) included in this repository is provided solely for the operation of this project.
+---
 
-This configuration is not covered by the open-source license of the repository.
+### Scope of Use
 
-Restrictions
+The Firebase configuration is provided solely for the purpose of running this application as intended.
 
-You are not permitted to:
-- Use this configuration in any other application or project
-- Send requests to the associated Firebase project outside of this application
-- Attempt to access or interfere with backend services
-- Any types of abuses
+Access to this repository does **not** grant any rights to:
 
-Unauthorized use may result in access restrictions or other actions.
+- Use the associated Firebase project for other applications or services  
+- Interact with backend infrastructure outside of normal app usage  
+- Perform automated requests, scraping, or load testing  
+- Attempt to reverse engineer, bypass, or interfere with backend systems  
 
-By using this repository, you agree to these additional terms.
+---
+
+### Restrictions
+
+You are strictly prohibited from:
+
+- Reusing the Firebase configuration in any external project  
+- Sending unauthorized or excessive requests to the backend  
+- Accessing or attempting to access protected resources  
+- Performing any activity that degrades, disrupts, or abuses the service  
+
+Any violation of these terms may result in:
+
+- Immediate access restriction (including IP-based blocking)  
+- Suspension of access to related services  
+- Reporting to relevant service providers  
+
+---
+
+### Enforcement & Monitoring
+
+The backend infrastructure may implement rate limiting, logging, and abuse detection mechanisms to protect service integrity.
+
+---
+
+### Disclaimer
+
+The Firebase configuration is provided "as is" without any guarantees of availability, stability, or continued access.
+
+The project owner reserves the right to modify, restrict, or revoke access to backend services at any time without prior notice.
+
+---
+
+### Acceptance
+
+By using this repository or any included configuration files, you acknowledge and agree to these additional terms.
