@@ -332,18 +332,23 @@ Contact us below.
 
 [![Star History Chart](https://api.star-history.com/svg?repos=T-1234567890/orchestrana-app&type=date&legend=top-left)](https://www.star-history.com/#T-1234567890/orchestrana-app&type=date&legend=top-left)
 
-## ⚠️ 说明/Notice
-本项目仍在持续改进中，部分功能或界面可能会发生变化。<br>
-如在使用过程中发现问题或有改进建议，欢迎提交 Issue 或 PR。
+## ⚠️ Notice
 
 This project is under active development and some features or UI elements may change over time.<br>
 If you encounter issues or have suggestions, feel free to open an issue or pull request.
 
 ## 📄 Policies
+
+Orchestrana™ is a commercial product. While this client is open-source, the following terms apply:
+- **Client License:** The code in this repository is licensed under the **MIT License**.
+- **Proprietary Backend:** The server-side infrastructure, database, and production APIs are **closed-source**. Access to this repository does not grant permission to interact with, access, or test any production systems.
+- **Contributions:** By submitting a Pull Request or any kind of contributing, you agree to grant the project owner a perpetual, worldwide, non-exclusive license to use your contributions commercially.
+
 Official legal and policy documents for the app and website.<br>
 Orchestrana™ is a trademark of Shenzhen Tushengjin Commercial Services Co., Ltd.
 
-[Policies & Legal](https://orchestrana.app/policies.html)
+[Policies & Legal](https://orchestrana.app/policies.html) <br>
+[Repository Additional Terms](https://github.com/T-1234567890/orchestrana-app/blob/main/TERMS.md)
 
 ## 📬 Contact
 
