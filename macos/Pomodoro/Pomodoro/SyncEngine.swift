@@ -31,7 +31,7 @@ final class SyncEngine {
     
     func syncTasksWithReminders() async throws {
         let start = Date()
-        print("[SyncEngine] Reminders sync-all start at \(start)")
+        ClientLog.debug("[SyncEngine] Reminders sync-all start")
         try await ensureRemindersAccess()
         guard let store = todoStore else { return }
         let calendar = try reminderCalendar()
@@ -41,7 +41,7 @@ final class SyncEngine {
             try await reverseSyncReminders(in: calendar, store: store)
         } catch {
             let message = "Reverse sync failed: \(error.localizedDescription)"
-            print("[SyncEngine][Reminders] \(message)")
+            ClientLog.debugError("[SyncEngine][Reminders] Reverse sync failed", error)
             failureMessages.append(message)
         }
 
@@ -50,14 +50,14 @@ final class SyncEngine {
             do {
                 _ = try await syncReminder(for: item, calendar: calendar)
             } catch {
-                let message = "Failed to sync task '\(item.title)': \(error.localizedDescription)"
-                print("[SyncEngine][Reminders] \(message)")
+                let message = "Failed to sync task: \(error.localizedDescription)"
+                ClientLog.debugError("[SyncEngine][Reminders] Failed to sync task", error)
                 failureMessages.append(message)
             }
         }
 
         let duration = Date().timeIntervalSince(start)
-        print("[SyncEngine] Reminders sync-all end. failed: \(failureMessages.count) duration: \(String(format: "%.2f", duration))s")
+        ClientLog.debug("[SyncEngine] Reminders sync-all end. failed: \(failureMessages.count) duration: \(String(format: "%.2f", duration))s")
 
         if let firstFailure = failureMessages.first {
             throw SyncError.partialReminderSyncFailed(firstFailure)
@@ -70,13 +70,12 @@ final class SyncEngine {
     }
 
     func testReminderCreation() async {
-        print("[SyncEngine][RemindersTest] Starting test reminder creation")
+        ClientLog.debug("[SyncEngine][RemindersTest] Starting test reminder creation")
 
         do {
             try await ensureRemindersAccess()
             let calendar = try reminderCalendar()
-            print("[SyncEngine][RemindersTest] permission status: \(permissionsManager.remindersStatusText)")
-            print("[SyncEngine][RemindersTest] using calendar: \(calendar.title)")
+            ClientLog.debug("[SyncEngine][RemindersTest] Reminder calendar resolved")
 
             let reminder = EKReminder(eventStore: eventStore)
             reminder.title = "Pomodoro Test Reminder"
@@ -86,50 +85,48 @@ final class SyncEngine {
 
             do {
                 try eventStore.save(reminder, commit: true)
-                print("[SyncEngine][RemindersTest] Test reminder created successfully")
+                ClientLog.debug("[SyncEngine][RemindersTest] Test reminder created successfully")
             } catch {
-                print("[SyncEngine][RemindersTest] Test reminder failed: \(error)")
+                ClientLog.debugError("[SyncEngine][RemindersTest] Test reminder failed", error)
             }
         } catch {
-            print("[SyncEngine][RemindersTest] Setup failed: \(error)")
+            ClientLog.debugError("[SyncEngine][RemindersTest] Setup failed", error)
         }
     }
 
     private func syncReminder(for item: TodoItem, calendar: EKCalendar) async throws -> String {
         let start = Date()
-        print("[SyncEngine][Reminders] Sync start for task '\(item.title)' at \(start)")
+        ClientLog.debug("[SyncEngine][Reminders] Sync start for task")
         try await ensureRemindersAccess()
         guard !shouldSkipLoopProtectedImport(for: item) else {
-            print("[SyncEngine][Reminders] Skipping outbound sync for '\(item.title)' due to loop protection")
+            ClientLog.debug("[SyncEngine][Reminders] Skipping outbound sync due to loop protection")
             return item.reminderIdentifier ?? ""
         }
 
         let existing = existingReminder(for: item)
         let reminder = existing ?? EKReminder(eventStore: eventStore)
 
-        print("[SyncEngine][Reminders] permission status: \(permissionsManager.remindersStatusText)")
-        print("[SyncEngine][Reminders] using calendar: \(calendar.title)")
-        print("[SyncEngine][Reminders] \(existing == nil ? "Creating" : "Updating") reminder: \(item.title)")
+        ClientLog.debug("[SyncEngine][Reminders] \(existing == nil ? "Creating" : "Updating") reminder")
 
         reminder.calendar = calendar
         applyReminderFields(to: reminder, from: item)
 
         do {
             try eventStore.save(reminder, commit: true)
-            print("[SyncEngine][Reminders] save result: success for '\(item.title)'")
+            ClientLog.debug("[SyncEngine][Reminders] save result: success")
             markTaskSynced(itemId: item.id, reminderIdentifier: reminder.calendarItemIdentifier)
             let duration = Date().timeIntervalSince(start)
-            print("[SyncEngine][Reminders] sync end for '\(item.title)' in \(String(format: "%.2f", duration))s")
+            ClientLog.debug("[SyncEngine][Reminders] sync end in \(String(format: "%.2f", duration))s")
             return reminder.calendarItemIdentifier
         } catch {
-            print("[SyncEngine][Reminders] save result: failed for '\(item.title)' error: \(error)")
+            ClientLog.debugError("[SyncEngine][Reminders] save result: failed", error)
             throw SyncError.reminderSaveFailed(item.title, error.localizedDescription)
         }
     }
     
     func syncCalendarEvents() async throws {
         let start = Date()
-        print("[SyncEngine] Calendar sync start at \(start)")
+        ClientLog.debug("[SyncEngine] Calendar sync start")
         
         try await ensureCalendarAccess()
         guard let store = todoStore else { return }
@@ -187,7 +184,7 @@ final class SyncEngine {
                     updated.linkedCalendarEventId = existing.eventIdentifier
                     updated.lastModified = remoteModified
                     store.updateItem(updated)
-                    print("[SyncEngine][Calendar] Imported newer calendar event for \(task.externalId)")
+                    ClientLog.debug("[SyncEngine][Calendar] Imported newer calendar event")
                 } else {
                     try updateEvent(existing, with: task, externalId: task.externalId)
                     var updated = task
@@ -195,7 +192,7 @@ final class SyncEngine {
                     updated.linkedCalendarEventId = existing.eventIdentifier
                     updated.lastModified = Date()
                     store.updateItem(updated)
-                    print("[SyncEngine][Calendar] Updated calendar event for \(task.externalId)")
+                    ClientLog.debug("[SyncEngine][Calendar] Updated calendar event")
                 }
                 stats.written += 1
             } else {
@@ -205,13 +202,13 @@ final class SyncEngine {
                 updated.linkedCalendarEventId = eventId
                 updated.lastModified = Date()
                 store.updateItem(updated)
-                print("[SyncEngine][Calendar] Created calendar event for \(task.externalId)")
+                ClientLog.debug("[SyncEngine][Calendar] Created calendar event")
                 stats.written += 1
             }
         }
 
         let duration = Date().timeIntervalSince(start)
-        print("[SyncEngine] Calendar sync end. read: \(stats.read) written: \(stats.written) skipped: \(stats.skipped) duration: \(String(format: "%.2f", duration))s")
+        ClientLog.debug("[SyncEngine] Calendar sync end. read: \(stats.read) written: \(stats.written) skipped: \(stats.skipped) duration: \(String(format: "%.2f", duration))s")
     }
     
     func deleteReminder(for item: TodoItem) async throws {
@@ -295,11 +292,11 @@ final class SyncEngine {
     }
 
     private func reminderCalendar() throws -> EKCalendar {
-        print("[SyncEngine][Reminders] selecting default reminders calendar")
+        ClientLog.debug("[SyncEngine][Reminders] selecting default reminders calendar")
         if let defaultCalendar = eventStore.defaultCalendarForNewReminders() {
             return defaultCalendar
         }
-        print("[SyncEngine][Reminders] no default reminders calendar available")
+        ClientLog.debug("[SyncEngine][Reminders] no default reminders calendar available")
         throw SyncError.noReminderCalendar
     }
 
@@ -313,17 +310,17 @@ final class SyncEngine {
     }
 
     private func reverseSyncReminders(in calendar: EKCalendar, store: TodoStore) async throws {
-        print("[SyncEngine][Reminders] Reverse sync start for calendar: \(calendar.title)")
+        ClientLog.debug("[SyncEngine][Reminders] Reverse sync start")
         let reminders = await fetchReminders(in: calendar)
-        print("[SyncEngine][Reminders] Reverse sync fetched \(reminders.count) reminders")
+        ClientLog.debug("[SyncEngine][Reminders] Reverse sync fetched \(reminders.count) reminders")
 
         for reminder in reminders {
             let reminderTitle = reminder.title ?? "Untitled Reminder"
-            print("[SyncEngine][Reminders] Importing reminder: \(reminderTitle)")
+            ClientLog.debug("[SyncEngine][Reminders] Importing reminder")
 
             if let local = store.items.first(where: { $0.reminderIdentifier == reminder.calendarItemIdentifier }) {
                 if shouldSkipLoopProtectedImport(for: local) {
-                    print("[SyncEngine][Reminders] Skipping import for '\(reminderTitle)' due to loop protection")
+                    ClientLog.debug("[SyncEngine][Reminders] Skipping import due to loop protection")
                     continue
                 }
 
@@ -338,7 +335,7 @@ final class SyncEngine {
                 updated.lastSyncedAt = Date()
                 updated.syncStatus = .synced
                 store.updateItem(updated)
-                print("[SyncEngine][Reminders] Updated local task from reminder: \(reminderTitle)")
+                ClientLog.debug("[SyncEngine][Reminders] Updated local task from reminder")
             } else {
                 let newTask = TodoItem(
                     title: reminderTitle,
@@ -351,7 +348,7 @@ final class SyncEngine {
                     syncStatus: .synced
                 )
                 store.addItem(newTask)
-                print("[SyncEngine][Reminders] Created local task from reminder: \(reminderTitle)")
+                ClientLog.debug("[SyncEngine][Reminders] Created local task from reminder")
             }
         }
     }
@@ -485,7 +482,7 @@ final class SyncEngine {
             updated.durationMinutes = max(existing.durationMinutes ?? 25, Int(entry.end.timeIntervalSince(entry.start) / 60))
             updated.lastModified = Date()
             store.updateItem(updated)
-            print("[SyncEngine][Calendar] Scheduled task '\(updated.title)' from \(entry.start) to \(entry.end)")
+            ClientLog.debug("[SyncEngine][Calendar] Scheduled task")
         }
     }
 
@@ -514,7 +511,7 @@ final class SyncEngine {
                 updated.syncToCalendar = true
                 updated.lastModified = remoteModified
                 store.updateItem(updated)
-                print("[SyncEngine][Calendar] Imported event change for \(parsed.externalId)")
+                ClientLog.debug("[SyncEngine][Calendar] Imported event change")
             } else if let taskId = uuid(from: parsed.externalId, expectedPrefix: ExternalID.taskPrefix) {
                 let newTask = TodoItem(
                     id: taskId,
@@ -531,7 +528,7 @@ final class SyncEngine {
                     syncStatus: .synced
                 )
                 store.addItem(newTask)
-                print("[SyncEngine][Calendar] Created local task from calendar event \(parsed.externalId)")
+                ClientLog.debug("[SyncEngine][Calendar] Created local task from calendar event")
             }
         }
     }
@@ -552,7 +549,7 @@ final class SyncEngine {
             updated.syncToCalendar = false
             updated.lastModified = Date()
             store.updateItem(updated)
-            print("[SyncEngine][Calendar] Event deleted remotely, task unscheduled: \(item.title)")
+            ClientLog.debug("[SyncEngine][Calendar] Event deleted remotely, task unscheduled")
         }
     }
 

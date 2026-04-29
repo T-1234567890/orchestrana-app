@@ -4,8 +4,7 @@ import AppKit
 import FirebaseAuth
 import FirebaseFunctions
 
-/// Calendar view showing time-based events and allowing event creation.
-/// Blocked when unauthorized with explanation and enable button.
+/// Calendar view showing local planning items and optional EventKit events.
 @MainActor
 struct CalendarView: View {
     @ObservedObject var calendarManager: CalendarManager
@@ -110,28 +109,20 @@ struct CalendarView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            if permissionsManager.isCalendarAuthorized {
-                authorizedContent
-            } else {
-                unauthorizedContent
-            }
+            calendarContent
         }
         .frame(minWidth: 520, idealWidth: 680, maxWidth: 900, minHeight: 520, alignment: .top)
         .onAppear {
             permissionsManager.refreshCalendarStatus()
-            if permissionsManager.isCalendarAuthorized {
-                Task {
-                    await loadEvents()
-                }
+            Task {
+                await loadEvents()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .calendarGoToToday)) { _ in
             selectedView = .day
             anchorDate = Date()
-            if permissionsManager.isCalendarAuthorized {
-                Task {
-                    await loadEvents()
-                }
+            Task {
+                await loadEvents()
             }
         }
         .sheet(isPresented: $showingAddEvent) {
@@ -187,7 +178,8 @@ struct CalendarView: View {
                 isLoading: isRunningAIAssistant || isRescheduling,
                 errorMessage: rescheduleError ?? aiAssistantErrorMessage,
                 isActionEnabled: { action in
-                    featureGate.canUseAIAssistantAction(action) && !(action == .reschedule && isRescheduling)
+                    featureGate.canUseAIAssistantAction(action)
+                    && !(action == .reschedule && isRescheduling)
                 },
                 onClose: { showAIAssistant = false },
                 onLockedActionTap: { action in
@@ -227,7 +219,7 @@ struct CalendarView: View {
         }
     }
     
-    private var authorizedContent: some View {
+    private var calendarContent: some View {
         ZStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 12) {
@@ -263,6 +255,15 @@ struct CalendarView: View {
                             Task { await loadEvents() }
                         }
 
+                        if !permissionsManager.isCalendarAuthorized {
+                            Text(localizationManager.text("calendar.permission_off.badge"))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(.thinMaterial, in: Capsule())
+                        }
+
                         Spacer()
 
                         Button {
@@ -272,6 +273,7 @@ struct CalendarView: View {
                             Label(localizationManager.text("calendar.add_event"), systemImage: "plus")
                         }
                         .buttonStyle(.borderedProminent)
+                        .help(localizationManager.text("calendar.add_event"))
 
                         Button {
                             if !featureGate.canUseCloudProxyAI {
@@ -292,6 +294,7 @@ struct CalendarView: View {
                         .help(localizationManager.text("calendar.ai_assistant.reschedule_description"))
 
                         Button {
+                            permissionsManager.refreshCalendarStatus()
                             Task { await loadEvents() }
                         } label: {
                             Label(localizationManager.text("common.refresh"), systemImage: "arrow.clockwise")
@@ -301,6 +304,10 @@ struct CalendarView: View {
 
                     if selectedEventIDs.count > 1 {
                         batchEventActionsBar
+                    }
+
+                    if !permissionsManager.isCalendarAuthorized {
+                        calendarPermissionBanner
                     }
                 }
 
@@ -328,44 +335,46 @@ struct CalendarView: View {
         .animation(.spring(response: 0.35, dampingFraction: 0.75), value: rescheduleToast != nil)
     }
     
-    private var unauthorizedContent: some View {
-        VStack(spacing: 24) {
+    private var calendarPermissionBanner: some View {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: "calendar.badge.exclamationmark")
-                .font(.system(size: 64))
-                .foregroundStyle(.secondary)
-            
-            VStack(spacing: 12) {
-                Text(localizationManager.text("calendar.unavailable.title"))
-                    .font(.title)
-                    .fontWeight(.semibold)
-                
-                Text(localizationManager.text("calendar.unavailable.body"))
-                    .font(.body)
+                .font(.title3)
+                .foregroundStyle(.orange)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(localizationManager.text("calendar.permission_off.title"))
+                    .font(.subheadline.weight(.semibold))
+                Text(calendarPermissionMessage)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                
-                Text(localizationManager.text("calendar.unavailable.cta"))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: 400)
-            
+
+            Spacer(minLength: 12)
+
             Button(action: {
                 Task {
                     await permissionsManager.requestCalendarPermission()
+                    await loadEvents()
                 }
             }) {
                 Label(localizationManager.text("calendar.request_access"), systemImage: "calendar")
-                    .font(.headline)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .buttonStyle(.bordered)
+
+            if permissionsManager.calendarStatus == .denied || permissionsManager.calendarStatus == .restricted {
+                Button(localizationManager.text("common.open_settings")) {
+                    permissionsManager.openSystemSettings()
+                }
+                .buttonStyle(.borderedProminent)
+            }
         }
-        .padding(48)
-        .frame(maxWidth: 520, minHeight: 420, alignment: .center)
+        .padding(12)
+        .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.orange.opacity(0.25), lineWidth: 1)
+        }
         .alert(localizationManager.text("calendar.access_denied.title"), isPresented: $permissionsManager.showCalendarDeniedAlert) {
             Button(localizationManager.text("common.open_settings")) {
                 permissionsManager.openSystemSettings()
@@ -374,6 +383,13 @@ struct CalendarView: View {
         } message: {
             Text(localizationManager.text("calendar.access_denied.body"))
         }
+    }
+
+    private var calendarPermissionMessage: String {
+        if permissionsManager.calendarStatus == .denied || permissionsManager.calendarStatus == .restricted {
+            return localizationManager.text("calendar.permission_off.denied_body")
+        }
+        return localizationManager.text("calendar.permission_off.body")
     }
 
     @ViewBuilder
@@ -641,6 +657,7 @@ struct CalendarView: View {
 
         let eventStore = SharedEventStore.shared.eventStore
         let defaultCalendar = eventStore.defaultCalendarForNewEvents
+        let canSyncCalendar = permissionsManager.isCalendarAuthorized
 
         for entry in response.schedule {
             guard let taskID = UUID(uuidString: entry.taskId),
@@ -652,20 +669,25 @@ struct CalendarView: View {
             updated.dueDate = entry.start
             updated.hasDueTime = true
             updated.durationMinutes = max(max(1, Preset.shortestBuiltIn.durationConfig.workDuration / 60), Int(entry.end.timeIntervalSince(entry.start) / 60))
-            updated.syncToCalendar = entry.calendarWritable
+            updated.syncToCalendar = canSyncCalendar && entry.calendarWritable
             updated.aiOrigin = .calendarSchedule
             updated.pomodoroPresetID = entry.pomodoroPreset
             updated.plannedPomodoroCount = entry.pomodoros
             updated.modifiedAt = Date()
             todoStore.updateItem(updated)
 
+            guard canSyncCalendar else {
+                ClientLog.debug("[CalendarView] Calendar access is off; scheduled task locally only")
+                continue
+            }
+
             guard entry.calendarWritable else {
-                print("[CalendarView] Skipping read-only schedule block for task \(entry.taskId)")
+                ClientLog.debug("[CalendarView] Skipping read-only schedule block")
                 continue
             }
 
             guard let defaultCalendar else {
-                print("[CalendarView] No writable default calendar available for scheduled task \(entry.taskId)")
+                ClientLog.debug("[CalendarView] No writable default calendar available")
                 continue
             }
 
@@ -685,7 +707,7 @@ struct CalendarView: View {
                     todoStore.updateItem(linked)
                 }
             } catch {
-                print("[CalendarView] Failed to save scheduled event for task \(entry.taskId): \(error)")
+                ClientLog.debugError("[CalendarView] Failed to save scheduled event", error)
             }
         }
 
@@ -737,7 +759,7 @@ struct CalendarView: View {
     }
 
     private func performCalendarReschedule() async {
-        print("Reschedule button tapped")
+        ClientLog.debug("[CalendarView] Reschedule requested")
         await featureGate.refreshSubscriptionStatusIfNeeded()
         isRescheduling = true
         rescheduleError = nil
@@ -753,7 +775,9 @@ struct CalendarView: View {
         guard let preferredDayEnd = Calendar.current.date(byAdding: .day, value: 1, to: schedulingStart),
               let schedulingRangeEnd = Calendar.current.date(byAdding: .day, value: 2, to: schedulingStart) else { return }
 
-        let calendarEvents = calendarManager.readEvents(from: schedulingStart, to: schedulingRangeEnd)
+        let calendarEvents = permissionsManager.isCalendarAuthorized
+            ? calendarManager.readEvents(from: schedulingStart, to: schedulingRangeEnd)
+            : []
         let schedulableTasks = tasksRelevantForTodayReschedule(
             from: todoStore.pendingItems,
             calendarEvents: calendarEvents,
@@ -777,7 +801,7 @@ struct CalendarView: View {
         let preRescheduleSnapshot = schedulableTasks
 
         do {
-            print("Sending reschedule request to backend (scope: today)")
+            ClientLog.debug("[CalendarView] Sending reschedule request")
             let decoded = try await AIService.shared.calendarReschedule(
                 tasks: requestTasks,
                 events: immutableCalendarEvents,
@@ -825,7 +849,7 @@ struct CalendarView: View {
             }
 
         } catch {
-            print("[CalendarView] Reschedule request failed: \(error)")
+            ClientLog.debugError("[CalendarView] Reschedule request failed", error)
             let nsError = error as NSError
             if nsError.domain == FunctionsErrorDomain,
                nsError.code == FunctionsErrorCode.deadlineExceeded.rawValue {
@@ -1282,7 +1306,7 @@ struct CalendarView: View {
             await loadEvents()
         } catch {
             batchEventWarning = localizationManager.format("calendar.error.move_all_failed", error.localizedDescription)
-            print("[CalendarView] move events failed: \(error)")
+            ClientLog.debugError("[CalendarView] Move events failed", error)
         }
     }
     
@@ -1296,7 +1320,7 @@ struct CalendarView: View {
             await loadEvents()
         } catch {
             batchEventWarning = localizationManager.format("calendar.error.delete_all_failed", error.localizedDescription)
-            print("[CalendarView] delete events failed: \(error)")
+            ClientLog.debugError("[CalendarView] Delete events failed", error)
         }
     }
 
@@ -1441,6 +1465,7 @@ struct CalendarView: View {
 
         let eventStore = SharedEventStore.shared.eventStore
         let defaultCalendar = eventStore.defaultCalendarForNewEvents
+        let canSyncCalendar = permissionsManager.isCalendarAuthorized
         let originalTasksByID = Dictionary(uniqueKeysWithValues: originalTasks.map { ($0.id, $0) })
         var restoredEvents: [CalendarEventSnapshot] = []
         var restoredEventIDs: Set<String> = []
@@ -1458,15 +1483,20 @@ struct CalendarView: View {
             updated.dueDate = entry.start
             updated.hasDueTime = true
             updated.durationMinutes = max(max(1, Preset.shortestBuiltIn.durationConfig.workDuration / 60), Int(entry.end.timeIntervalSince(entry.start) / 60))
-            updated.syncToCalendar = entry.calendarWritable
+            updated.syncToCalendar = canSyncCalendar && entry.calendarWritable
             updated.aiOrigin = .calendarSchedule
             updated.pomodoroPresetID = entry.pomodoroPreset
             updated.plannedPomodoroCount = entry.pomodoros
             updated.modifiedAt = Date()
             todoStore.updateItem(updated)
 
+            guard canSyncCalendar else {
+                ClientLog.debug("[CalendarView] Calendar access is off; scheduled task locally only")
+                continue
+            }
+
             guard entry.calendarWritable else {
-                print("[CalendarView] Skipping read-only schedule block for task \(entry.taskId)")
+                ClientLog.debug("[CalendarView] Skipping read-only schedule block")
                 continue
             }
 
@@ -1503,7 +1533,7 @@ struct CalendarView: View {
             }
 
             guard let defaultCalendar else {
-                print("[CalendarView] No writable default calendar available for scheduled task \(entry.taskId)")
+                ClientLog.debug("[CalendarView] No writable default calendar available")
                 continue
             }
 
@@ -1526,7 +1556,7 @@ struct CalendarView: View {
                     todoStore.updateItem(linked)
                 }
             } catch {
-                print("[CalendarView] Failed to save scheduled event for task \(entry.taskId): \(error)")
+                ClientLog.debugError("[CalendarView] Failed to save scheduled event", error)
             }
         }
 

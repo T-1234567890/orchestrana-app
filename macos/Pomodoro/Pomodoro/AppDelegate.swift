@@ -82,12 +82,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = FirebaseBootstrap.configureIfPossible()
 
         guard FirebaseApp.app() != nil else {
-            print("[Firebase] Firebase is unavailable. Cloud auth and subscription-backed features will stay disabled.")
+            ClientLog.debug("[Firebase] Firebase is unavailable. Cloud features disabled.")
             return
         }
 
-        print("[Firebase] projectID: \(String(describing: FirebaseApp.app()?.options.projectID))")
-        print("[Firebase] googleAppID: \(String(describing: FirebaseApp.app()?.options.googleAppID))")
         AuthManager.shared.logAuthConfiguration()
         AuthViewModel.shared.startListeningIfNeeded()
     }

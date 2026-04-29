@@ -88,7 +88,7 @@ final class PlanningStore: ObservableObject {
             )
             items.append(newItem)
         }
-        print("[PlanningStore] upsertFromTask -> total items: \(items.count)")
+        ClientLog.debug("[PlanningStore] upsertFromTask -> total items: \(items.count)")
         save()
     }
 
@@ -96,7 +96,7 @@ final class PlanningStore: ObservableObject {
         let before = items.count
         items.removeAll { $0.sourceType == .task && $0.sourceID == id.uuidString }
         if items.count != before {
-            print("[PlanningStore] removed task plan id=\(id)")
+            ClientLog.debug("[PlanningStore] removed task plan")
         }
         save()
     }
@@ -126,7 +126,7 @@ final class PlanningStore: ObservableObject {
             )
             items.append(newItem)
         }
-        print("[PlanningStore] upsertFromReminder -> total items: \(items.count)")
+        ClientLog.debug("[PlanningStore] upsertFromReminder -> total items: \(items.count)")
         save()
     }
 

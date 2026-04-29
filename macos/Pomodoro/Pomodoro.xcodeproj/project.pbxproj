@@ -741,7 +741,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 1.7.1;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.pomodoro.Pomodoro;
 				PRODUCT_NAME = Orchestrana;
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -803,7 +803,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 1.7.1;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.pomodoro.Pomodoro;
 				PRODUCT_NAME = Orchestrana;
 				PROVISIONING_PROFILE_SPECIFIER = "";

@@ -319,9 +319,9 @@ final class AIService {
             "estimatedHours": request.estimatedHours
         ]
 
-        print("[AIService] Calling callable taskBreakdown in us-central1")
+        ClientLog.debug("[AIService] Calling callable taskBreakdown")
         let result = try await callable.call(payload)
-        print("[AIService] taskBreakdown response received")
+        ClientLog.debug("[AIService] taskBreakdown response received")
         return try decodeAIPlanningResponse(from: result.data)
     }
 
@@ -344,9 +344,9 @@ final class AIService {
             ] }
         ]
 
-        print("[AIService] Calling callable taskPlanning in us-central1 for \(tasks.count) tasks")
+        ClientLog.debug("[AIService] Calling callable taskPlanning")
         let result = try await callable.call(payload)
-        print("[AIService] taskPlanning response received")
+        ClientLog.debug("[AIService] taskPlanning response received")
         return try decodeAIPlanningResponse(from: result.data)
     }
 
@@ -357,9 +357,9 @@ final class AIService {
             "notes": notes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         ]
 
-        print("[AIService] Calling callable generateTaskDescription in us-central1")
+        ClientLog.debug("[AIService] Calling callable generateTaskDescription")
         let result = try await callable.call(payload)
-        print("[AIService] generateTaskDescription response received")
+        ClientLog.debug("[AIService] generateTaskDescription response received")
         return try decodeTaskDescriptionResponse(from: result.data)
     }
 
@@ -522,9 +522,9 @@ final class AIService {
 
         let callable = functions.httpsCallable("generateCalendarSchedule")
         callable.timeoutInterval = 60
-        print("[AIService] Calling callable generateCalendarSchedule in us-central1")
+        ClientLog.debug("[AIService] Calling callable generateCalendarSchedule")
         let result = try await callable.call(payload)
-        print("[AIService] generateCalendarSchedule response received")
+        ClientLog.debug("[AIService] generateCalendarSchedule response received")
         return try decodeCalendarScheduleResponse(from: result.data)
     }
 
@@ -1019,11 +1019,11 @@ extension AIService {
         taskSummary: ProductivityTaskSummary,
         now: Date = Date()
     ) async -> ProductivityInsightResult {
-        print("🚀 Deep Analysis started")
+        ClientLog.debug("[AIService] Deep Analysis started")
         let fallback = deepAnalysisFallback(snapshot: snapshot, taskSummary: taskSummary)
         guard FeatureGate.shared.canUseAIDeepAnalysis else {
-            print("❌ Deep Analysis blocked by entitlement. tier=\(FeatureGate.shared.tier.rawValue) aiLevel=\(FeatureGate.shared.aiLevel.rawValue) dailyRemaining=\(FeatureGate.shared.dailyAIUsage.remaining.map(String.init) ?? "nil")")
-            print("⚠️ Using fallback analysis")
+            ClientLog.debug("[AIService] Deep Analysis blocked by entitlement")
+            ClientLog.debug("[AIService] Using fallback analysis")
             return ProductivityInsightResult(
                 text: fallback,
                 usedModelFamily: nil,
@@ -1041,7 +1041,7 @@ extension AIService {
         )
         let cacheKey = "deep-analysis-\(cacheDayKey(for: now))-\(payload.cacheHash)"
         if let cached = insightsCache.cachedResult(for: cacheKey, now: now), !cached.isFallback {
-            print("✅ Deep Analysis served from cache")
+            ClientLog.debug("[AIService] Deep Analysis served from cache")
             return cached
         }
 
@@ -1069,7 +1069,7 @@ extension AIService {
         """
 
         do {
-            print("📡 Calling AI API for Deep Analysis model=\(Self.proDeepAnalysisModel)")
+            ClientLog.debug("[AIService] Calling AI API for Deep Analysis")
             let response: AIProxyClient.ProxyResponse = try await aiProxyClient.sendPrompt(
                 .init(
                     prompt: prompt,
@@ -1084,10 +1084,10 @@ extension AIService {
                     ]
                 )
             )
-            print("✅ AI response received for Deep Analysis")
+            ClientLog.debug("[AIService] AI response received for Deep Analysis")
             let text = sanitizeInsightText(response.outputText) ?? fallback
             if text == fallback {
-                print("⚠️ Using fallback analysis")
+                ClientLog.debug("[AIService] Using fallback analysis")
             }
             let result = ProductivityInsightResult(
                 text: text,
@@ -1099,8 +1099,8 @@ extension AIService {
             insightsCache.store(result, for: cacheKey, expiresAt: now.addingTimeInterval(24 * 60 * 60))
             return result
         } catch {
-            print("❌ AI call failed: \(error)")
-            print("⚠️ Using fallback analysis")
+            ClientLog.debugError("[AIService] AI call failed", error)
+            ClientLog.debug("[AIService] Using fallback analysis")
             return ProductivityInsightResult(
                 text: fallback,
                 usedModelFamily: nil,

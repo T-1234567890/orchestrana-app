@@ -28,6 +28,11 @@ struct CloudSettingsSection: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var localizationManager: LocalizationManager
     @State private var deleteConfirmationStep: DeleteAccountConfirmationStep?
+    @State private var supportId: String?
+    @State private var isLoadingSupportId = false
+    @State private var supportIdLoadFailed = false
+
+    private let userProfileClient = UserProfileAPIClient()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -39,6 +44,9 @@ struct CloudSettingsSection: View {
             } else {
                 LoginView()
             }
+        }
+        .task(id: authViewModel.currentUser?.uid) {
+            await loadSupportId()
         }
         .padding(16)
         .background(Color.primary.opacity(0.05))
@@ -84,6 +92,8 @@ struct CloudSettingsSection: View {
                 statusChip(isLoggedIn: true)
             }
 
+            supportIdRow
+
             Button(localizationManager.text("settings.account.logout")) {
                 Task { @MainActor in
                     await authViewModel.signOut()
@@ -122,6 +132,48 @@ struct CloudSettingsSection: View {
                     .foregroundStyle(.red)
             }
         }
+    }
+
+    private var supportIdRow: some View {
+        HStack(spacing: 10) {
+            Text(localizationManager.text("settings.account.support_id"))
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            if isLoadingSupportId {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Text(supportIdDisplayValue)
+                    .font(.system(.footnote, design: .monospaced))
+                    .foregroundStyle(supportId == nil ? .secondary : .primary)
+                    .textSelection(.enabled)
+            }
+
+            Spacer()
+
+            Button(localizationManager.text("settings.account.copy_support_id")) {
+                copySupportId()
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .disabled(supportId == nil)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.primary.opacity(0.035))
+        .cornerRadius(8)
+        .accessibilityIdentifier("settings.account.support_id")
+    }
+
+    private var supportIdDisplayValue: String {
+        if let supportId, !supportId.isEmpty {
+            return supportId
+        }
+        if supportIdLoadFailed {
+            return localizationManager.text("settings.account.support_id_unavailable")
+        }
+        return localizationManager.text("settings.account.support_id_loading")
     }
 
     private func statusChip(isLoggedIn: Bool) -> some View {
@@ -185,6 +237,36 @@ struct CloudSettingsSection: View {
             return String(first).uppercased()
         }
         return nil
+    }
+
+    @MainActor
+    private func loadSupportId() async {
+        guard authViewModel.isLoggedIn else {
+            supportId = nil
+            supportIdLoadFailed = false
+            isLoadingSupportId = false
+            return
+        }
+
+        isLoadingSupportId = true
+        supportIdLoadFailed = false
+        defer { isLoadingSupportId = false }
+
+        do {
+            let profile = try await userProfileClient.fetchCurrentUserProfile()
+            let normalizedSupportId = profile.supportId?.trimmingCharacters(in: .whitespacesAndNewlines)
+            supportId = normalizedSupportId?.isEmpty == false ? normalizedSupportId : nil
+            supportIdLoadFailed = supportId == nil
+        } catch {
+            supportId = nil
+            supportIdLoadFailed = true
+        }
+    }
+
+    private func copySupportId() {
+        guard let supportId, !supportId.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(supportId, forType: .string)
     }
 }
 

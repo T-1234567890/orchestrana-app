@@ -40,7 +40,7 @@ final class AuthManager {
         }
 
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
-        print("[Auth] Starting Google sign-in")
+        ClientLog.debug("[Auth] Starting Google sign-in")
 
         do {
             let googleResult: GIDSignInResult = try await withCheckedThrowingContinuation { continuation in
@@ -68,10 +68,10 @@ final class AuthManager {
                 throw AuthManagerError.missingGoogleAccessToken
             }
 
-            print("[Auth] Google token retrieval succeeded")
+            ClientLog.debug("[Auth] Google token retrieval succeeded")
             let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: accessToken)
             let authResult = try await signIn(with: credential)
-            print("[Auth] Google sign-in succeeded for uid: \(authResult.user.uid)")
+            ClientLog.debug("[Auth] Google sign-in succeeded")
             return authResult.user.uid
         } catch {
             log(error, prefix: "[Auth] Google sign-in failed")
@@ -91,21 +91,16 @@ final class AuthManager {
         provider.scopes = ["user:email"]
         activeOAuthProvider = provider
         activate(window: window)
-        print("[Auth] Starting GitHub OAuth")
-        print("[Auth] Configured provider: \(provider.providerID)")
-        print("[Auth] Requested scopes: \(provider.scopes?.joined(separator: ", ") ?? "none")")
-        print("[Auth] GitHub window available: \(window)")
-        print("[Auth] GitHub browser handler: \(defaultBrowserDescription())")
-        print("[Auth] Expected GitHub callback: \(expectedFirebaseAuthCallbackURL())")
+        ClientLog.debug("[Auth] Starting GitHub OAuth")
 
         do {
-            print("[Auth] Requesting GitHub Firebase credential")
+            ClientLog.debug("[Auth] Requesting GitHub Firebase credential")
             let credential = try await gitHubCredential(with: provider)
-            print("[Auth] Firebase credential created for GitHub")
+            ClientLog.debug("[Auth] Firebase credential created for GitHub")
             let authResult = try await signIn(with: credential)
             let uid = authResult.user.uid
-            print("[Auth] GitHub OAuth returned result")
-            print("[Auth] GitHub sign-in succeeded for uid: \(uid)")
+            ClientLog.debug("[Auth] GitHub OAuth returned result")
+            ClientLog.debug("[Auth] GitHub sign-in succeeded")
             activeOAuthProvider = nil
             return uid
         } catch {
@@ -137,14 +132,14 @@ final class AuthManager {
         activeAppleSignInCoordinator = coordinator
 
         do {
-            print("[Auth] Apple nonce generated")
+            ClientLog.debug("[Auth] Apple nonce generated")
             let authorization = try await coordinator.beginSignIn(hashedNonce: hashedNonce)
             defer {
                 activeAppleSignInCoordinator = nil
                 currentAuthorizationController = nil
             }
 
-            print("[Auth] Apple authorization completed")
+            ClientLog.debug("[Auth] Apple authorization completed")
 
             return try await completeAppleSignIn(authorization: authorization, nonce: nonce)
         } catch {
@@ -163,7 +158,7 @@ final class AuthManager {
         do {
             try Auth.auth().signOut()
             GIDSignIn.sharedInstance.signOut()
-            print("[Auth] Signed out")
+            ClientLog.debug("[Auth] Signed out")
         } catch {
             log(error, prefix: "[Auth] Sign-out failed")
             throw error
@@ -178,19 +173,17 @@ final class AuthManager {
         guard !urls.isEmpty else { return }
 
         for url in urls {
-            print("[Auth] Redirect received: \(url.absoluteString)")
             let handled = (Auth.auth() as? AuthRedirectHandlingBridge)?.canHandleURL(url) ?? false
-            print("[Auth] Firebase redirect handled: \(handled)")
+            ClientLog.debug("[Auth] Redirect received and handled: \(handled)")
         }
     }
 
     func logAuthConfiguration() {
         let urlSchemes = bundleURLSchemes()
         let hasURLSchemes = !urlSchemes.isEmpty
-        print("[Auth] Registered URL schemes: \(hasURLSchemes ? urlSchemes.joined(separator: ", ") : "none")")
-        print("[Auth] Expected Firebase auth handler: \(expectedFirebaseAuthCallbackURL())")
+        ClientLog.debug("[Auth] URL schemes configured: \(hasURLSchemes)")
         if !hasURLSchemes {
-            print("[Auth] WARNING: No URL schemes were found in Info.plist. GitHub OAuth redirect handling will fail.")
+            ClientLog.debug("[Auth] WARNING: No URL schemes were found in Info.plist.")
         }
     }
 
@@ -198,7 +191,7 @@ final class AuthManager {
         try await withCheckedThrowingContinuation { continuation in
             Auth.auth().signIn(with: credential) { result, error in
                 if let error {
-                    print("[Auth] Firebase sign-in error: \((error as NSError).localizedDescription)")
+                    ClientLog.debugError("[Auth] Firebase sign-in error", error)
                     continuation.resume(throwing: error)
                     return
                 }
@@ -219,8 +212,7 @@ final class AuthManager {
         return try await withCheckedThrowingContinuation { continuation in
             providerBridge.getCredential(withUIDelegate: nil) { credential, error in
                 if let error {
-                    let nsError = error as NSError
-                    print("[Auth] GitHub credential error: \(nsError.localizedDescription) [\(nsError.domain):\(nsError.code)]")
+                    ClientLog.debugError("[Auth] GitHub credential error", error)
                     continuation.resume(throwing: error)
                     return
                 }
@@ -259,14 +251,14 @@ final class AuthManager {
             throw AuthManagerError.missingAppleIdentityToken
         }
 
-        print("[Auth] Apple Firebase credential created")
+        ClientLog.debug("[Auth] Apple Firebase credential created")
         let credential = OAuthProvider.appleCredential(
             withIDToken: identityToken,
             rawNonce: nonce,
             fullName: appleIDCredential.fullName
         )
         let authResult = try await signIn(with: credential)
-        print("[Auth] Apple sign-in succeeded for uid: \(authResult.user.uid)")
+        ClientLog.debug("[Auth] Apple sign-in succeeded")
         return authResult.user.uid
     }
 
@@ -281,8 +273,7 @@ final class AuthManager {
     }
 
     private func log(_ error: Error, prefix: String) {
-        let nsError = error as NSError
-        print("\(prefix): \(nsError.localizedDescription) [\(nsError.domain):\(nsError.code)]")
+        ClientLog.debugError(prefix, error)
     }
 
     private func bundleURLSchemes() -> [String] {
@@ -370,7 +361,7 @@ final class AuthManager {
         }
 
         func beginSignIn(hashedNonce: String) async throws -> ASAuthorization {
-            print("[Auth] Apple beginSignIn on main actor")
+            ClientLog.debug("[Auth] Apple beginSignIn on main actor")
             return try await withCheckedThrowingContinuation { continuation in
                 self.continuation = continuation
                 Task { @MainActor in
@@ -391,13 +382,12 @@ final class AuthManager {
             }
 
             AuthManager.shared.activate(window: window)
-            guard let readyWindow = AuthManager.resolvedPresentationWindow() else {
+            guard AuthManager.resolvedPresentationWindow() != nil else {
                 fail(with: AuthManagerError.missingPresentingWindow)
                 return
             }
 
-            print("[Auth] Apple presentation window before request: \(readyWindow)")
-            print("[Auth] Apple presentation window visible: \(readyWindow.isVisible), key: \(readyWindow.isKeyWindow), main: \(readyWindow.isMainWindow), miniaturized: \(readyWindow.isMiniaturized)")
+            ClientLog.debug("[Auth] Apple presentation window ready")
 
             let provider = ASAuthorizationAppleIDProvider()
             let request = provider.createRequest()
@@ -410,15 +400,13 @@ final class AuthManager {
             controller.presentationContextProvider = self
             self.controller = controller
             controllerDidChange(controller)
-            print("[Auth] Apple controller configured with delegate and presentation context provider")
-            print("[Auth] Apple controller retained: \(String(describing: self.controller))")
-            print("[Auth] Performing Apple authorization request")
+            ClientLog.debug("[Auth] Performing Apple authorization request")
             controller.performRequests()
         }
 
         @MainActor
         func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
-            print("[Auth] Apple authorization delegate success")
+            ClientLog.debug("[Auth] Apple authorization delegate success")
             self.controller = nil
             controllerDidChange(nil)
             continuation?.resume(returning: authorization)
@@ -427,10 +415,7 @@ final class AuthManager {
 
         @MainActor
         func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-            let nsError = error as NSError
-            print("[Auth] Apple authorization delegate error: \(nsError.localizedDescription) [\(nsError.domain):\(nsError.code)]")
-            print("[Auth] Apple authorization error userInfo: \(nsError.userInfo)")
-            print("[Auth] Apple authorization callback on main thread: \(Thread.isMainThread)")
+            ClientLog.debugError("[Auth] Apple authorization delegate error", error)
             self.controller = nil
             controllerDidChange(nil)
             continuation?.resume(throwing: error)
@@ -442,14 +427,12 @@ final class AuthManager {
             guard let anchor = AuthManager.resolvedPresentationWindow() else {
                 preconditionFailure("Sign in with Apple requested a presentation anchor without an active NSWindow.")
             }
-            print("[Auth] Apple presentation anchor: \(anchor)")
-            print("[Auth] Apple presentation anchor visible: \(anchor.isVisible), key: \(anchor.isKeyWindow), main: \(anchor.isMainWindow), miniaturized: \(anchor.isMiniaturized)")
-            print("[Auth] Apple presentation anchor on main thread: \(Thread.isMainThread)")
+            ClientLog.debug("[Auth] Apple presentation anchor resolved")
             return anchor
         }
 
         private func fail(with error: Error) {
-            print("[Auth] Apple authorization failed before performRequests: \((error as NSError).localizedDescription)")
+            ClientLog.debugError("[Auth] Apple authorization failed before performRequests", error)
             controller = nil
             controllerDidChange(nil)
             continuation?.resume(throwing: error)

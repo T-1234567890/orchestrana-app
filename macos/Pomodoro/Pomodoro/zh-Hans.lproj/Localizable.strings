@@ -45,7 +45,7 @@
 "auth.password.placeholder" = "密码";
 "auth.signin_email" = "邮箱登录";
 "auth.signin_google" = "使用 Google 登录";
-"calendar.access_denied.body" = "查看你的事件和日程需要日历权限。可在 系统设置 -> 隐私与安全性 -> 日历 中开启。";
+"calendar.access_denied.body" = "日历权限已关闭。本地事件、任务和 AI 排程仍可使用；Apple 日历同步会隐藏，直到你在 系统设置 -> 隐私与安全性 -> 日历 中开启权限。";
 "calendar.access_denied.title" = "日历权限被拒绝";
 "calendar.add_event" = "添加事件";
 "calendar.ai_assistant.reschedule_description" = "仅根据今天的日历安排重新整理今天的计划。";
@@ -80,9 +80,9 @@
 "calendar.title" = "日历";
 "calendar.today" = "今天";
 "calendar.today_summary" = "今日概览";
-"calendar.unavailable.body" = "显示你的日程和计划事件需要日历权限。";
-"calendar.unavailable.cta" = "授予权限以在 Orchestrana 中使用日历功能。";
-"calendar.unavailable.title" = "日历不可用";
+"calendar.unavailable.body" = "日历权限已关闭。本地事件、任务和 AI 排程仍可使用。";
+"calendar.unavailable.cta" = "只有需要和 Apple 日历同步时才需要开启权限。";
+"calendar.unavailable.title" = "Apple 日历同步已关闭";
 "calendar.view" = "视图";
 "calendar.view.day" = "日";
 "calendar.view.month" = "月";
@@ -219,7 +219,7 @@
 "permission.write_only" = "仅写入";
 "permissions.authorized" = "已授权";
 "permissions.calendar" = "日历";
-"permissions.calendar.denied_message" = "查看你的事件和日程需要日历权限。可在 系统设置 -> 隐私与安全性 -> 日历 中开启。";
+"permissions.calendar.denied_message" = "日历权限只用于 Apple 日历同步。本地事件、任务和 AI 排程无需此权限也可使用。";
 "permissions.calendar.denied_title" = "日历权限被拒绝";
 "permissions.enable" = "启用";
 "permissions.note.reminders_optional" = "提醒事项同步是可选功能。没有提醒事项权限任务也可正常使用。";
@@ -245,6 +245,10 @@
 "settings.account.optional_login" = "未登录";
 "settings.account.signed_in" = "已登录";
 "settings.account.subtitle" = "仅在功能需要时登录。";
+"settings.account.support_id" = "支持编号";
+"settings.account.support_id_loading" = "加载中...";
+"settings.account.support_id_unavailable" = "不可用";
+"settings.account.copy_support_id" = "复制";
 "settings.account.title" = "账户";
 "settings.account.delete_account_body" = "删除你的 Orchestrana 账户和关联到该账户的服务器记录。此操作不会取消 App Store 订阅；请在 App Store 账户设置中管理订阅。";
 "settings.account.delete_account_button" = "删除账户";

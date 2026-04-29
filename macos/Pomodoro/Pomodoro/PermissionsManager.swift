@@ -80,24 +80,24 @@ final class PermissionsManager: ObservableObject {
                 
                 if !granted {
                     // User denied in the dialog - no additional action needed
-                    print("[PermissionsManager] Notification permission denied by user")
+                    ClientLog.debug("[PermissionsManager] Notification permission denied by user")
                 }
             } catch {
-                print("[PermissionsManager] Notification request failed: \(error)")
+                ClientLog.debugError("[PermissionsManager] Notification request failed", error)
             }
             
         case .denied:
             // Already denied - inform user via alert (handled in UI)
-            print("[PermissionsManager] Notification permission already denied")
+            ClientLog.debug("[PermissionsManager] Notification permission already denied")
             // Note: Notifications don't have a dedicated alert flag since they're handled differently in the UI
             // but the pattern is consistent with Calendar/Reminders
             
         case .authorized, .provisional, .ephemeral:
             // Already authorized
-            print("[PermissionsManager] Notification permission already authorized")
+            ClientLog.debug("[PermissionsManager] Notification permission already authorized")
             
         @unknown default:
-            print("[PermissionsManager] Unknown notification status")
+            ClientLog.debug("[PermissionsManager] Unknown notification status")
         }
     }
     

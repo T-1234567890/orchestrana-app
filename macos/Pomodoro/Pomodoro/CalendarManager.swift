@@ -30,7 +30,8 @@ final class CalendarManager: ObservableObject {
     /// Safety: this is a READ-ONLY refresh for Calendar UI; it must not create or modify tasks.
     func fetchEvents(from startDate: Date, to endDate: Date) async {
         guard isAuthorized else {
-            error = LocalizationManager.shared.text("calendar.error.not_authorized")
+            events = []
+            error = nil
             return
         }
         

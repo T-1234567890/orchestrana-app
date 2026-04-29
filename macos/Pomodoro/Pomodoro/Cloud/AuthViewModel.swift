@@ -350,8 +350,7 @@ final class AuthViewModel: ObservableObject {
         return try await withCheckedThrowingContinuation { continuation in
             auth.createUser(withEmail: email, password: password) { result, error in
                 if let error {
-                    let nsError = error as NSError
-                    print("[Auth] Email registration error: \(nsError.localizedDescription) [\(nsError.domain):\(nsError.code)]")
+                    ClientLog.debugError("[Auth] Email registration error", error)
                     continuation.resume(throwing: error)
                     return
                 }
@@ -369,8 +368,7 @@ final class AuthViewModel: ObservableObject {
         return try await withCheckedThrowingContinuation { continuation in
             auth.signIn(withEmail: email, password: password) { result, error in
                 if let error {
-                    let nsError = error as NSError
-                    print("[Auth] Email sign-in error: \(nsError.localizedDescription) [\(nsError.domain):\(nsError.code)]")
+                    ClientLog.debugError("[Auth] Email sign-in error", error)
                     continuation.resume(throwing: error)
                     return
                 }

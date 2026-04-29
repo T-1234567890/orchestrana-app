@@ -43,7 +43,7 @@ enum AppCheckRequestAuthorizer {
             let token = try await fetchToken()
             request.setValue(token, forHTTPHeaderField: headerName)
         } catch {
-            print("[AppCheck] Token unavailable. Continuing without App Check header: \(error.localizedDescription)")
+            ClientLog.debugError("[AppCheck] Token unavailable. Continuing without App Check header", error)
         }
     }
 }
@@ -276,6 +276,115 @@ final class AccountDeletionAPIClient {
     }
 }
 
+struct CloudUserProfile: Decodable {
+    let uid: String
+    let email: String?
+    let supportId: String?
+    let displayName: String?
+}
+
+final class UserProfileAPIClient {
+    enum UserProfileError: LocalizedError {
+        case invalidEndpoint
+        case invalidResponse
+        case network(Swift.Error)
+        case http(statusCode: Int, message: String?)
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidEndpoint:
+                return LocalizationManager.shared.text("api.error.invalid_endpoint")
+            case .invalidResponse:
+                return LocalizationManager.shared.text("api.error.aiproxy_invalid_response")
+            case .network(let error):
+                return error.localizedDescription
+            case .http(_, let message):
+                return message ?? LocalizationManager.shared.text("api.error.aiproxy_invalid_response")
+            }
+        }
+    }
+
+    private struct ErrorEnvelope: Decodable {
+        struct InnerError: Decodable {
+            let message: String?
+        }
+
+        let error: InnerError?
+        let message: String?
+    }
+
+    private let session: URLSession
+    private let region: String
+
+    init(session: URLSession = .shared, region: String? = nil) {
+        self.session = session
+        if let region {
+            self.region = region
+        } else {
+            self.region = CloudEndpointResolver.cloudFunctionsRegion()
+        }
+    }
+
+    func fetchCurrentUserProfile() async throws -> CloudUserProfile {
+        let token = try await AuthViewModel.shared.getValidIDToken()
+        let endpoint = try resolveEndpointURL()
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        await AppCheckRequestAuthorizer.authorize(&request)
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw UserProfileError.network(error)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw UserProfileError.invalidResponse
+        }
+
+        switch httpResponse.statusCode {
+        case 200...299:
+            do {
+                return try JSONDecoder().decode(CloudUserProfile.self, from: data)
+            } catch {
+                throw UserProfileError.invalidResponse
+            }
+        default:
+            throw UserProfileError.http(
+                statusCode: httpResponse.statusCode,
+                message: extractErrorMessage(from: data)
+            )
+        }
+    }
+
+    private func resolveEndpointURL() throws -> URL {
+        if let url = CloudEndpointResolver.explicitURL(for: "POMODORO_GET_ME_URL") {
+            return url
+        }
+
+        guard let url = CloudEndpointResolver.functionsURL(path: "getMe", region: region) else {
+            throw UserProfileError.invalidEndpoint
+        }
+
+        return url
+    }
+
+    private func extractErrorMessage(from data: Data) -> String? {
+        if let decoded = try? JSONDecoder().decode(ErrorEnvelope.self, from: data) {
+            return decoded.error?.message ?? decoded.message
+        }
+        if let raw = String(data: data, encoding: .utf8),
+           !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return raw
+        }
+        return nil
+    }
+}
+
 /// Typed client for calling the Firebase HTTPS function `aiProxy`.
 ///
 /// Example usage:
@@ -285,7 +394,6 @@ final class AccountDeletionAPIClient {
 ///     prompt: "Summarize my focus sessions for today."
 /// )
 /// let response: AIProxyClient.ProxyResponse = try await client.sendPrompt(payload)
-/// print(response.outputText ?? "")
 /// ```
 final class AIProxyClient {
     private static let maxRetryAttempts = 3
@@ -773,7 +881,7 @@ final class SubscriptionAPIClient {
     ) async throws -> SubscriptionEntitlement {
         let token = try await AuthViewModel.shared.getValidIDToken()
         let endpoint = try resolveEndpointURL()
-        print("[SubscriptionAPI] Verifying transaction \(transactionId) at \(endpoint.absoluteString)")
+        ClientLog.debug("[SubscriptionAPI] Verifying transaction")
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -805,13 +913,13 @@ final class SubscriptionAPIClient {
         case 200...299:
             do {
                 let entitlement = try JSONDecoder().decode(SubscriptionEntitlement.self, from: data)
-                print("[SubscriptionAPI] Transaction \(transactionId) verified")
+                ClientLog.debug("[SubscriptionAPI] Transaction verified")
                 return entitlement
             } catch {
                 throw SubscriptionAPIError.invalidResponse
             }
         default:
-            print("[SubscriptionAPI] Verification failed for transaction \(transactionId) with HTTP \(httpResponse.statusCode)")
+            ClientLog.debug("[SubscriptionAPI] Verification failed with HTTP \(httpResponse.statusCode)")
             throw SubscriptionAPIError.http(
                 statusCode: httpResponse.statusCode,
                 message: extractErrorMessage(from: data)
@@ -1014,7 +1122,7 @@ final class SubscriptionStore: ObservableObject {
         do {
             try await AppStore.sync()
         } catch {
-            print("[StoreKit] AppStore.sync failed during restore: \((error as NSError).localizedDescription)")
+            ClientLog.debugError("[StoreKit] AppStore.sync failed during restore", error)
         }
 
         await syncCurrentEntitlements(reason: "restore")
@@ -1030,7 +1138,7 @@ final class SubscriptionStore: ObservableObject {
             do {
                 transaction = try verified(verification)
             } catch {
-                print("[StoreKit] Skipping unverified current entitlement: \((error as NSError).localizedDescription)")
+                ClientLog.debugError("[StoreKit] Skipping unverified current entitlement", error)
                 continue
             }
 
@@ -1048,7 +1156,7 @@ final class SubscriptionStore: ObservableObject {
                 )
             } catch {
                 backendSyncFailed = true
-                print("[SubscriptionAPI] Backend sync failed for transaction \(transaction.id): \(error.localizedDescription)")
+                ClientLog.debugError("[SubscriptionAPI] Backend sync failed", error)
             }
         }
 
@@ -1110,7 +1218,7 @@ final class SubscriptionStore: ObservableObject {
                     return context
                 }
             } catch {
-                print("[StoreKit] Could not load subscription status before purchase: \((error as NSError).localizedDescription)")
+                ClientLog.debugError("[StoreKit] Could not load subscription status before purchase", error)
             }
         }
 
@@ -1120,7 +1228,7 @@ final class SubscriptionStore: ObservableObject {
             do {
                 transaction = try verified(verification)
             } catch {
-                print("[StoreKit] Skipping unverified entitlement during purchase preflight: \((error as NSError).localizedDescription)")
+                ClientLog.debugError("[StoreKit] Skipping unverified entitlement during purchase preflight", error)
                 continue
             }
             if productIDs.contains(transaction.productID) {
@@ -1293,7 +1401,7 @@ final class SubscriptionStore: ObservableObject {
                 await MainActor.run {
                     self.errorMessage = "Server subscription verification failed. AI features unlock after the server verifies your purchase."
                 }
-                print("[SubscriptionAPI] Backend sync failed for transaction \(transaction.id): \(error.localizedDescription)")
+                ClientLog.debugError("[SubscriptionAPI] Backend sync failed", error)
             }
         }
     }

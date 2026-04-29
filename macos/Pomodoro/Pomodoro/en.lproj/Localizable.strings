@@ -45,7 +45,7 @@
 "auth.password.placeholder" = "Password";
 "auth.signin_email" = "Sign In with Email";
 "auth.signin_google" = "Sign in with Google";
-"calendar.access_denied.body" = "Calendar access is required to view your events and schedules. You can enable it in System Settings -> Privacy & Security -> Calendar.";
+"calendar.access_denied.body" = "Calendar access is off. Local events, tasks, and AI scheduling still work; Apple Calendar sync is hidden until you enable access in System Settings -> Privacy & Security -> Calendar.";
 "calendar.access_denied.title" = "Calendar Access Denied";
 "calendar.add_event" = "Add Event";
 "calendar.ai_assistant.reschedule_description" = "Reorganize today's schedule around today's calendar.";
@@ -80,9 +80,9 @@
 "calendar.title" = "Calendar";
 "calendar.today" = "Today";
 "calendar.today_summary" = "Today Summary";
-"calendar.unavailable.body" = "Calendar access is required to display your schedule and planned events.";
-"calendar.unavailable.cta" = "Grant access to use Calendar features in Orchestrana.";
-"calendar.unavailable.title" = "Calendar Unavailable";
+"calendar.unavailable.body" = "Calendar access is off. Local events, tasks, and AI scheduling still work.";
+"calendar.unavailable.cta" = "Enable access only to sync with Apple Calendar.";
+"calendar.unavailable.title" = "Apple Calendar Sync Off";
 "calendar.view" = "View";
 "calendar.view.day" = "Day";
 "calendar.view.month" = "Month";
@@ -219,7 +219,7 @@
 "permission.write_only" = "Write Only";
 "permissions.authorized" = "Authorized";
 "permissions.calendar" = "Calendar";
-"permissions.calendar.denied_message" = "Calendar access is required to view your events and schedules. You can enable it in System Settings -> Privacy & Security -> Calendar.";
+"permissions.calendar.denied_message" = "Calendar access is only needed for Apple Calendar sync. Local events, tasks, and AI scheduling still work without it.";
 "permissions.calendar.denied_title" = "Calendar Access Denied";
 "permissions.enable" = "Enable";
 "permissions.note.reminders_optional" = "Reminders sync is optional. Tasks still work without Reminders permission.";
@@ -245,6 +245,10 @@
 "settings.account.optional_login" = "Signed out";
 "settings.account.signed_in" = "Signed in";
 "settings.account.subtitle" = "Sign in only when a feature requires it.";
+"settings.account.support_id" = "Support ID";
+"settings.account.support_id_loading" = "Loading...";
+"settings.account.support_id_unavailable" = "Unavailable";
+"settings.account.copy_support_id" = "Copy";
 "settings.account.title" = "Account";
 "settings.account.delete_account_body" = "Delete your Orchestrana account and account-linked server records. This does not cancel App Store subscriptions; manage those in your App Store account settings.";
 "settings.account.delete_account_button" = "Delete Account";

@@ -10,6 +10,21 @@ import AppKit
 import FirebaseCore
 import FirebaseAppCheck
 
+enum ClientLog {
+    static func debug(_ message: @autoclosure () -> String) {
+#if DEBUG
+        print(message())
+#endif
+    }
+
+    static func debugError(_ prefix: String, _ error: Error) {
+#if DEBUG
+        let nsError = error as NSError
+        print("\(prefix): [\(nsError.domain):\(nsError.code)]")
+#endif
+    }
+}
+
 private final class OrchestranaAppCheckProviderFactory: NSObject, AppCheckProviderFactory {
     func createProvider(with app: FirebaseApp) -> AppCheckProvider? {
 #if DEBUG
@@ -18,7 +33,7 @@ private final class OrchestranaAppCheckProviderFactory: NSObject, AppCheckProvid
         if #available(macOS 14.0, *) {
             return AppAttestProvider(app: app)
         }
-        print("[Firebase] App Check is unavailable: App Attest requires macOS 14 or later.")
+        ClientLog.debug("[Firebase] App Check is unavailable on this OS version.")
         return nil
 #endif
     }
@@ -32,35 +47,34 @@ enum FirebaseBootstrap {
         }
 
         guard let resourceURL = Bundle.main.url(forResource: "GoogleService-Info", withExtension: "plist") else {
-            print("[Firebase] Skipping configure: GoogleService-Info.plist is missing from the app bundle.")
+            ClientLog.debug("[Firebase] Skipping configure: GoogleService-Info.plist is missing.")
             return false
         }
 
         guard
             let configuration = NSDictionary(contentsOf: resourceURL) as? [String: Any]
         else {
-            print("[Firebase] Skipping configure: GoogleService-Info.plist could not be decoded.")
+            ClientLog.debug("[Firebase] Skipping configure: GoogleService-Info.plist could not be decoded.")
             return false
         }
 
         let googleAppID = (configuration["GOOGLE_APP_ID"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let clientID = (configuration["CLIENT_ID"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let bundleID = (configuration["BUNDLE_ID"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let projectID = (configuration["PROJECT_ID"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let runtimeBundleID = Bundle.main.bundleIdentifier ?? ""
 
         guard !googleAppID.isEmpty, !clientID.isEmpty else {
-            print("[Firebase] Skipping configure: plist is missing GOOGLE_APP_ID or CLIENT_ID.")
+            ClientLog.debug("[Firebase] Skipping configure: plist is missing required app fields.")
             return false
         }
 
         if !bundleID.isEmpty, !runtimeBundleID.isEmpty, bundleID != runtimeBundleID {
-            print("[Firebase] Skipping configure: plist bundle ID \(bundleID) does not match app bundle ID \(runtimeBundleID).")
+            ClientLog.debug("[Firebase] Skipping configure: plist bundle ID does not match runtime bundle ID.")
             return false
         }
 
         FirebaseApp.configure()
-        print("[Firebase] configureIfPossible succeeded for project \(projectID) with bundle ID \(bundleID).")
+        ClientLog.debug("[Firebase] configureIfPossible succeeded.")
         return FirebaseApp.app() != nil
     }
 }
