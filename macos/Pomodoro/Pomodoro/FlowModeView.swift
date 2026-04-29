@@ -633,7 +633,7 @@ struct FlowModeView: View {
                             Button(localizationManager.text("common.cancel")) {
                                 flowWindowManager.dismissPremiumPreview()
                             }
-                            .buttonStyle(.bordered)
+                            .orchestranaButton(.secondary)
 
                             Spacer()
 
@@ -644,7 +644,7 @@ struct FlowModeView: View {
                                     await subscriptionStore.purchase(product)
                                 }
                             }
-                            .buttonStyle(.borderedProminent)
+                            .orchestranaButton(.primary)
                             .disabled(isPreviewPurchaseButtonDisabled)
                         }
                     }

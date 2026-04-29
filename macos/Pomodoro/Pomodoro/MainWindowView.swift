@@ -202,24 +202,20 @@ struct MainWindowView: View {
                     // Flow-mode-inspired gentle tick dissolve to keep time feeling fluid.
                     .animation(mainTimerUpdateAnimation, value: appState.pomodoro.remainingSeconds)
                     .animation(timerStateAnimation, value: pomodoroStatePulse)
-                Text(languageManager.format("timer.state_format", labelForPomodoroState(appState.pomodoro.state)))
-                    .font(.system(size: 15, weight: .medium, design: .default))
-                    .foregroundStyle(.secondary)
+                timerStateBadge(for: appState.pomodoro.state)
             }
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(languageManager.text("timer.preset"))
                     .font(.system(.headline, design: .rounded))
                     .foregroundStyle(.secondary)
-                Picker(languageManager.text("timer.preset"), selection: presetSelectionBinding) {
-                    ForEach(Preset.builtIn) { preset in
-                        Text(preset.name)
-                            .tag(PresetSelection.preset(preset))
-                    }
-                    Text(languageManager.text("timer.custom"))
-                        .tag(PresetSelection.custom)
-                }
-                .pickerStyle(.segmented)
+                OrchestranaSelector(
+                    selection: presetSelectionBinding,
+                    options: presetSelectorOptions(),
+                    layout: .grid,
+                    minOptionWidth: 96,
+                    accessibilityLabel: languageManager.text("timer.preset")
+                )
             }
 
             VStack(alignment: .leading, spacing: 8) {
@@ -265,19 +261,19 @@ struct MainWindowView: View {
 
             HStack(spacing: 10) {
                 let actions = pomodoroActions(for: appState.pomodoro.state)
-                ActionButton(languageManager.text("common.start"), isEnabled: actions.canStart) {
+                ActionButton(languageManager.text("common.start"), systemImage: "play.fill", variant: .primary, isEnabled: actions.canStart) {
                     appState.pomodoro.start()
                 }
-                ActionButton(languageManager.text("common.pause"), isEnabled: actions.canPause) {
+                ActionButton(languageManager.text("common.pause"), systemImage: "pause.fill", isEnabled: actions.canPause) {
                     appState.pomodoro.pause()
                 }
-                ActionButton(languageManager.text("common.resume"), isEnabled: actions.canResume) {
+                ActionButton(languageManager.text("common.resume"), systemImage: "play.fill", variant: .primary, isEnabled: actions.canResume) {
                     appState.pomodoro.resume()
                 }
-                ActionButton(languageManager.text("common.reset")) {
+                ActionButton(languageManager.text("common.reset"), systemImage: "arrow.counterclockwise") {
                     appState.pomodoro.reset()
                 }
-                ActionButton(languageManager.text("timer.skip_break"), isEnabled: actions.canSkipBreak) {
+                ActionButton(languageManager.text("timer.skip_break"), systemImage: "forward.end.fill", variant: .destructive, isEnabled: actions.canSkipBreak) {
                     appState.pomodoro.skipBreak()
                 }
                 Button {
@@ -292,10 +288,10 @@ struct MainWindowView: View {
                             Text("Your Plans")
                         }
                     } else {
-                        Text("Your Plans")
+                        Label("Your Plans", systemImage: "list.bullet.rectangle")
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .orchestranaButton(.secondary, minWidth: 112)
                 .disabled(isCheckingPlans)
             }
 
@@ -330,9 +326,7 @@ struct MainWindowView: View {
                                 Text(formattedTime(appState.pomodoro.remainingSeconds))
                                     .font(.system(size: 68, weight: .heavy, design: .rounded).monospacedDigit())
                                     .contentTransition(.numericText())
-                                Text(languageManager.format("timer.state_format", labelForPomodoroState(appState.pomodoro.state)))
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.secondary)
+                                timerStateBadge(for: appState.pomodoro.state)
                             }
 
                             Spacer()
@@ -350,32 +344,32 @@ struct MainWindowView: View {
                                             Text("Your Plans")
                                         }
                                     } else {
-                                        Text("Your Plans")
+                                        Label("Your Plans", systemImage: "list.bullet.rectangle")
                                     }
                                 }
-                                .buttonStyle(.borderedProminent)
+                                .orchestranaButton(.secondary, minWidth: 112)
                                 .disabled(isCheckingPlans)
                             }
                         }
 
                         HStack(spacing: 10) {
                             let actions = pomodoroActions(for: appState.pomodoro.state)
-                            ActionButton(languageManager.text("common.start"), isEnabled: actions.canStart) {
-                                startDashboardPomodoro()
-                            }
-                            ActionButton(languageManager.text("common.pause"), isEnabled: actions.canPause) {
-                                appState.pomodoro.pause()
-                            }
-                            ActionButton(languageManager.text("common.resume"), isEnabled: actions.canResume) {
-                                appState.pomodoro.resume()
-                            }
-                            ActionButton(languageManager.text("common.reset")) {
-                                appState.resetPomodoro()
-                                previewDashboardPomodoroIfIdle()
-                            }
-                            ActionButton(languageManager.text("timer.skip_break"), isEnabled: actions.canSkipBreak) {
-                                appState.pomodoro.skipBreak()
-                            }
+                                ActionButton(languageManager.text("common.start"), systemImage: "play.fill", variant: .primary, isEnabled: actions.canStart) {
+                                    startDashboardPomodoro()
+                                }
+                                ActionButton(languageManager.text("common.pause"), systemImage: "pause.fill", isEnabled: actions.canPause) {
+                                    appState.pomodoro.pause()
+                                }
+                                ActionButton(languageManager.text("common.resume"), systemImage: "play.fill", variant: .primary, isEnabled: actions.canResume) {
+                                    appState.pomodoro.resume()
+                                }
+                                ActionButton(languageManager.text("common.reset"), systemImage: "arrow.counterclockwise") {
+                                    appState.resetPomodoro()
+                                    previewDashboardPomodoroIfIdle()
+                                }
+                                ActionButton(languageManager.text("timer.skip_break"), systemImage: "forward.end.fill", variant: .destructive, isEnabled: actions.canSkipBreak) {
+                                    appState.pomodoro.skipBreak()
+                                }
                         }
 
                         dashboardPomodoroConfigurationPanel
@@ -579,9 +573,7 @@ struct MainWindowView: View {
                     .contentTransition(.numericText())
                     .animation(mainTimerUpdateAnimation, value: appState.countdown.remainingSeconds)
                     .animation(timerStateAnimation, value: countdownStatePulse)
-                Text(languageManager.format("timer.state_format", labelForPomodoroState(appState.countdown.state)))
-                    .font(.system(size: 15, weight: .medium, design: .default))
-                    .foregroundStyle(.secondary)
+                timerStateBadge(for: appState.countdown.state)
             }
 
             VStack(alignment: .leading, spacing: 8) {
@@ -601,13 +593,13 @@ struct MainWindowView: View {
 
             HStack(spacing: 10) {
                 let actions = countdownActions(for: appState.countdown.state)
-                ActionButton(languageManager.text("common.start"), isEnabled: actions.canStart) {
+                ActionButton(languageManager.text("common.start"), variant: .primary, isEnabled: actions.canStart) {
                     appState.countdown.start()
                 }
                 ActionButton(languageManager.text("common.pause"), isEnabled: actions.canPause) {
                     appState.countdown.pause()
                 }
-                ActionButton(languageManager.text("common.resume"), isEnabled: actions.canResume) {
+                ActionButton(languageManager.text("common.resume"), variant: .primary, isEnabled: actions.canResume) {
                     appState.countdown.resume()
                 }
                 ActionButton(languageManager.text("common.reset")) {
@@ -736,7 +728,7 @@ struct MainWindowView: View {
                             sidebarSelection = .tasks
                         }
                     }
-                    .buttonStyle(.bordered)
+                    .orchestranaButton(.secondary)
                 }
             }
 
@@ -754,7 +746,7 @@ struct MainWindowView: View {
                             sidebarSelection = .calendar
                         }
                     }
-                    .buttonStyle(.bordered)
+                    .orchestranaButton(.secondary)
                 }
             }
 
@@ -802,7 +794,7 @@ struct MainWindowView: View {
                             sidebarSelection = .workspace
                         }
                     }
-                    .buttonStyle(.bordered)
+                    .orchestranaButton(.secondary)
                 }
             }
 
@@ -825,7 +817,7 @@ struct MainWindowView: View {
 
     private var insightEmptyStateCallToAction: some View {
         HStack(alignment: .top, spacing: 16) {
-            Image(systemName: "sparkles.rectangle.stack")
+            Image(systemName: "chart.line.uptrend.xyaxis")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(currentAppearanceMode.secondaryTextColor(for: colorScheme))
                 .frame(width: 36, height: 36)
@@ -853,7 +845,7 @@ struct MainWindowView: View {
                     sidebarSelection = .dashboard
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .orchestranaButton(.primary)
         }
     }
 
@@ -871,7 +863,7 @@ struct MainWindowView: View {
                     Text("Generate Overview")
                 }
             }
-            .buttonStyle(.bordered)
+            .orchestranaButton(.secondary)
             .disabled(isInsightHubLoading)
 
             Button("Run Deep Analysis") {
@@ -879,7 +871,7 @@ struct MainWindowView: View {
                     await runInsightDeepAnalysis()
                 }
             }
-            .buttonStyle(.bordered)
+            .orchestranaButton(.secondary)
             .disabled(isInsightHubLoading)
 
             Menu("Explain Metric") {
@@ -964,7 +956,7 @@ struct MainWindowView: View {
     private var settingsSidebar: some View {
         VStack(alignment: .leading, spacing: 16) {
             TextField("Search Settings", text: $settingsSearchText)
-                .textFieldStyle(.roundedBorder)
+                .orchestranaTextField()
 
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(filteredSettingsPanes) { pane in
@@ -1055,15 +1047,12 @@ struct MainWindowView: View {
         ) {
             VStack(alignment: .leading, spacing: 18) {
                 settingsLabeledControl(title: "Language", description: "Choose how the app should present text.") {
-                    Picker(languageManager.text("settings.language.picker.label"), selection: $languageManager.currentLanguage) {
-                        Text(languageManager.text("settings.language.system"))
-                            .tag(LanguageManager.AppLanguage.auto)
-                        Text(languageManager.text("settings.language.english"))
-                            .tag(LanguageManager.AppLanguage.english)
-                        Text(languageManager.text("settings.language.chinese"))
-                            .tag(LanguageManager.AppLanguage.chinese)
-                    }
-                    .pickerStyle(.segmented)
+                    OrchestranaSelector(
+                        selection: $languageManager.currentLanguage,
+                        options: languageSelectorOptions,
+                        minOptionWidth: 82,
+                        accessibilityLabel: languageManager.text("settings.language.picker.label")
+                    )
                     .frame(maxWidth: 320)
                 }
 
@@ -1074,7 +1063,7 @@ struct MainWindowView: View {
                     Button(languageManager.text("settings.onboarding.reopen")) {
                         onboardingState.reopen()
                     }
-                    .buttonStyle(.bordered)
+                    .orchestranaButton(.secondary)
                 }
             }
         }
@@ -1090,12 +1079,12 @@ struct MainWindowView: View {
                     title: languageManager.text("settings.appearance.font.title"),
                     description: languageManager.text("settings.appearance.font.description")
                 ) {
-                    Picker(languageManager.text("settings.appearance.font.title"), selection: $appTypography.style) {
-                        ForEach(AppTypography.Style.allCases) { style in
-                            Text(style.title(using: languageManager)).tag(style)
-                        }
-                    }
-                    .pickerStyle(.segmented)
+                    OrchestranaSelector(
+                        selection: $appTypography.style,
+                        options: typographySelectorOptions,
+                        minOptionWidth: 112,
+                        accessibilityLabel: languageManager.text("settings.appearance.font.title")
+                    )
                     .frame(maxWidth: 320)
                 }
 
@@ -1105,12 +1094,13 @@ struct MainWindowView: View {
                     title: languageManager.text("settings.appearance.mode.title"),
                     description: languageManager.text("settings.appearance.mode.description")
                 ) {
-                    Picker(languageManager.text("settings.appearance.mode.title"), selection: appearanceModeSelection) {
-                        ForEach(AppearanceMode.allCases) { mode in
-                            Text(title(for: mode)).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.radioGroup)
+                    OrchestranaSelector(
+                        selection: appearanceModeSelection,
+                        options: appearanceModeSelectorOptions,
+                        minOptionWidth: 104,
+                        accessibilityLabel: languageManager.text("settings.appearance.mode.title")
+                    )
+                    .frame(maxWidth: 260)
                 }
 
                 Divider()
@@ -1145,21 +1135,57 @@ struct MainWindowView: View {
         }
     }
 
+    private var languageSelectorOptions: [OrchestranaSelectorOption<LanguageManager.AppLanguage>] {
+        [
+            OrchestranaSelectorOption(languageManager.text("settings.language.system"), value: .auto, systemImage: "globe"),
+            OrchestranaSelectorOption(languageManager.text("settings.language.english"), value: .english, systemImage: "textformat"),
+            OrchestranaSelectorOption(languageManager.text("settings.language.chinese"), value: .chinese, systemImage: "character")
+        ]
+    }
+
+    private var typographySelectorOptions: [OrchestranaSelectorOption<AppTypography.Style>] {
+        AppTypography.Style.allCases.map { style in
+            OrchestranaSelectorOption(style.title(using: languageManager), value: style)
+        }
+    }
+
+    private var appearanceModeSelectorOptions: [OrchestranaSelectorOption<AppearanceMode>] {
+        AppearanceMode.allCases.map { mode in
+            OrchestranaSelectorOption(title(for: mode), value: mode)
+        }
+    }
+
+    private var notificationDeliveryOptions: [OrchestranaSelectorOption<NotificationDeliveryStyle>] {
+        NotificationDeliveryStyle.allCases.map { style in
+            OrchestranaSelectorOption(style.title, value: style)
+        }
+    }
+
+    private var notificationPreferenceOptions: [OrchestranaSelectorOption<NotificationPreference>] {
+        NotificationPreference.allCases.map { preference in
+            OrchestranaSelectorOption(preference.title, value: preference)
+        }
+    }
+
+    private var reminderPreferenceOptions: [OrchestranaSelectorOption<ReminderPreference>] {
+        ReminderPreference.allCases.map { preference in
+            OrchestranaSelectorOption(preference.title, value: preference)
+        }
+    }
+
     private var settingsTimerPresetModule: some View {
         SettingsModuleCard(
             title: "Timer & Focus",
             description: "Set the default Pomodoro rhythm used when the dashboard is not overriding the current session."
         ) {
             settingsLabeledControl(title: languageManager.text("timer.preset"), description: "Switch between built-in focus presets or a custom schedule.") {
-                Picker(languageManager.text("timer.preset"), selection: presetSelectionBinding) {
-                    ForEach(Preset.builtIn) { preset in
-                        Text(preset.name)
-                            .tag(PresetSelection.preset(preset))
-                    }
-                    Text(languageManager.text("timer.custom"))
-                        .tag(PresetSelection.custom)
-                }
-                .pickerStyle(.segmented)
+                OrchestranaSelector(
+                    selection: presetSelectionBinding,
+                    options: presetSelectorOptions(),
+                    layout: .grid,
+                    minOptionWidth: 104,
+                    accessibilityLabel: languageManager.text("timer.preset")
+                )
             }
         }
     }
@@ -1231,34 +1257,34 @@ struct MainWindowView: View {
         ) {
             VStack(alignment: .leading, spacing: 14) {
                 settingsLabeledControl(title: languageManager.text("main.delivery"), description: "Decide how timer alerts should reach you.") {
-                    Picker(languageManager.text("main.delivery"), selection: $appState.notificationDeliveryStyle) {
-                        ForEach(NotificationDeliveryStyle.allCases) { style in
-                            Text(style.title).tag(style)
-                        }
-                    }
-                    .pickerStyle(.segmented)
+                    OrchestranaSelector(
+                        selection: $appState.notificationDeliveryStyle,
+                        options: notificationDeliveryOptions,
+                        minOptionWidth: 112,
+                        accessibilityLabel: languageManager.text("main.delivery")
+                    )
                 }
 
                 Divider()
 
                 settingsLabeledControl(title: languageManager.text("settings.notifications.title"), description: "Control whether focus notifications are shown.") {
-                    Picker(languageManager.text("settings.notifications.title"), selection: $appState.notificationPreference) {
-                        ForEach(NotificationPreference.allCases) { preference in
-                            Text(preference.title).tag(preference)
-                        }
-                    }
-                    .pickerStyle(.segmented)
+                    OrchestranaSelector(
+                        selection: $appState.notificationPreference,
+                        options: notificationPreferenceOptions,
+                        minOptionWidth: 92,
+                        accessibilityLabel: languageManager.text("settings.notifications.title")
+                    )
                 }
 
                 Divider()
 
                 settingsLabeledControl(title: languageManager.text("main.reminder"), description: "Choose how reminder follow-ups should behave.") {
-                    Picker(languageManager.text("main.reminder"), selection: $appState.reminderPreference) {
-                        ForEach(ReminderPreference.allCases) { preference in
-                            Text(preference.title).tag(preference)
-                        }
-                    }
-                    .pickerStyle(.segmented)
+                    OrchestranaSelector(
+                        selection: $appState.reminderPreference,
+                        options: reminderPreferenceOptions,
+                        minOptionWidth: 112,
+                        accessibilityLabel: languageManager.text("main.reminder")
+                    )
                 }
             }
         }
@@ -1337,13 +1363,13 @@ struct MainWindowView: View {
                         Text("Restore & Sync Subscription")
                     }
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
                 .disabled(subscriptionStore.isRestoring)
 
                 Button("Manage Subscription") {
                     showSettingsPlansSheet = true
                 }
-                .buttonStyle(.borderedProminent)
+                .orchestranaButton(.primary)
 
                 if let errorMessage = subscriptionStore.errorMessage, !errorMessage.isEmpty {
                     Text(errorMessage)
@@ -1398,7 +1424,7 @@ struct MainWindowView: View {
                     Button("Compare Plans") {
                         showSettingsPlansSheet = true
                     }
-                    .buttonStyle(.bordered)
+                    .orchestranaButton(.secondary)
                 }
             }
         }
@@ -1436,7 +1462,7 @@ struct MainWindowView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .buttonStyle(.bordered)
+            .orchestranaButton(.secondary)
         }
     }
 
@@ -1490,7 +1516,7 @@ struct MainWindowView: View {
             Spacer()
 
             Button(buttonTitle, action: action)
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
         }
     }
 
@@ -1606,7 +1632,7 @@ struct MainWindowView: View {
                                 .font(.system(size: 16, weight: .semibold))
                                 .frame(width: 28, height: 28)
                         }
-                        .buttonStyle(.borderless)
+                        .orchestranaButton(.subtle)
                         .disabled(!appState.nowPlayingRouter.isAvailable)
 
                         Button {
@@ -1628,7 +1654,7 @@ struct MainWindowView: View {
                                 .font(.system(size: 16, weight: .semibold))
                                 .frame(width: 28, height: 28)
                         }
-                        .buttonStyle(.borderless)
+                        .orchestranaButton(.subtle)
                         .disabled(!appState.nowPlayingRouter.isAvailable)
                     }
                 }
@@ -1864,30 +1890,30 @@ struct MainWindowView: View {
                 Spacer(minLength: 0)
             }
 
-            HStack(spacing: 8) {
-                ForEach([25, 50, 90], id: \.self) { preset in
-                    Button("\(preset) min") {
-                        applyCountdownPreset(minutes: preset)
-                    }
-                    .buttonStyle(.bordered)
-                }
-            }
+            OrchestranaSelector(
+                selection: countdownPresetSelection,
+                options: [25, 50, 90].map {
+                    OrchestranaSelectorOption("\($0) min", value: $0, systemImage: "timer")
+                },
+                minOptionWidth: 78,
+                accessibilityLabel: "Countdown presets"
+            )
         }
     }
 
     private var countdownActionsRow: some View {
         HStack(spacing: 10) {
             let actions = countdownActions(for: appState.countdown.state)
-            ActionButton(languageManager.text("common.start"), isEnabled: actions.canStart) {
+            ActionButton(languageManager.text("common.start"), systemImage: "play.fill", variant: .primary, isEnabled: actions.canStart) {
                 appState.countdown.start()
             }
-            ActionButton(languageManager.text("common.pause"), isEnabled: actions.canPause) {
+            ActionButton(languageManager.text("common.pause"), systemImage: "pause.fill", isEnabled: actions.canPause) {
                 appState.countdown.pause()
             }
-            ActionButton(languageManager.text("common.resume"), isEnabled: actions.canResume) {
+            ActionButton(languageManager.text("common.resume"), systemImage: "play.fill", variant: .primary, isEnabled: actions.canResume) {
                 appState.countdown.resume()
             }
-            ActionButton(languageManager.text("common.reset")) {
+            ActionButton(languageManager.text("common.reset"), systemImage: "arrow.counterclockwise") {
                 appState.countdown.reset()
             }
         }
@@ -1942,7 +1968,7 @@ struct MainWindowView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             TextField("", text: text)
-                .textFieldStyle(.roundedBorder)
+                .orchestranaTextField()
                 .frame(width: width)
                 .multilineTextAlignment(.trailing)
                 .font(.system(.body, design: .rounded).monospacedDigit())
@@ -2157,7 +2183,7 @@ struct MainWindowView: View {
             case .dashboard:
                 return "square.grid.2x2"
             case .workspace:
-                return "sparkles.rectangle.stack"
+                return "rectangle.3.group"
             case .tasks:
                 return "checklist"
             case .calendar:
@@ -2273,7 +2299,7 @@ struct MainWindowView: View {
             case .notifications:
                 return "bell.badge"
             case .aiFeatures:
-                return "sparkles"
+                return "cpu"
             case .account:
                 return "person.crop.circle"
             }
@@ -2296,7 +2322,7 @@ struct MainWindowView: View {
                 Spacer()
                 HStack(spacing: 6) {
                     TextField("", text: $text)
-                        .textFieldStyle(.roundedBorder)
+                        .orchestranaTextField()
                         .frame(width: 64)
                         .multilineTextAlignment(.trailing)
                         .font(.system(.body, design: .rounded).monospacedDigit())
@@ -2375,16 +2401,14 @@ struct MainWindowView: View {
         var body: some View {
             HStack {
                 Text(languageManager.text("timer.long_break_interval"))
-                    .font(.system(.body, design: .rounded))
+                    .font(.system(.body, weight: .medium))
                 Spacer()
-                Stepper(value: $interval, in: 1...12) {
-                    Text(languageManager.format("timer.long_break_interval.every_sessions", interval))
-                        .font(.system(.body, design: .rounded).monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
-                .onChange(of: interval) { _, _ in
-                    onCommit()
-                }
+                OrchestranaStepControl(
+                    value: $interval,
+                    in: 1...12,
+                    valueText: { languageManager.format("timer.long_break_interval.every_sessions", $0) },
+                    onChange: onCommit
+                )
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(languageManager.text("timer.long_break_interval"))
@@ -2394,43 +2418,35 @@ struct MainWindowView: View {
 
     private struct ActionButton: View {
         let title: String
+        let systemImage: String?
+        let variant: OrchestranaButtonVariant
         let isEnabled: Bool
         let action: () -> Void
-        @State private var isHovering = false
-        @GestureState private var isPressing = false
-        @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-        init(_ title: String, isEnabled: Bool = true, action: @escaping () -> Void) {
+        init(
+            _ title: String,
+            systemImage: String? = nil,
+            variant: OrchestranaButtonVariant = .secondary,
+            isEnabled: Bool = true,
+            action: @escaping () -> Void
+        ) {
             self.title = title
+            self.systemImage = systemImage
+            self.variant = variant
             self.isEnabled = isEnabled
             self.action = action
         }
 
         var body: some View {
-            Button(title, action: action)
-                .buttonStyle(.bordered)
-                .controlSize(.regular)
-                .disabled(!isEnabled)
-                .opacity(isEnabled ? 1.0 : 0.45)
-                .scaleEffect(pressScale)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(isHovering && isEnabled ? Color.accentColor.opacity(0.08) : .clear)
-                )
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: isHovering)
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: isPressing)
-                .onHover { hovering in
-                    isHovering = hovering
+            Button(action: action) {
+                if let systemImage {
+                    Label(title, systemImage: systemImage)
+                } else {
+                    Text(title)
                 }
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 0)
-                        .updating($isPressing) { _, state, _ in state = true }
-                )
-        }
-
-        private var pressScale: CGFloat {
-            guard isEnabled, !reduceMotion else { return 1.0 }
-            return isPressing ? 0.98 : 1.0
+            }
+                .orchestranaButton(variant, minWidth: 76)
+                .disabled(!isEnabled)
         }
     }
 
@@ -3007,6 +3023,37 @@ struct MainWindowView: View {
         }
     }
 
+    private func timerStateBadge(for state: TimerState) -> some View {
+        Label {
+            Text(languageManager.format("timer.state_format", labelForPomodoroState(state)))
+                .font(.system(.subheadline, design: .rounded).weight(.semibold))
+        } icon: {
+            Circle()
+                .fill(timerStateTint(for: state))
+                .frame(width: 7, height: 7)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(timerStateTint(for: state).opacity(0.12), in: Capsule(style: .continuous))
+        .foregroundStyle(timerStateTint(for: state))
+        .accessibilityElement(children: .combine)
+    }
+
+    private func timerStateTint(for state: TimerState) -> Color {
+        switch state {
+        case .idle:
+            return .secondary
+        case .running:
+            return .green
+        case .paused:
+            return .orange
+        case .breakRunning:
+            return .blue
+        case .breakPaused:
+            return .purple
+        }
+    }
+
     private func titleForPomodoroMode(_ mode: PomodoroTimerEngine.Mode) -> String {
         switch mode {
         case .work:
@@ -3259,6 +3306,38 @@ struct MainWindowView: View {
         )
     }
 
+    private func presetSelectorOptions(includeCustom: Bool = true) -> [OrchestranaSelectorOption<PresetSelection>] {
+        var options = Preset.builtIn.map { preset in
+            OrchestranaSelectorOption(
+                preset.name,
+                value: PresetSelection.preset(preset),
+                subtitle: presetSubtitle(for: preset),
+                systemImage: "timer"
+            )
+        }
+
+        if includeCustom {
+            options.append(
+                OrchestranaSelectorOption(
+                    languageManager.text("timer.custom"),
+                    value: PresetSelection.custom,
+                    subtitle: "Manual",
+                    systemImage: "slider.horizontal.3"
+                )
+            )
+        }
+
+        return options
+    }
+
+    private func presetSubtitle(for preset: Preset) -> String {
+        let config = preset.durationConfig
+        let work = max(1, config.workDuration / 60)
+        let shortBreak = max(1, config.shortBreakDuration / 60)
+        let longBreak = max(1, config.longBreakDuration / 60)
+        return "\(work)m / \(shortBreak)m / \(longBreak)m"
+    }
+
     private var dashboardPomodoroConfigurationPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
             Divider()
@@ -3267,15 +3346,13 @@ struct MainWindowView: View {
                 .font(.headline)
                 .foregroundStyle(.secondary)
 
-            Picker(languageManager.text("timer.preset"), selection: dashboardPresetSelectionBinding) {
-                ForEach(Preset.builtIn) { preset in
-                    Text(preset.name)
-                        .tag(PresetSelection.preset(preset))
-                }
-                Text(languageManager.text("timer.custom"))
-                    .tag(PresetSelection.custom)
-            }
-            .pickerStyle(.segmented)
+            OrchestranaSelector(
+                selection: dashboardPresetSelectionBinding,
+                options: presetSelectorOptions(),
+                layout: .grid,
+                minOptionWidth: 104,
+                accessibilityLabel: languageManager.text("timer.preset")
+            )
 
             dashboardDurationStepperRow(
                 title: languageManager.text("timer.work"),
@@ -3295,13 +3372,13 @@ struct MainWindowView: View {
 
             HStack {
                 Text(languageManager.text("timer.long_break_interval"))
-                    .font(.system(.body, design: .rounded))
+                    .font(.system(.body, weight: .medium))
                 Spacer()
-                Stepper(value: $dashboardLongBreakInterval, in: 1...12) {
-                    Text(languageManager.format("timer.long_break_interval.every_sessions", dashboardLongBreakInterval))
-                        .font(.system(.body, design: .rounded).monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
+                OrchestranaStepControl(
+                    value: $dashboardLongBreakInterval,
+                    in: 1...12,
+                    valueText: { languageManager.format("timer.long_break_interval.every_sessions", $0) }
+                )
             }
 
             Text("These controls affect the current dashboard session only. Change Settings to update the default Pomodoro setup.")
@@ -3321,13 +3398,13 @@ struct MainWindowView: View {
     ) -> some View {
         HStack {
             Text(title)
-                .font(.system(.body, design: .rounded))
+                .font(.system(.body, weight: .medium))
             Spacer()
-            Stepper(value: value, in: range) {
-                Text(languageManager.format("tasks.pomodoro_estimate_value", value.wrappedValue).replacingOccurrences(of: " Pomodoros", with: " min").replacingOccurrences(of: " Pomodoro", with: " min"))
-                    .font(.system(.body, design: .rounded).monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
+            OrchestranaStepControl(
+                value: value,
+                in: range,
+                valueText: { "\($0) min" }
+            )
         }
     }
 
@@ -3431,6 +3508,13 @@ struct MainWindowView: View {
             countdownSecondsText = String(format: "%02d", committed)
             updateDurationConfig(countdownSeconds: committed)
         }
+    }
+
+    private var countdownPresetSelection: Binding<Int> {
+        Binding(
+            get: { max(1, appState.durationConfig.countdownDuration / 60) },
+            set: { applyCountdownPreset(minutes: $0) }
+        )
     }
 
     private func applyCountdownPreset(minutes: Int) {
@@ -3882,7 +3966,7 @@ private struct SettingsPlansSheet: View {
                 Button("Done") {
                     dismiss()
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
             }
 
             ScrollView {

@@ -89,7 +89,7 @@ struct CloudSettingsSection: View {
                     await authViewModel.signOut()
                 }
             }
-            .buttonStyle(.bordered)
+            .orchestranaButton(.secondary)
             .disabled(authViewModel.isAuthenticating || authViewModel.isDeletingAccount)
 
             Divider()
@@ -112,7 +112,7 @@ struct CloudSettingsSection: View {
                         Text(localizationManager.text("settings.account.delete_account_button"))
                     }
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.destructive)
                 .disabled(authViewModel.isAuthenticating || authViewModel.isDeletingAccount)
             }
 
@@ -349,13 +349,13 @@ struct EmailLoginView: View {
                 .foregroundStyle(.secondary)
 
             TextField(localizationManager.text("auth.email.placeholder"), text: $email)
-                .textFieldStyle(.roundedBorder)
+                .orchestranaTextField()
                 .textContentType(.emailAddress)
                 .autocorrectionDisabled()
                 .disabled(authViewModel.isAuthenticating)
 
             SecureField(localizationManager.text("auth.password.placeholder"), text: $password)
-                .textFieldStyle(.roundedBorder)
+                .orchestranaTextField()
                 .textContentType(.password)
                 .disabled(authViewModel.isAuthenticating)
 
@@ -384,7 +384,7 @@ struct EmailLoginView: View {
                     }
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .orchestranaButton(.primary)
             .disabled(authViewModel.isAuthenticating || !canSubmit)
 
             Button(localizationManager.text("auth.create_account")) {
@@ -402,7 +402,7 @@ struct EmailLoginView: View {
                     }
                 }
             }
-            .buttonStyle(.bordered)
+            .orchestranaButton(.secondary)
             .disabled(authViewModel.isAuthenticating || !canSubmit)
 
             HStack {
@@ -414,7 +414,7 @@ struct EmailLoginView: View {
                     passwordResetErrorMessage = nil
                     showingPasswordResetSheet = true
                 }
-                .buttonStyle(.link)
+                .orchestranaButton(.subtle)
                 .disabled(authViewModel.isAuthenticating)
             }
         }
@@ -466,7 +466,7 @@ struct EmailLoginView: View {
                     .foregroundStyle(.secondary)
 
                 TextField(localizationManager.text("auth.email.placeholder"), text: $passwordResetEmail)
-                    .textFieldStyle(.roundedBorder)
+                    .orchestranaTextField()
                     .textContentType(.emailAddress)
                     .autocorrectionDisabled()
                     .disabled(isSendingPasswordReset)
@@ -489,7 +489,7 @@ struct EmailLoginView: View {
                     Button(localizationManager.text("common.cancel")) {
                         showingPasswordResetSheet = false
                     }
-                    .buttonStyle(.bordered)
+                    .orchestranaButton(.secondary)
 
                     Button(localizationManager.text("auth.password_reset.send")) {
                         Task { @MainActor in
@@ -506,7 +506,7 @@ struct EmailLoginView: View {
                             isSendingPasswordReset = false
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .orchestranaButton(.primary)
                         .disabled(isSendingPasswordReset || passwordResetEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
@@ -569,7 +569,7 @@ struct LoginSheetView: View {
                 Button(localizationManager.text("common.close")) {
                     dismiss()
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
             }
         }
         .padding(20)

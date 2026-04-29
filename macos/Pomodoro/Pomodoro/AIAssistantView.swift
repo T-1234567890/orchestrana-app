@@ -26,9 +26,9 @@ enum AIAssistantAction: String, CaseIterable, Identifiable {
         case .breakdown:
             return "list.bullet.rectangle.portrait"
         case .draftFromIdea:
-            return "sparkles.rectangle.stack"
+            return "text.badge.plus"
         case .planning:
-            return "sparkles"
+            return "calendar.badge.clock"
         case .reschedule:
             return "calendar.badge.clock"
         }
@@ -89,7 +89,7 @@ struct AIAssistantView: View {
                 Button(localizationManager.text("common.cancel")) {
                     onClose()
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
             }
             .padding(.top, 4)
         }
@@ -154,7 +154,7 @@ struct AIAssistantView: View {
                 } label: {
                     Label(localizationManager.text("common.back"), systemImage: "chevron.left")
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
 
                 Spacer()
             }
@@ -207,9 +207,11 @@ struct AIAssistantView: View {
                     displayedComponents: [.date]
                 )
 
-                Stepper(value: $estimatedHours, in: 1...40) {
-                    Text(localizationManager.format("tasks.ai_plan.estimated_hours_value", estimatedHours))
-                }
+                OrchestranaStepControl(
+                    value: $estimatedHours,
+                    in: 1...40,
+                    valueText: { localizationManager.format("tasks.ai_plan.estimated_hours_value", $0) }
+                )
             }
 
             if let errorMessage, !errorMessage.isEmpty {
@@ -222,7 +224,7 @@ struct AIAssistantView: View {
                 Button(localizationManager.text("common.cancel")) {
                     onClose()
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
 
                 Spacer()
 
@@ -244,7 +246,7 @@ struct AIAssistantView: View {
                         Text(buttonTitle(for: action))
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .orchestranaButton(.primary)
                 .disabled(isLoading || (action.requiresTaskSelection && selectedTaskIDs.isEmpty))
             }
         }

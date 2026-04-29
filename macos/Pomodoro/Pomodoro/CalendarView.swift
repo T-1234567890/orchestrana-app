@@ -107,6 +107,14 @@ struct CalendarView: View {
             }
         }
     }
+
+    private var calendarViewOptions: [OrchestranaSelectorOption<ViewType>] {
+        [
+            OrchestranaSelectorOption(localizationManager.text("calendar.view.day"), value: .day, systemImage: "calendar.day.timeline.left"),
+            OrchestranaSelectorOption(localizationManager.text("calendar.view.week"), value: .week, systemImage: "calendar"),
+            OrchestranaSelectorOption(localizationManager.text("calendar.view.month"), value: .month, systemImage: "square.grid.3x3")
+        ]
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -241,12 +249,12 @@ struct CalendarView: View {
                     }
 
                     HStack(spacing: 12) {
-                        Picker(localizationManager.text("calendar.view"), selection: $selectedView) {
-                            Text(localizationManager.text("calendar.view.day")).tag(ViewType.day)
-                            Text(localizationManager.text("calendar.view.week")).tag(ViewType.week)
-                            Text(localizationManager.text("calendar.view.month")).tag(ViewType.month)
-                        }
-                        .pickerStyle(.segmented)
+                        OrchestranaSelector(
+                            selection: $selectedView,
+                            options: calendarViewOptions,
+                            minOptionWidth: 76,
+                            accessibilityLabel: localizationManager.text("calendar.view")
+                        )
                         .frame(maxWidth: 260)
                         .onChange(of: selectedView) { _, _ in
                             Task { await loadEvents() }
@@ -271,7 +279,7 @@ struct CalendarView: View {
                         } label: {
                             Label(localizationManager.text("calendar.add_event"), systemImage: "plus")
                         }
-                        .buttonStyle(.borderedProminent)
+                        .orchestranaButton(.primary)
 
                         Button {
                             if !featureGate.canUseCloudProxyAI {
@@ -286,9 +294,9 @@ struct CalendarView: View {
                                 showAIAssistant = true
                             }
                         } label: {
-                            Label(localizationManager.text("tasks.ai_assistant.button"), systemImage: "sparkles")
+                            Label(localizationManager.text("tasks.ai_assistant.button"), systemImage: "calendar.badge.clock")
                         }
-                        .buttonStyle(.bordered)
+                        .orchestranaButton(.secondary)
                         .help(localizationManager.text("calendar.ai_assistant.reschedule_description"))
 
                         Button {
@@ -296,7 +304,7 @@ struct CalendarView: View {
                         } label: {
                             Label(localizationManager.text("common.refresh"), systemImage: "arrow.clockwise")
                         }
-                        .buttonStyle(.bordered)
+                        .orchestranaButton(.secondary)
                     }
 
                     if selectedEventIDs.count > 1 {
@@ -361,7 +369,7 @@ struct CalendarView: View {
                 Label(localizationManager.text("calendar.request_access"), systemImage: "calendar")
                     .font(.headline)
             }
-            .buttonStyle(.borderedProminent)
+            .orchestranaButton(.primary)
             .controlSize(.large)
         }
         .padding(48)
@@ -394,7 +402,7 @@ struct CalendarView: View {
             Button(localizationManager.text("calendar.reschedule.undo")) {
                 revertCalendarReschedule()
             }
-            .buttonStyle(.bordered)
+            .orchestranaButton(.secondary)
             .controlSize(.small)
         }
         .padding(.horizontal, 16)
@@ -1243,7 +1251,7 @@ struct CalendarView: View {
                 } label: {
                     Label(localizationManager.text("common.move"), systemImage: "arrow.right.circle")
                 }
-                .buttonStyle(.bordered)
+                .orchestranaButton(.secondary)
                 .disabled(editableSelection.isEmpty)
                 
                 Button(role: .destructive) {
@@ -1251,8 +1259,7 @@ struct CalendarView: View {
                 } label: {
                     Label(localizationManager.text("common.delete"), systemImage: "trash")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
+                .orchestranaButton(.destructive)
                 .disabled(editableSelection.isEmpty)
             }
             
@@ -1642,18 +1649,23 @@ private struct AddEventSheet: View {
             
             VStack(alignment: .leading, spacing: 8) {
                 TextField(localizationManager.text("common.title"), text: $title)
-                    .textFieldStyle(.roundedBorder)
+                    .orchestranaTextField()
                 
                 DatePicker(localizationManager.text("common.start"), selection: $startDate)
                 
                 HStack {
                     Text(localizationManager.text("common.duration"))
                     Spacer()
-                    Stepper(localizationManager.format("common.duration_minutes_format", durationMinutes), value: $durationMinutes, in: 15...480, step: 15)
+                    OrchestranaStepControl(
+                        value: $durationMinutes,
+                        in: 15...480,
+                        step: 15,
+                        valueText: { localizationManager.format("common.duration_minutes_format", $0) }
+                    )
                 }
                 
                 TextField(localizationManager.text("common.notes_optional"), text: $notes, axis: .vertical)
-                    .textFieldStyle(.roundedBorder)
+                    .orchestranaTextField()
             }
             
             if let errorMessage {
@@ -1665,14 +1677,14 @@ private struct AddEventSheet: View {
             
             HStack {
                 Button(localizationManager.text("common.cancel"), action: onCancel)
-                    .buttonStyle(.bordered)
+                    .orchestranaButton(.secondary)
                 
                 Spacer()
                 
                 Button(localizationManager.text("common.save")) {
                     onSave()
                 }
-                .buttonStyle(.borderedProminent)
+                .orchestranaButton(.primary)
                 .disabled(title.isEmpty)
             }
         }
@@ -1775,7 +1787,7 @@ private struct EventTaskDetailSheet: View {
                 }
                 Spacer()
                 Button(localizationManager.text("common.close"), action: onClose)
-                    .buttonStyle(.bordered)
+                    .orchestranaButton(.secondary)
             }
 
             if let notes = event.wrappedValue.notes, !notes.isEmpty {
@@ -1802,18 +1814,18 @@ private struct EventTaskDetailSheet: View {
                                 Text(localizationManager.text("calendar.event_tasks.generate_ai"))
                             }
                         }
-                        .buttonStyle(.bordered)
+                        .orchestranaButton(.secondary)
                         .disabled(isGenerating)
                     }
 
                     if canInteractWithEventTasks {
                         HStack(spacing: 8) {
                             TextField(localizationManager.text("calendar.event_tasks.add_placeholder"), text: $manualTaskTitle)
-                                .textFieldStyle(.roundedBorder)
+                                .orchestranaTextField()
                             Button(localizationManager.text("calendar.event_tasks.add_button")) {
                                 Task { await addManualTask(event: event) }
                             }
-                            .buttonStyle(.borderedProminent)
+                            .orchestranaButton(.primary)
                         }
                     } else {
                         lockedEventTasksView
@@ -1871,7 +1883,7 @@ private struct EventTaskDetailSheet: View {
                                         )
                                         todoStore.addItem(todo)
                                     }
-                                    .buttonStyle(.borderless)
+                                    .orchestranaButton(.subtle)
                                 }
                             }
                             .onDelete { offsets in
@@ -1930,7 +1942,7 @@ private struct EventTaskDetailSheet: View {
             Button(localizationManager.text("tasks.ai_assistant.upgrade")) {
                 presentUpgrade(requiredTier: .plus, messageKey: "calendar.event_tasks.plus_required")
             }
-            .buttonStyle(.bordered)
+            .orchestranaButton(.secondary)
         }
     }
 
