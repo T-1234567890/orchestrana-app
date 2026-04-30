@@ -982,6 +982,7 @@ final class SubscriptionStore: ObservableObject {
     @Published private(set) var products: [Product] = []
     @Published private(set) var isLoadingProducts = false
     @Published private(set) var isRestoring = false
+    @Published private(set) var isSyncingEntitlements = false
     @Published private(set) var activePurchaseProductID: String?
     @Published private(set) var lastEntitlement: SubscriptionEntitlement?
     @Published private(set) var isSubscribed = false
@@ -1129,7 +1130,11 @@ final class SubscriptionStore: ObservableObject {
     }
 
     func syncCurrentEntitlements(reason: String = "current_entitlements") async {
+        guard !isSyncingEntitlements else { return }
+        isSyncingEntitlements = true
         errorMessage = nil
+        defer { isSyncingEntitlements = false }
+
         var activeTransactions: [Transaction] = []
         var backendSyncFailed = false
 
@@ -1491,7 +1496,7 @@ final class SubscriptionStore: ObservableObject {
     }
 
     var isServerVerificationPending: Bool {
-        guard isSubscribed else { return false }
+        guard isSubscribed, !isSyncingEntitlements else { return false }
         switch FeatureGate.shared.tier {
         case .plus, .pro, .developer:
             return false

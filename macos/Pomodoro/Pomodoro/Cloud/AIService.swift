@@ -1048,21 +1048,28 @@ extension AIService {
         let prompt = """
         You are analyzing structured productivity metrics for a Pomodoro app user.
         Use only the provided structured data. Do not infer raw logs or hidden causes.
-        This is a Pro-only deep analysis request and must feel materially deeper than a short summary.
-        If the dataset is weak or empty, you must still provide a useful onboarding-style deep analysis based on the available structured input.
-        Explicitly acknowledge when the user is early in their tracking history and explain what patterns cannot be confirmed yet.
+        This is a Pro-only deep analysis request. It should be meaningfully deeper than a weekly overview while still scannable.
+        If the dataset is weak or empty, provide a useful onboarding-style analysis based on the available structured input.
+        If the user is early in their tracking history, mention that briefly.
         Requirements:
-        - Organize the response into clear parts for Summary, Insights, and Recommendations.
-        - Be concrete and evidence-based.
-        - Explain why each pattern matters using the provided metrics.
-        - Call out consistency, focus quality, short-session behavior, break/focus balance, peak hours, completion behavior, overload risk, imbalance, and task drift when supported.
-        - Recommendations must be actionable and specific, not generic.
+        - Return Markdown only. Do not use code fences.
+        - Structure the answer into exactly these Markdown level-2 sections:
+          ## Summary
+          ## Pattern Diagnosis
+          ## Focus Signals
+          ## Task & Calendar Friction
+          ## Recommendations
+          ## 7-Day Experiment
+        - Summary: 2-3 focused sentences with the overall read.
+        - Pattern Diagnosis: explain the main productivity pattern, likely bottleneck, and what changed compared with the user's current baseline if the data supports it.
+        - Focus Signals: use 3-5 bullets with concrete metrics about focus time, completion, streaks, interruptions, or session quality.
+        - Task & Calendar Friction: use 2-4 bullets about planning load, unfinished work, event/task pressure, or scheduling gaps.
+        - Recommendations: use 4-6 numbered actions the user can try this week.
+        - 7-Day Experiment: include one measurable experiment with a target metric and what success/failure means.
+        - Be analytical and evidence-based, not motivational.
+        - Mention uncertainty when the data is thin, but still give a useful interpretation.
         - Do not mention missing raw logs or hidden causes.
-        - If there are no focus sessions yet, explain what the current task/activity context suggests and what the user should do to generate better insight next week.
-        - You may choose the best structure for those parts. A natural report format is preferred over a rigid template.
-        - The response should be longer and more reflective than a weekly overview, but still readable in one screen.
-        - It is fine to use headings, short paragraphs, and bullet points when helpful.
-        - Include concrete interpretation, not just metric restatement.
+        - Keep the full response between 350 and 650 words when the data supports it.
 
         Structured input:
         \(payload.jsonString)

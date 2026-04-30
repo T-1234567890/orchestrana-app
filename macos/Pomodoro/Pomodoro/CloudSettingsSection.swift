@@ -33,6 +33,7 @@ struct CloudSettingsSection: View {
     @State private var supportIdLoadFailed = false
 
     private let userProfileClient = UserProfileAPIClient()
+    private let supportIdRetryDelayNanoseconds: UInt64 = 750_000_000
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -241,6 +242,7 @@ struct CloudSettingsSection: View {
 
     @MainActor
     private func loadSupportId() async {
+        authViewModel.startListeningIfNeeded()
         guard authViewModel.isLoggedIn else {
             supportId = nil
             supportIdLoadFailed = false
@@ -252,14 +254,23 @@ struct CloudSettingsSection: View {
         supportIdLoadFailed = false
         defer { isLoadingSupportId = false }
 
-        do {
-            let profile = try await userProfileClient.fetchCurrentUserProfile()
-            let normalizedSupportId = profile.supportId?.trimmingCharacters(in: .whitespacesAndNewlines)
-            supportId = normalizedSupportId?.isEmpty == false ? normalizedSupportId : nil
-            supportIdLoadFailed = supportId == nil
-        } catch {
-            supportId = nil
-            supportIdLoadFailed = true
+        for attempt in 1...2 {
+            do {
+                let profile = try await userProfileClient.fetchCurrentUserProfile()
+                let normalizedSupportId = profile.supportId?.trimmingCharacters(in: .whitespacesAndNewlines)
+                supportId = normalizedSupportId?.isEmpty == false ? normalizedSupportId : nil
+                supportIdLoadFailed = supportId == nil
+                if supportId != nil {
+                    return
+                }
+            } catch {
+                supportId = nil
+                supportIdLoadFailed = attempt == 2
+            }
+
+            if attempt == 1 {
+                try? await Task.sleep(nanoseconds: supportIdRetryDelayNanoseconds)
+            }
         }
     }
 

@@ -765,10 +765,9 @@ struct MainWindowView: View {
             ) {
                 VStack(alignment: .leading, spacing: 10) {
                     if let insightHubResult {
-                        Text(insightHubResult.text)
+                        TaskMarkdownView(markdown: insightHubResult.text, lineLimit: 4)
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .lineLimit(4)
                     } else {
                         Text("Includes weekly overview, deep analysis, and metric explanations.")
                             .font(.caption)
@@ -807,7 +806,7 @@ struct MainWindowView: View {
             }
 
             if let insightHubResult {
-                Text(insightHubResult.text)
+                TaskMarkdownView(markdown: insightHubResult.text)
                     .font(.subheadline)
                     .foregroundStyle(currentAppearanceMode.secondaryTextColor(for: colorScheme))
                     .frame(maxWidth: .infinity, alignment: .leading)

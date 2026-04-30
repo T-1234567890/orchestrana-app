@@ -460,7 +460,8 @@ final class FeatureGate: ObservableObject {
                     self.resetToSignedOutState()
                 } else {
                     self.restoreCachedEntitlementIfAvailable()
-                    await self.refreshAllowance()
+                    SubscriptionStore.shared.start()
+                    await SubscriptionStore.shared.syncCurrentEntitlements(reason: "auth_restored")
                 }
             }
         }
