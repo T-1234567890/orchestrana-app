@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last updated: April 15, 2026**
+**Last updated: April 30, 2026**
 
 ## 1. Overview
 
@@ -62,9 +62,9 @@ Third-party services may include:
 
 - **Apple** for App Store billing, subscriptions, purchase restoration, Sign in with Apple, StoreKit, and App Store server notifications
 - **Firebase / Google Cloud** for authentication, backend infrastructure, Cloud Functions, account state, entitlement checks, quota tracking, and security
-- **Google** for Google Sign-In and, where used, Gemini-family AI processing
+- **Google** for Google Sign-In
 - **OpenRouter** for AI routing to supported model providers
-- **AI model providers** such as DeepSeek or Google Gemini when you use AI features that require those models
+- **AI model providers** when you use AI features that require those models
 - **GitHub** for public repository links and open-source project pages
 
 When AI features are used, relevant request content may be sent through our backend to AI providers or routing services to generate the requested output.

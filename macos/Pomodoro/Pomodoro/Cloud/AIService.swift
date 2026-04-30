@@ -6,7 +6,7 @@ import CryptoKit
 
 @MainActor
 final class AIService {
-    private static let proDeepAnalysisModel = "google/gemini-flash-3"
+    private static let frontierAnalysisModel = "x-ai/grok-4.20"
 
     struct TaskBreakdownRequest: Encodable {
         let task: String
@@ -932,7 +932,7 @@ extension AIService {
             input: input,
             metric: nil
         )
-        let cacheKey = "weekly-overview-\(isProSummary ? "gemini" : "deepseek")-\(cacheWeekKey(for: now))-\(payload.cacheHash)"
+        let cacheKey = "weekly-overview-\(isProSummary ? "frontier" : "deepseek")-\(cacheWeekKey(for: now))-\(payload.cacheHash)"
         if let cached = insightsCache.cachedResult(for: cacheKey, now: now) {
             return cached
         }
@@ -955,8 +955,8 @@ extension AIService {
             Structured input:
             \(payload.jsonString)
             """
-            model = Self.proDeepAnalysisModel
-            modelFamily = "gemini"
+            model = Self.frontierAnalysisModel
+            modelFamily = "frontier"
             featureType = "insights_summary"
             maxOutputTokens = 220
         } else {
@@ -1073,8 +1073,8 @@ extension AIService {
             let response: AIProxyClient.ProxyResponse = try await aiProxyClient.sendPrompt(
                 .init(
                     prompt: prompt,
-                    model: Self.proDeepAnalysisModel,
-                    modelFamily: "gemini",
+                    model: Self.frontierAnalysisModel,
+                    modelFamily: "frontier",
                     featureType: "insights_deep_analysis",
                     temperature: 0.2,
                     maxOutputTokens: 900,
@@ -1091,7 +1091,7 @@ extension AIService {
             }
             let result = ProductivityInsightResult(
                 text: text,
-                usedModelFamily: response.modelFamily ?? "gemini",
+                usedModelFamily: response.modelFamily ?? "frontier",
                 generatedAt: now,
                 isFallback: text == fallback,
                 cacheKey: cacheKey

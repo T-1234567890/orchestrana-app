@@ -99,8 +99,8 @@ final class FeatureGate: ObservableObject {
     @Published private(set) var tier: Tier = .free
     @Published private(set) var deepSeekRemainingTokens: Int?
     @Published private(set) var deepSeekMonthlyLimit: Int?
-    @Published private(set) var geminiFlash3RemainingTokens: Int?
-    @Published private(set) var geminiFlash3MonthlyLimit: Int?
+    @Published private(set) var frontierRemainingTokens: Int?
+    @Published private(set) var frontierMonthlyLimit: Int?
     @Published private(set) var allowanceResetAt: Date?
     @Published private(set) var dailyAllowanceResetAt: Date?
     @Published private(set) var subscriptionEndAt: Date?
@@ -167,14 +167,14 @@ final class FeatureGate: ObservableObject {
     }
 
     var hasAnyQuotaData: Bool {
-        deepSeekRemainingTokens != nil || geminiFlash3RemainingTokens != nil
+        deepSeekRemainingTokens != nil || frontierRemainingTokens != nil
     }
 
     var isAIQuotaExhausted: Bool {
         if tier == .developer {
             return false
         }
-        let trackedValues = [deepSeekRemainingTokens, geminiFlash3RemainingTokens].compactMap { $0 }
+        let trackedValues = [deepSeekRemainingTokens, frontierRemainingTokens].compactMap { $0 }
         guard !trackedValues.isEmpty else { return false }
         return trackedValues.allSatisfy { $0 <= 0 }
     }
@@ -353,14 +353,14 @@ final class FeatureGate: ObservableObject {
     var aiUsageProgressItems: [AIUsageProgress] {
         [
             usageProgress(
-                title: "DeepSeek",
+                title: "Standard Models",
                 remaining: deepSeekRemainingTokens,
                 limit: deepSeekMonthlyLimit
             ),
             usageProgress(
-                title: "Gemini Flash",
-                remaining: geminiFlash3RemainingTokens,
-                limit: geminiFlash3MonthlyLimit
+                title: "Frontier Models",
+                remaining: frontierRemainingTokens,
+                limit: frontierMonthlyLimit
             )
         ]
         .compactMap { $0 }
@@ -478,8 +478,8 @@ final class FeatureGate: ObservableObject {
         tier = .free
         deepSeekRemainingTokens = nil
         deepSeekMonthlyLimit = nil
-        geminiFlash3RemainingTokens = nil
-        geminiFlash3MonthlyLimit = nil
+        frontierRemainingTokens = nil
+        frontierMonthlyLimit = nil
         allowanceResetAt = nil
         dailyAllowanceResetAt = nil
         subscriptionEndAt = nil
@@ -512,8 +512,8 @@ final class FeatureGate: ObservableObject {
         tier = backendTier
         deepSeekRemainingTokens = payload.deepSeekRemainingTokens
         deepSeekMonthlyLimit = payload.deepSeekMonthlyLimit
-        geminiFlash3RemainingTokens = payload.geminiFlash3RemainingTokens
-        geminiFlash3MonthlyLimit = payload.geminiFlash3MonthlyLimit
+        frontierRemainingTokens = payload.frontierRemainingTokens
+        frontierMonthlyLimit = payload.frontierMonthlyLimit
         allowanceResetAt = payload.resetAt
         dailyAllowanceResetAt = payload.dailyResetAt ?? payload.dailyAIUsage?.resetAt
         subscriptionEndAt = payload.subscriptionEndAt
@@ -635,14 +635,13 @@ final class FeatureGate: ObservableObject {
         let entitlements: EntitlementsPayload?
         let deepseek: ProviderQuota?
         let deepSeek: ProviderQuota?
-        let geminiFlash3: ProviderQuota?
-        let gemini_flash_3: ProviderQuota?
+        let frontier: ProviderQuota?
         let allowances: [String: ProviderQuota]?
         let quotas: [String: ProviderQuota]?
         let deepseekRemaining: Int?
         let deepseekLimit: Int?
-        let geminiFlash3Remaining: Int?
-        let geminiFlash3Limit: Int?
+        let frontierRemaining: Int?
+        let frontierLimit: Int?
         let resetAt: Date?
         let reset_at: Date?
         let dailyResetAt: Date?
@@ -654,19 +653,16 @@ final class FeatureGate: ObservableObject {
 
         var payload: AllowancePayload {
             let deepSeekQuota = deepseek ?? deepSeek ?? allowances?["deepseek"] ?? quotas?["deepseek"]
-            let geminiQuota = geminiFlash3
-                ?? gemini_flash_3
-                ?? allowances?["geminiFlash3"]
-                ?? allowances?["gemini_flash_3"]
-                ?? quotas?["geminiFlash3"]
-                ?? quotas?["gemini_flash_3"]
+            let frontierQuota = frontier
+                ?? allowances?["frontier"]
+                ?? quotas?["frontier"]
 
             return AllowancePayload(
                 tier: entitlements?.tier ?? tier,
                 deepSeekRemainingTokens: deepSeekQuota?.remaining ?? deepseekRemaining,
                 deepSeekMonthlyLimit: deepSeekQuota?.limit ?? deepseekLimit,
-                geminiFlash3RemainingTokens: geminiQuota?.remaining ?? geminiFlash3Remaining,
-                geminiFlash3MonthlyLimit: geminiQuota?.limit ?? geminiFlash3Limit,
+                frontierRemainingTokens: frontierQuota?.remaining ?? frontierRemaining,
+                frontierMonthlyLimit: frontierQuota?.limit ?? frontierLimit,
                 resetAt: resetAt ?? reset_at,
                 dailyResetAt: dailyResetAt ?? daily_reset_at ?? aiUsage?.daily?.resetAt ?? ai_usage?.daily?.resetAt,
                 analyticsLevel: entitlements?.analyticsLevelResolved,
@@ -725,8 +721,8 @@ final class FeatureGate: ObservableObject {
         let tier: Tier?
         let deepSeekRemainingTokens: Int?
         let deepSeekMonthlyLimit: Int?
-        let geminiFlash3RemainingTokens: Int?
-        let geminiFlash3MonthlyLimit: Int?
+        let frontierRemainingTokens: Int?
+        let frontierMonthlyLimit: Int?
         let resetAt: Date?
         let dailyResetAt: Date?
         let analyticsLevel: AnalyticsLevel?
@@ -739,8 +735,8 @@ final class FeatureGate: ObservableObject {
             tier: Tier?,
             deepSeekRemainingTokens: Int?,
             deepSeekMonthlyLimit: Int?,
-            geminiFlash3RemainingTokens: Int?,
-            geminiFlash3MonthlyLimit: Int?,
+            frontierRemainingTokens: Int?,
+            frontierMonthlyLimit: Int?,
             resetAt: Date?,
             dailyResetAt: Date?,
             analyticsLevel: AnalyticsLevel?,
@@ -752,8 +748,8 @@ final class FeatureGate: ObservableObject {
             self.tier = tier
             self.deepSeekRemainingTokens = deepSeekRemainingTokens
             self.deepSeekMonthlyLimit = deepSeekMonthlyLimit
-            self.geminiFlash3RemainingTokens = geminiFlash3RemainingTokens
-            self.geminiFlash3MonthlyLimit = geminiFlash3MonthlyLimit
+            self.frontierRemainingTokens = frontierRemainingTokens
+            self.frontierMonthlyLimit = frontierMonthlyLimit
             self.resetAt = resetAt
             self.dailyResetAt = dailyResetAt
             self.analyticsLevel = analyticsLevel
@@ -769,12 +765,12 @@ final class FeatureGate: ObservableObject {
             let entitlements = json["entitlements"] as? [String: Any]
 
             let deepseek = (json["deepseek"] as? [String: Any]) ?? (json["deepSeek"] as? [String: Any])
-            let gemini = (json["geminiFlash3"] as? [String: Any]) ?? (json["gemini_flash_3"] as? [String: Any])
+            let frontier = json["frontier"] as? [String: Any]
 
             self.deepSeekRemainingTokens = deepseek?["remaining"] as? Int ?? json["deepseekRemaining"] as? Int
             self.deepSeekMonthlyLimit = deepseek?["limit"] as? Int ?? json["deepseekLimit"] as? Int
-            self.geminiFlash3RemainingTokens = gemini?["remaining"] as? Int ?? json["geminiFlash3Remaining"] as? Int
-            self.geminiFlash3MonthlyLimit = gemini?["limit"] as? Int ?? json["geminiFlash3Limit"] as? Int
+            self.frontierRemainingTokens = frontier?["remaining"] as? Int ?? json["frontierRemaining"] as? Int
+            self.frontierMonthlyLimit = frontier?["limit"] as? Int ?? json["frontierLimit"] as? Int
 
             if let reset = json["resetAt"] as? String {
                 self.resetAt = Self.parseDate(reset)

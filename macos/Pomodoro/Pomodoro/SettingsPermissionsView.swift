@@ -290,17 +290,17 @@ struct SettingsPermissionsView: View {
 
                 statusRow(
                     label: localizationManager.text("settings.ai_planning.available_model"),
-                    value: "DeepSeek"
+                    value: "Standard Models"
                 )
             }
-        case .deepSeekAndGemini:
+        case .deepSeekAndFrontier:
             VStack(alignment: .leading, spacing: 8) {
                 Text(localizationManager.text("settings.ai_planning.title"))
                     .font(.subheadline.weight(.semibold))
 
                 VStack(alignment: .leading, spacing: 8) {
-                    modelRow("Gemini")
-                    modelRow("DeepSeek")
+                    modelRow("Frontier Models")
+                    modelRow("Standard Models")
                 }
             }
         }
@@ -311,9 +311,9 @@ struct SettingsPermissionsView: View {
         case .upgrade:
             return []
         case .deepSeek:
-            return featureGate.aiUsageProgressItems.filter { $0.title == "DeepSeek" }
-        case .deepSeekAndGemini:
-            return featureGate.aiUsageProgressItems.filter { $0.title == "DeepSeek" || $0.title == "Gemini Flash" }
+            return featureGate.aiUsageProgressItems.filter { $0.title == "Standard Models" }
+        case .deepSeekAndFrontier:
+            return featureGate.aiUsageProgressItems.filter { $0.title == "Standard Models" || $0.title == "Frontier Models" }
         }
     }
 
@@ -322,7 +322,7 @@ struct SettingsPermissionsView: View {
         case .plus, .beta:
             return .deepSeek
         case .pro, .developer:
-            return .deepSeekAndGemini
+            return .deepSeekAndFrontier
         case .free, .expired:
             return .upgrade
         }
@@ -449,7 +449,7 @@ struct SettingsPermissionsView: View {
 private enum AIPlanningDisplayMode {
     case upgrade
     case deepSeek
-    case deepSeekAndGemini
+    case deepSeekAndFrontier
 }
 
 enum PlanBillingCycle: String, CaseIterable, Identifiable {
@@ -738,7 +738,7 @@ struct PlansComparisonView: View {
         [
             PlanFeatureRow(title: "Core timer and tasks", freeAvailability: .available, plusAvailability: .available, proAvailability: .available),
             PlanFeatureRow(title: "AI task drafting", freeAvailability: .unavailable, plusAvailability: .available, proAvailability: .available),
-            PlanFeatureRow(title: "Insight summaries", freeAvailability: .unavailable, plusAvailability: .limited("DeepSeek"), proAvailability: .limited("Gemini")),
+            PlanFeatureRow(title: "Insight summaries", freeAvailability: .unavailable, plusAvailability: .limited("Standard Models"), proAvailability: .limited("Frontier Models")),
             PlanFeatureRow(title: "Deep analysis", freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available),
             PlanFeatureRow(title: "AI scheduling", freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available)
         ]
@@ -818,7 +818,7 @@ struct PlansComparisonView: View {
                 PlanFeatureRow(title: "Advanced analytics", freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available),
                 PlanFeatureRow(title: "Auto fullscreen Flow Mode", freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available),
                 PlanFeatureRow(title: "Markdown tasks & subtasks", freeAvailability: .unavailable, plusAvailability: .available, proAvailability: .available),
-                PlanFeatureRow(title: "Advanced AI models", freeAvailability: .unavailable, plusAvailability: .limited("DeepSeek"), proAvailability: .available),
+                PlanFeatureRow(title: "Advanced AI models", freeAvailability: .unavailable, plusAvailability: .limited("Standard Models"), proAvailability: .available),
                 PlanFeatureRow(title: "Eisenhower Matrix", freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available)
             ]
         }

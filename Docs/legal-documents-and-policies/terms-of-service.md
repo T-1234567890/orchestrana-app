@@ -92,7 +92,7 @@ When you use these features, relevant User Content may be transmitted to our bac
 
 This may include task titles, notes, deadlines, estimated hours, calendar events, availability constraints, plan context, prompts, and similar workflow inputs needed to fulfill the request.
 
-The current backend architecture routes AI traffic through backend-controlled endpoints and may use **OpenRouter** to access supported model providers or model families. Current implementation references include **DeepSeek** and **Gemini** model families, along with quota, allowance, and usage enforcement.
+The current backend architecture routes AI traffic through backend-controlled endpoints and may use **OpenRouter** to access supported model providers or model families. Current implementation references include Standard Models and Frontier Models, along with quota, allowance, and usage enforcement.
 
 Some AI-dependent features rely on third-party AI providers, routing providers, or related infrastructure. Those providers may change, fail, become unavailable, return delayed responses, or alter model behavior over time, and the Service does not guarantee continuous availability of AI features.
 

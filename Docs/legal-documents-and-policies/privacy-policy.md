@@ -1,7 +1,7 @@
 # Privacy Policy
 
-**Effective Date:** April 5, 2026  
-**Last Updated:** April 5, 2026
+**Effective Date:** April 30, 2026  
+**Last Updated:** April 30, 2026
 
 ---
 
@@ -145,7 +145,7 @@ The current product includes cloud-backed AI and planning routes for features su
 - AI calendar schedule generation and rescheduling
 - Productivity insight or summary requests sent through the AI proxy
 
-AI traffic in the current backend is routed through our backend and may be forwarded through **OpenRouter** to supported model families. The current codebase references **DeepSeek** and **Gemini** model families and tracks quota or allowance usage for those families.
+AI traffic in the current backend is routed through our backend and may be forwarded through **OpenRouter** to supported model families. The current codebase references Standard Models and Frontier Models and tracks quota or allowance usage for those families.
 
 ### Third-Party AI Processing
 
@@ -153,7 +153,7 @@ When you use AI features, relevant inputs may be sent to third-party AI provider
 
 We only transmit the data reasonably necessary for the specific request. Depending on the feature, this may include task text, planning context, scheduling constraints, calendar availability, or related prompt content that you chose to submit.
 
-Google or other third-party AI providers may process and temporarily store data when AI features are used. Their handling of that data is subject to their own terms and privacy policies, including Google's privacy policy where Google services or Gemini-family processing are involved.
+Third-party AI providers may process and temporarily store data when AI features are used. Their handling of that data is subject to their own terms and privacy policies.
 
 We do not sell AI request data, prompt content, or AI-related personal data, and we do not use that data for advertising.
 
