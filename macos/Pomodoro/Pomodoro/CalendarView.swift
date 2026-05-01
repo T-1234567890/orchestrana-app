@@ -1136,7 +1136,6 @@ struct CalendarView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(item.title)
                 .font(.headline)
-                .strikethrough(item.isCompleted)
             if let notes = item.notes, !notes.isEmpty {
                 Text(notes)
                     .font(.caption)
@@ -1382,6 +1381,7 @@ struct CalendarView: View {
     private func tasks(for day: Date) -> [TodoItem] {
         let calendar = Calendar.current
         return todoStore.items.filter { item in
+            guard !item.isCompleted else { return false }
             if let due = item.dueDate {
                 return calendar.isDate(due, inSameDayAs: day)
             }

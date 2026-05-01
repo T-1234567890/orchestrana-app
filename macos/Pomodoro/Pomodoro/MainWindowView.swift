@@ -17,6 +17,7 @@ struct MainWindowView: View {
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var musicController: MusicController
     @EnvironmentObject private var audioSourceStore: AudioSourceStore
+    @EnvironmentObject private var audioMixerStore: AudioMixerStore
     @EnvironmentObject private var languageManager: LanguageManager
     @EnvironmentObject private var appTypography: AppTypography
     @EnvironmentObject private var authViewModel: AuthViewModel
@@ -58,6 +59,7 @@ struct MainWindowView: View {
     @State private var ambientSliderEditing = false
     @State private var ambientSliderHover = false
     @State private var systemSliderHover = false
+    @State private var showAudioMixer = false
     @State private var isCheckingPlans = false
     @State private var plansPaywallContext: SubscriptionPaywallContext?
     @State private var plansErrorMessage: String?
@@ -424,6 +426,8 @@ struct MainWindowView: View {
                             )
                             nowPlayingSection
                             Divider()
+                            lofiPacksSection
+                            Divider()
                             sourceSelector
                         }
                         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -642,6 +646,9 @@ struct MainWindowView: View {
     private var audioAndMusicView: some View {
         VStack(alignment: .leading, spacing: 16) {
             nowPlayingSection
+            Divider()
+                .padding(.vertical, 4)
+            lofiPacksSection
             Divider()
                 .padding(.vertical, 4)
             sourceSelector
@@ -1566,8 +1573,9 @@ struct MainWindowView: View {
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(.primary)
 
-            if appState.nowPlayingRouter.isAvailable {
-                HStack(alignment: .center, spacing: 14) {
+            Group {
+                if appState.nowPlayingRouter.isAvailable {
+                    HStack(alignment: .center, spacing: 14) {
                     externalArtwork(
                         ExternalMedia(
                             title: appState.nowPlayingRouter.title,
@@ -1630,11 +1638,13 @@ struct MainWindowView: View {
                         .buttonStyle(.borderless)
                         .disabled(!appState.nowPlayingRouter.isAvailable)
                     }
-                }
-            } else {
-                switch audioSourceStore.audioSource {
-                case .ambient(let type):
-                    HStack(alignment: .center, spacing: 14) {
+                    }
+                } else if audioMixerStore.isPlaying || !audioMixerStore.selectedTracks.isEmpty {
+                    lofiNowPlayingRow
+                } else {
+                    switch audioSourceStore.audioSource {
+                    case .ambient(let type):
+                        HStack(alignment: .center, spacing: 14) {
                         ambientIcon(for: type)
                             .font(.system(size: 30, weight: .semibold))
                             .frame(width: 48, height: 48)
@@ -1696,10 +1706,10 @@ struct MainWindowView: View {
                             }
                         }
                         .frame(width: 200)
-                    }
+                        }
 
-                case .external(let media):
-                    HStack(alignment: .center, spacing: 14) {
+                    case .external(let media):
+                        HStack(alignment: .center, spacing: 14) {
                         externalArtwork(media)
                             .frame(width: 48, height: 48)
 
@@ -1751,10 +1761,10 @@ struct MainWindowView: View {
                                 }
                         }
                         .frame(width: 200)
-                    }
+                        }
 
-                case .off:
-                    HStack(alignment: .center, spacing: 14) {
+                    case .off:
+                        HStack(alignment: .center, spacing: 14) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .strokeBorder(Color.secondary.opacity(0.15))
@@ -1771,7 +1781,7 @@ struct MainWindowView: View {
                             Text(languageManager.text("audio.start_external_hint"))
                                 .font(.system(.subheadline, design: .rounded))
                                 .foregroundStyle(.secondary)
-                                .lineLimit(2)
+                                .lineLimit(1)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         .frame(minWidth: 160, alignment: .leading)
@@ -1787,9 +1797,15 @@ struct MainWindowView: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.secondary)
                         .opacity(0.5)
+                        }
                     }
                 }
             }
+            .frame(height: 74, alignment: .center)
+
+            Text(languageManager.text("audio.cc0_license"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)
@@ -1798,32 +1814,133 @@ struct MainWindowView: View {
         }
     }
 
-    private var sourceSelector: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(languageManager.text("audio.source"))
-                .font(.system(.headline, design: .rounded))
-                .foregroundStyle(.primary)
-
-            HStack(spacing: 10) {
-                selectorButton(
-                    title: languageManager.text("audio.source.external"),
-                    isActive: externalActive,
-                    isDisabled: !externalActive,
-                    action: { }
+    private var lofiNowPlayingRow: some View {
+        HStack(alignment: .center, spacing: 14) {
+            Image(systemName: "slider.horizontal.3")
+                .font(.system(size: 28, weight: .semibold))
+                .frame(width: 48, height: 48)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.primary.opacity(0.08))
                 )
 
-                ForEach(FocusSoundType.allCases.filter { $0 != .off }, id: \.self) { type in
-                    selectorButton(
-                        title: type.displayName,
-                        isActive: currentAmbient == type,
-                        isDisabled: externalActive,
-                        action: { audioSourceStore.selectAmbient(type) }
-                    )
+            VStack(alignment: .leading, spacing: 4) {
+                Text(audioMixerStore.nowPlayingTitle)
+                    .font(.system(.title3, design: .rounded).weight(.semibold))
+                    .lineLimit(1)
+                Text(audioMixerStore.nowPlayingSubtitle)
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .frame(minWidth: 160, alignment: .leading)
+            .layoutPriority(1)
+
+            Spacer()
+
+            Button {
+                audioSourceStore.selectAmbient(.off)
+                audioMixerStore.togglePlayPause()
+            } label: {
+                Image(systemName: audioMixerStore.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .frame(width: 34, height: 34)
+                    .foregroundStyle(.white)
+                    .background(Circle().fill(Color.accentColor))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var lofiPacksSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(languageManager.text("audio.lofi_packs"))
+                        .font(.system(.headline, design: .rounded))
+                        .foregroundStyle(.primary)
+                    Text(languageManager.text("audio.lofi_packs.subtitle"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button {
+                    showAudioMixer = true
+                } label: {
+                    Label(languageManager.text("audio.open_mixer"), systemImage: "slider.horizontal.3")
+                }
+                .buttonStyle(.borderedProminent)
+                .popover(isPresented: $showAudioMixer, arrowEdge: .top) {
+                    AudioMixerPopover()
+                        .environmentObject(audioMixerStore)
+                        .environmentObject(audioSourceStore)
+                        .environmentObject(languageManager)
+                }
+            }
+
+            HStack(spacing: 10) {
+                ForEach(AudioMixerStore.packs) { pack in
+                    Button {
+                        audioSourceStore.selectAmbient(.off)
+                        audioMixerStore.selectPack(pack)
+                        audioMixerStore.play()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Image(systemName: pack.symbolName)
+                                .font(.title3.weight(.semibold))
+                            Text(pack.name)
+                                .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                            Text(pack.mood)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(audioMixerStore.activePackID == pack.id ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.07))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .strokeBorder(audioMixerStore.activePackID == pack.id ? Color.accentColor.opacity(0.7) : Color.primary.opacity(0.08))
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var sourceSelector: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(languageManager.text("audio.generated_noise"))
+                .font(.system(.headline, design: .rounded))
+                .foregroundStyle(.primary)
+
+            HStack(spacing: 10) {
+                ForEach(cleanNoiseTypes, id: \.self) { type in
+                    selectorButton(
+                        title: type.displayName,
+                        isActive: currentAmbient == type,
+                        isDisabled: false,
+                        action: {
+                            audioMixerStore.pause()
+                            audioSourceStore.selectAmbient(currentAmbient == type ? .off : type)
+                        }
+                    )
+                }
+            }
+            .frame(height: 34, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var cleanNoiseTypes: [FocusSoundType] {
+        [.white, .brown]
     }
 
     private func selectorButton(title: String, isActive: Bool, isDisabled: Bool, action: @escaping () -> Void) -> some View {
@@ -3918,6 +4035,123 @@ private struct SettingsPlansSheet: View {
     }
 }
 
+private struct AudioMixerPopover: View {
+    @EnvironmentObject private var mixerStore: AudioMixerStore
+    @EnvironmentObject private var audioSourceStore: AudioSourceStore
+    @EnvironmentObject private var languageManager: LanguageManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(languageManager.text("audio.mixer.title"))
+                        .font(.system(.headline, design: .rounded).weight(.semibold))
+                    Text(languageManager.text("audio.mixer.subtitle"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button {
+                    audioSourceStore.selectAmbient(.off)
+                    mixerStore.togglePlayPause()
+                } label: {
+                    Image(systemName: mixerStore.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .frame(width: 30, height: 30)
+                        .foregroundStyle(.white)
+                        .background(Circle().fill(Color.accentColor))
+                }
+                .buttonStyle(.plain)
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(AudioMixerStore.packs) { pack in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 8) {
+                                Image(systemName: pack.symbolName)
+                                    .foregroundStyle(.secondary)
+                                Text(pack.name)
+                                    .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                                Spacer()
+                                Button(languageManager.text("audio.mixer.select_pack")) {
+                                    audioSourceStore.selectAmbient(.off)
+                                    mixerStore.selectPack(pack)
+                                    mixerStore.play()
+                                }
+                                .controlSize(.small)
+                            }
+
+                            ForEach(pack.tracks) { track in
+                                AudioMixerTrackRow(track: track)
+                                    .environmentObject(mixerStore)
+                            }
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .frame(maxHeight: 420)
+
+            Text(languageManager.text("audio.cc0_license"))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .frame(width: 420)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+}
+
+private struct AudioMixerTrackRow: View {
+    @EnvironmentObject private var mixerStore: AudioMixerStore
+    let track: LofiAudioTrack
+
+    private var isSelected: Bool {
+        mixerStore.selectedTrackIDs.contains(track.id)
+    }
+
+    private var volumeBinding: Binding<Double> {
+        Binding(
+            get: { mixerStore.trackVolumes[track.id] ?? 0.45 },
+            set: { mixerStore.setVolume($0, for: track) }
+        )
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button {
+                mixerStore.toggleTrack(track)
+            } label: {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+            }
+            .buttonStyle(.plain)
+
+            Image(systemName: track.symbolName)
+                .frame(width: 18)
+                .foregroundStyle(.secondary)
+
+            Text(track.title)
+                .font(.caption.weight(.medium))
+                .frame(width: 96, alignment: .leading)
+                .lineLimit(1)
+
+            Slider(value: volumeBinding, in: 0...1)
+                .disabled(!isSelected)
+                .opacity(isSelected ? 1.0 : 0.45)
+        }
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(isSelected ? Color.accentColor.opacity(0.10) : Color.primary.opacity(0.045))
+        )
+    }
+}
+
 // MARK: - Menu bar navigation hooks
 extension Notification.Name {
     static let navigateToPomodoro = Notification.Name("navigateToPomodoro")
@@ -3953,6 +4187,7 @@ extension Notification.Name {
             .environmentObject(appState)
             .environmentObject(musicController)
             .environmentObject(audioSourceStore)
+            .environmentObject(AudioMixerStore())
             .environmentObject(LanguageManager.shared)
             .environmentObject(AppTypography.shared)
             .environmentObject(AuthViewModel.shared)

@@ -60,6 +60,7 @@ struct WeekCalendarView: View {
         let cal = Calendar.current
         return tasks
             .filter { task in
+                guard !task.isCompleted else { return false }
                 guard let due = task.dueDate else { return false }
                 return cal.isDate(due, inSameDayAs: day)
             }

@@ -69,6 +69,7 @@ struct PremiumButton: View {
             externalMonitor: externalMonitor,
             externalController: externalController
         )
+        let audioMixerStore = AudioMixerStore()
         let onboardingDefaults = UserDefaults(suiteName: "ContentViewPreview")!
         onboardingDefaults.set(true, forKey: "onboarding.completed")
         onboardingDefaults.set(true, forKey: "onboarding.calendarPermissionsPrompted")
@@ -79,6 +80,7 @@ struct PremiumButton: View {
             .environmentObject(appState)
             .environmentObject(musicController)
             .environmentObject(audioSourceStore)
+            .environmentObject(audioMixerStore)
             .environmentObject(onboardingState)
             .environmentObject(AuthViewModel.shared)
             .environmentObject(LanguageManager.shared)

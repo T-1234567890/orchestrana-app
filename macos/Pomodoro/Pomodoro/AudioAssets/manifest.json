@@ -1,0 +1,34 @@
+{
+  "license": "CC0",
+  "source": "freesound.org",
+  "note": "White noise and brown noise are kept separate from lofi packs.",
+  "packs": [
+    {
+      "id": "coffee-shop",
+      "name": "Coffee Shop",
+      "files": [
+        "Coffee Shop/403066__awenaudio__ms-stereo-coffee-shop-6-people-low-chatter-refrigerator-barista-making-milk-shake-customers-entering-3.m4a",
+        "Coffee Shop/457895__bvsowle__coffee-shop-chatter.m4a",
+        "Coffee Shop/591327__seth_makes_sounds__basic-lofi-loop-b-minor-90-bpm.wav"
+      ]
+    },
+    {
+      "id": "forest",
+      "name": "Forest",
+      "files": [
+        "Forest/123087__itsmrjack__jungle_1.m4a",
+        "Forest/449909__analogist__jungle-pad.m4a",
+        "Forest/81801__silencyo__silencyo_cc_fire-in-fireplace_close-up_reverberant2.m4a"
+      ]
+    },
+    {
+      "id": "rain-desk",
+      "name": "Rain Desk",
+      "files": [
+        "Rain Desk/450282__stu556__mechanical-keyboard-typing-treble-version.m4a",
+        "Rain Desk/503282__khenshom__room-tone-with-hail-falling-outside.m4a",
+        "Rain Desk/757276__garuda1982__gentle-rain-on-leaves-with-soft-wind-and-suburban-ambience.m4a"
+      ]
+    }
+  ]
+}

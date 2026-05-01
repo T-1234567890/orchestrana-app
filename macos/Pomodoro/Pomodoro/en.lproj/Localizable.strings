@@ -11,8 +11,16 @@
 "audio.accessibility.ambient_volume" = "Ambient volume";
 "audio.ambient_local" = "Ambient · Local";
 "audio.ambient_sound" = "Ambient Sound";
+"audio.cc0_license" = "Audio assets are CC0 licensed from freesound.org.";
 "audio.choose_music" = "Choose Music";
 "audio.external_audio" = "External Audio";
+"audio.generated_noise" = "Clean Noise";
+"audio.lofi_packs" = "Lofi Packs";
+"audio.lofi_packs.subtitle" = "Pick a pack, then fine-tune individual layers in the mixer.";
+"audio.mixer" = "Mixer";
+"audio.mixer.select_pack" = "Select Pack";
+"audio.mixer.subtitle" = "Select multiple audios and set each layer volume.";
+"audio.mixer.title" = "Audio Mixer";
 "audio.no_track_selected" = "No Track Selected";
 "audio.none_playing" = "No external music playing";
 "audio.now_playing" = "Now Playing";
@@ -25,6 +33,7 @@
 "audio.sound.wind" = "Wind";
 "audio.source" = "Audio Source";
 "audio.source.external" = "External";
+"audio.open_mixer" = "Open Mixer";
 "audio.start_external_hint" = "Start Apple Music or Spotify to switch automatically";
 "audio.unknown_artist" = "Unknown Artist";
 "audio.unknown_track" = "Unknown Track";

@@ -88,6 +88,7 @@ struct OrchestranaApp: App {
     @StateObject private var appState: AppState
     @StateObject private var musicController: MusicController
     @StateObject private var audioSourceStore: AudioSourceStore
+    @StateObject private var audioMixerStore: AudioMixerStore
     @StateObject private var onboardingState: OnboardingState
     @StateObject private var authViewModel: AuthViewModel
     @StateObject private var languageManager: LanguageManager
@@ -114,6 +115,7 @@ struct OrchestranaApp: App {
                 externalController: externalController
             )
         )
+        _audioMixerStore = StateObject(wrappedValue: AudioMixerStore())
         _onboardingState = StateObject(wrappedValue: OnboardingState())
         _authViewModel = StateObject(wrappedValue: AuthViewModel.shared)
         _languageManager = StateObject(wrappedValue: LanguageManager.shared)
@@ -243,6 +245,7 @@ struct OrchestranaApp: App {
             .environmentObject(appState)
             .environmentObject(musicController)
             .environmentObject(audioSourceStore)
+            .environmentObject(audioMixerStore)
             .environmentObject(onboardingState)
             .environmentObject(authViewModel)
             .environmentObject(languageManager)
