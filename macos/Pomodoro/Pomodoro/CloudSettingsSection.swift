@@ -29,6 +29,7 @@ struct CloudSettingsSection: View {
     @EnvironmentObject private var localizationManager: LocalizationManager
     @State private var deleteConfirmationStep: DeleteAccountConfirmationStep?
     @State private var supportId: String?
+    @State private var supportIdErrorMessage: String?
     @State private var isLoadingSupportId = false
     @State private var supportIdLoadFailed = false
 
@@ -146,7 +147,7 @@ struct CloudSettingsSection: View {
                     .controlSize(.small)
             } else {
                 Text(supportIdDisplayValue)
-                    .font(.system(.footnote, design: .monospaced))
+                    .font(supportId == nil ? .footnote : .system(.footnote, design: .monospaced))
                     .foregroundStyle(supportId == nil ? .secondary : .primary)
                     .textSelection(.enabled)
             }
@@ -170,6 +171,9 @@ struct CloudSettingsSection: View {
     private var supportIdDisplayValue: String {
         if let supportId, !supportId.isEmpty {
             return supportId
+        }
+        if let supportIdErrorMessage, supportIdLoadFailed {
+            return supportIdErrorMessage
         }
         if supportIdLoadFailed {
             return localizationManager.text("settings.account.support_id_unavailable")
@@ -245,6 +249,7 @@ struct CloudSettingsSection: View {
         authViewModel.startListeningIfNeeded()
         guard authViewModel.isLoggedIn else {
             supportId = nil
+            supportIdErrorMessage = nil
             supportIdLoadFailed = false
             isLoadingSupportId = false
             return
@@ -252,6 +257,7 @@ struct CloudSettingsSection: View {
 
         isLoadingSupportId = true
         supportIdLoadFailed = false
+        supportIdErrorMessage = nil
         defer { isLoadingSupportId = false }
 
         for attempt in 1...2 {
@@ -259,12 +265,14 @@ struct CloudSettingsSection: View {
                 let profile = try await userProfileClient.fetchCurrentUserProfile()
                 let normalizedSupportId = profile.supportId?.trimmingCharacters(in: .whitespacesAndNewlines)
                 supportId = normalizedSupportId?.isEmpty == false ? normalizedSupportId : nil
+                supportIdErrorMessage = nil
                 supportIdLoadFailed = supportId == nil
                 if supportId != nil {
                     return
                 }
             } catch {
                 supportId = nil
+                supportIdErrorMessage = error.localizedDescription
                 supportIdLoadFailed = attempt == 2
             }
 

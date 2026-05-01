@@ -1137,6 +1137,7 @@ final class SubscriptionStore: ObservableObject {
 
         var activeTransactions: [Transaction] = []
         var backendSyncFailed = false
+        var backendSyncErrorMessage: String?
 
         for await verification in Transaction.currentEntitlements {
             let transaction: Transaction
@@ -1161,13 +1162,14 @@ final class SubscriptionStore: ObservableObject {
                 )
             } catch {
                 backendSyncFailed = true
+                backendSyncErrorMessage = subscriptionSyncErrorMessage(for: error)
                 ClientLog.debugError("[SubscriptionAPI] Backend sync failed", error)
             }
         }
 
         applyLocalEntitlements(from: activeTransactions)
         if backendSyncFailed && isSubscribed {
-            errorMessage = "Server subscription verification failed. AI features unlock after the server verifies your purchase."
+            errorMessage = backendSyncErrorMessage ?? Self.genericSubscriptionSyncFailureMessage
         }
         await FeatureGate.shared.refreshAllowance()
     }
@@ -1404,11 +1406,21 @@ final class SubscriptionStore: ObservableObject {
                 }
             } catch {
                 await MainActor.run {
-                    self.errorMessage = "Server subscription verification failed. AI features unlock after the server verifies your purchase."
+                    self.errorMessage = self.subscriptionSyncErrorMessage(for: error)
                 }
                 ClientLog.debugError("[SubscriptionAPI] Backend sync failed", error)
             }
         }
+    }
+
+    private static let genericSubscriptionSyncFailureMessage = "Server subscription verification failed. AI features unlock after the server verifies your purchase."
+
+    private func subscriptionSyncErrorMessage(for error: Error) -> String {
+        if let message = (error as? LocalizedError)?.errorDescription,
+           message.contains("temporarily restricted") || message.contains("Support ID") {
+            return message
+        }
+        return Self.genericSubscriptionSyncFailureMessage
     }
 
     private func syncBackend(

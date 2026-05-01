@@ -440,7 +440,10 @@ final class FeatureGate: ObservableObject {
                 throw GateError.invalidResponse
             }
             guard (200...299).contains(httpResponse.statusCode) else {
-                throw GateError.http(statusCode: httpResponse.statusCode)
+                throw GateError.http(
+                    statusCode: httpResponse.statusCode,
+                    message: Self.extractErrorMessage(from: data)
+                )
             }
             let object = try JSONSerialization.jsonObject(with: data)
             let payload = try decodeAllowancePayload(from: object)
@@ -580,7 +583,7 @@ final class FeatureGate: ObservableObject {
         case decodingFailed
         case invalidEndpoint
         case missingAuthToken
-        case http(statusCode: Int)
+        case http(statusCode: Int, message: String?)
 
         var errorDescription: String? {
             switch self {
@@ -592,10 +595,30 @@ final class FeatureGate: ObservableObject {
                 return LocalizationManager.shared.text("feature_gate.error.invalid_allowance_response")
             case .missingAuthToken:
                 return LocalizationManager.shared.text("api.error.auth_required")
-            case .http(let statusCode):
-                return "Allowance request failed with status \(statusCode)."
+            case .http(let statusCode, let message):
+                return message ?? "Allowance request failed with status \(statusCode)."
             }
         }
+    }
+
+    private struct ErrorEnvelope: Decodable {
+        struct InnerError: Decodable {
+            let message: String?
+        }
+
+        let error: InnerError?
+        let message: String?
+    }
+
+    private static func extractErrorMessage(from data: Data) -> String? {
+        if let decoded = try? JSONDecoder().decode(ErrorEnvelope.self, from: data) {
+            return decoded.error?.message ?? decoded.message
+        }
+        if let raw = String(data: data, encoding: .utf8),
+           !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return raw
+        }
+        return nil
     }
 
     private func makeAllowanceRequest() async throws -> URLRequest {
