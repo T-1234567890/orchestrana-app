@@ -171,7 +171,11 @@ struct MainWindowView: View {
             case .dashboard:
                 dashboardView
             case .workspace:
-                workspaceView
+                if SidebarItem.workspaceEnabled {
+                    workspaceView
+                } else {
+                    dashboardView
+                }
             case .tasks:
                 tasksView
             case .calendar:
@@ -793,7 +797,7 @@ struct MainWindowView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Insight AI")
                         .font(.headline)
-                    Text("Run analysis here, or open Workspace for the full AI toolset.")
+                    Text(SidebarItem.workspaceEnabled ? "Run analysis here, or open Workspace for the full AI toolset." : "Run analysis here from Insights.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -803,12 +807,14 @@ struct MainWindowView: View {
                 HStack(spacing: 8) {
                     insightAIButtons
 
-                    Button("Open Workspace") {
-                        withAnimation {
-                            sidebarSelection = .workspace
+                    if SidebarItem.workspaceEnabled {
+                        Button("Open Workspace") {
+                            withAnimation {
+                                sidebarSelection = .workspace
+                            }
                         }
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.bordered)
                 }
             }
 
@@ -2245,8 +2251,12 @@ struct MainWindowView: View {
 
         var id: String { rawValue }
 
+        static let workspaceEnabled = false
+
         static var visibleItems: [SidebarItem] {
-            [.dashboard, .flow, .workspace, .tasks, .calendar, .insights, .settings]
+            workspaceEnabled
+                ? [.dashboard, .flow, .workspace, .tasks, .calendar, .insights, .settings]
+                : [.dashboard, .flow, .tasks, .calendar, .insights, .settings]
         }
 
         var localizationKey: String {
