@@ -257,14 +257,31 @@ struct TodoListView: View {
             }
             
             if let last = remindersSync.lastSyncDate {
-                HStack {
-                    Text(localizationManager.format("tasks.last_sync_format", formatLastSyncDate(last)))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Toggle(localizationManager.text("tasks.auto_sync"), isOn: $remindersSync.isAutoSyncEnabled)
-                        .toggleStyle(.switch)
-                        .labelsHidden()
-                    Spacer()
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(localizationManager.format("tasks.last_sync_format", formatLastSyncDate(last)))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+
+                    HStack(alignment: .center, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(localizationManager.text("tasks.auto_sync"))
+                                .font(.subheadline.weight(.medium))
+                            Text(localizationManager.text("tasks.auto_sync.description"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        Toggle(localizationManager.text("tasks.auto_sync"), isOn: $remindersSync.isAutoSyncEnabled)
+                            .toggleStyle(.switch)
+                            .labelsHidden()
+                            .accessibilityLabel(localizationManager.text("tasks.auto_sync"))
+                            .accessibilityHint(localizationManager.text("tasks.auto_sync.description"))
+                    }
                 }
                 .padding(.horizontal, 32)
                 .padding(.bottom, 6)
@@ -641,6 +658,14 @@ struct TodoListView: View {
                             Label(localizationManager.text("tasks.action.sync_to_reminders"), systemImage: "arrow.triangle.2.circlepath")
                         }
                     } else {
+                        Button(action: {
+                            Task {
+                                try? await remindersSync.resynchronizeTaskFromReminder(item)
+                            }
+                        }) {
+                            Label(localizationManager.text("tasks.action.update_from_reminders"), systemImage: "arrow.down.circle")
+                        }
+
                         Button(action: {
                             remindersSync.unsyncFromReminders(item)
                         }) {

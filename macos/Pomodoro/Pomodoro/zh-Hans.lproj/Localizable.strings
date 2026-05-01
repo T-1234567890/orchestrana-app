@@ -295,9 +295,11 @@
 "tasks.action.plan_for_today" = "计划到今天";
 "tasks.action.remove_plan_date" = "移除计划日期";
 "tasks.action.sync_to_reminders" = "同步到提醒事项";
+"tasks.action.update_from_reminders" = "从提醒事项更新";
 "tasks.action.unsync_from_reminders" = "取消提醒事项同步";
 "tasks.add_task" = "添加任务";
 "tasks.auto_sync" = "自动同步";
+"tasks.auto_sync.description" = "自动保持已关联任务与 Apple 提醒事项同步。";
 "tasks.batch.delete_confirmation_body" = "这将删除所有已选任务，且无法撤销。";
 "tasks.batch.delete_confirmation_title" = "删除 %d 项？";
 "tasks.editor.add_title" = "添加任务";
@@ -337,7 +339,8 @@
 "tasks.subtitle" = "你的任务列表（可选同步到提醒事项）";
 "tasks.sync.auto_failed_format" = "自动同步（%1$@）失败：%2$@";
 "tasks.sync.auto_requires_reminders_access" = "自动同步需要提醒事项权限。";
-"tasks.sync_all_tasks" = "全部同步";
+"tasks.resync_reminders" = "重新同步提醒事项";
+"tasks.sync_all_tasks" = "同步所有提醒事项";
 "tasks.syncing" = "同步中…";
 "tasks.title" = "任务";
 "tasks.unplanned" = "未计划";

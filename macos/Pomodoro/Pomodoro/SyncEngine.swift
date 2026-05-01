@@ -69,6 +69,23 @@ final class SyncEngine {
         return try await syncReminder(for: item, calendar: calendar)
     }
 
+    func resyncTaskFromReminder(_ item: TodoItem) async throws {
+        try await ensureRemindersAccess()
+        guard let store = todoStore else { return }
+        guard let reminder = existingReminder(for: item) else {
+            throw SyncError.reminderNotFound
+        }
+        guard !shouldSkipLoopProtectedImport(for: item) else {
+            ClientLog.debug("[SyncEngine][Reminders] Skipping single-task import due to loop protection")
+            return
+        }
+
+        var updated = item
+        applyLocalTaskFields(to: &updated, from: reminder)
+        store.updateItem(updated)
+        ClientLog.debug("[SyncEngine][Reminders] Updated single local task from reminder")
+    }
+
     func testReminderCreation() async {
         ClientLog.debug("[SyncEngine][RemindersTest] Starting test reminder creation")
 
@@ -109,6 +126,11 @@ final class SyncEngine {
         ClientLog.debug("[SyncEngine][Reminders] \(existing == nil ? "Creating" : "Updating") reminder")
 
         reminder.calendar = calendar
+        if existing != nil, reminderMatches(reminder, item: item) {
+            ClientLog.debug("[SyncEngine][Reminders] Skipping save because reminder is unchanged")
+            return reminder.calendarItemIdentifier
+        }
+
         applyReminderFields(to: reminder, from: item)
 
         do {
@@ -323,17 +345,13 @@ final class SyncEngine {
                     ClientLog.debug("[SyncEngine][Reminders] Skipping import due to loop protection")
                     continue
                 }
+                if localTaskMatches(local, reminder: reminder) {
+                    ClientLog.debug("[SyncEngine][Reminders] Skipping local update because task is unchanged")
+                    continue
+                }
 
                 var updated = local
-                updated.title = reminderTitle
-                updated.notes = cleanedReminderNotes(reminder.notes)
-                updated.isCompleted = reminder.isCompleted
-                updated.dueDate = reminder.dueDateComponents.flatMap { Calendar.current.date(from: $0) }
-                updated.hasDueTime = reminder.dueDateComponents?.hasTimeComponents ?? false
-                updated.lastModified = reminder.lastModifiedDate ?? reminder.creationDate ?? Date()
-                updated.reminderIdentifier = reminder.calendarItemIdentifier
-                updated.lastSyncedAt = Date()
-                updated.syncStatus = .synced
+                applyLocalTaskFields(to: &updated, from: reminder)
                 store.updateItem(updated)
                 ClientLog.debug("[SyncEngine][Reminders] Updated local task from reminder")
             } else {
@@ -351,6 +369,34 @@ final class SyncEngine {
                 ClientLog.debug("[SyncEngine][Reminders] Created local task from reminder")
             }
         }
+    }
+
+    private func reminderMatches(_ reminder: EKReminder, item: TodoItem) -> Bool {
+        reminder.title == item.title &&
+            cleanedReminderNotes(reminder.notes) == (item.notes?.isEmpty == true ? nil : item.notes) &&
+            reminder.isCompleted == item.isCompleted &&
+            reminder.dueDateComponents.flatMap { Calendar.current.date(from: $0) } == item.dueDate &&
+            (reminder.dueDateComponents?.hasTimeComponents ?? false) == item.hasDueTime
+    }
+
+    private func localTaskMatches(_ item: TodoItem, reminder: EKReminder) -> Bool {
+        item.title == (reminder.title ?? "Untitled Reminder") &&
+            (item.notes?.isEmpty == true ? nil : item.notes) == cleanedReminderNotes(reminder.notes) &&
+            item.isCompleted == reminder.isCompleted &&
+            item.dueDate == reminder.dueDateComponents.flatMap { Calendar.current.date(from: $0) } &&
+            item.hasDueTime == (reminder.dueDateComponents?.hasTimeComponents ?? false)
+    }
+
+    private func applyLocalTaskFields(to item: inout TodoItem, from reminder: EKReminder) {
+        item.title = reminder.title ?? "Untitled Reminder"
+        item.notes = cleanedReminderNotes(reminder.notes)
+        item.isCompleted = reminder.isCompleted
+        item.dueDate = reminder.dueDateComponents.flatMap { Calendar.current.date(from: $0) }
+        item.hasDueTime = reminder.dueDateComponents?.hasTimeComponents ?? false
+        item.lastModified = reminder.lastModifiedDate ?? reminder.creationDate ?? Date()
+        item.reminderIdentifier = reminder.calendarItemIdentifier
+        item.lastSyncedAt = Date()
+        item.syncStatus = .synced
     }
 
     private func cleanedReminderNotes(_ notes: String?) -> String? {
@@ -667,6 +713,7 @@ final class SyncEngine {
     enum SyncError: LocalizedError {
         case notAuthorized
         case noReminderCalendar
+        case reminderNotFound
         case reminderSaveFailed(String, String)
         case partialReminderSyncFailed(String)
         case noCalendarAvailable
@@ -677,6 +724,8 @@ final class SyncEngine {
                 return "Calendar or Reminders access not authorized."
             case .noReminderCalendar:
                 return "No default reminders calendar is available."
+            case .reminderNotFound:
+                return "The linked reminder could not be found."
             case let .reminderSaveFailed(title, message):
                 return "Reminder save failed for '\(title)': \(message)"
             case let .partialReminderSyncFailed(message):

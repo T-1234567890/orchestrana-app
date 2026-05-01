@@ -295,9 +295,11 @@
 "tasks.action.plan_for_today" = "Plan for Today";
 "tasks.action.remove_plan_date" = "Remove Plan Date";
 "tasks.action.sync_to_reminders" = "Sync to Reminders";
+"tasks.action.update_from_reminders" = "Update from Reminders";
 "tasks.action.unsync_from_reminders" = "Unsync from Reminders";
 "tasks.add_task" = "Add Task";
 "tasks.auto_sync" = "Auto-sync";
+"tasks.auto_sync.description" = "Keep linked tasks updated with Apple Reminders automatically.";
 "tasks.batch.delete_confirmation_body" = "This will remove all selected tasks. This action cannot be undone.";
 "tasks.batch.delete_confirmation_title" = "Delete %d items?";
 "tasks.editor.add_title" = "Add Task";
@@ -337,7 +339,8 @@
 "tasks.subtitle" = "Your task list with optional Reminders sync";
 "tasks.sync.auto_failed_format" = "Auto-sync (%1$@) failed: %2$@";
 "tasks.sync.auto_requires_reminders_access" = "Auto-sync requires Reminders access.";
-"tasks.sync_all_tasks" = "Sync All";
+"tasks.resync_reminders" = "Resync Reminders";
+"tasks.sync_all_tasks" = "Sync All Reminders";
 "tasks.syncing" = "Syncing…";
 "tasks.title" = "Tasks";
 "tasks.unplanned" = "Unplanned";

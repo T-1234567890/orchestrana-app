@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import EventKit
 
 /// Task-centric sync wrapper that delegates all EventKit work to SyncEngine.
 @MainActor
@@ -22,11 +23,15 @@ final class RemindersSync: ObservableObject {
     private var itemChangeCancellable: AnyCancellable?
     private var periodicAutoSyncTask: Task<Void, Never>?
     private var changeTriggeredSyncTask: Task<Void, Never>?
+    private var remindersChangeSyncTask: Task<Void, Never>?
     private var retryBackoffTask: Task<Void, Never>?
+    private var eventStoreChangeCancellable: AnyCancellable?
     private var autoSyncRetryAttempt = 0
+    private var suppressChangeTriggeredSyncUntil = Date.distantPast
 
     private let periodicSyncIntervalSeconds: TimeInterval = 300
     private let changeDebounceSeconds: TimeInterval = 1.5
+    private let syncChangeSuppressionSeconds: TimeInterval = 5
     private let maxBackoffDelaySeconds: TimeInterval = 60
     
     init(permissionsManager: PermissionsManager, syncEngine: SyncEngine? = nil) {
@@ -38,6 +43,7 @@ final class RemindersSync: ObservableObject {
     deinit {
         periodicAutoSyncTask?.cancel()
         changeTriggeredSyncTask?.cancel()
+        remindersChangeSyncTask?.cancel()
         retryBackoffTask?.cancel()
     }
     
@@ -45,6 +51,7 @@ final class RemindersSync: ObservableObject {
         todoStore = store
         syncEngine.attachTodoStore(store)
         observeLocalItemChanges()
+        observeReminderStoreChanges()
         configureAutoSyncBehavior()
     }
     
@@ -56,8 +63,8 @@ final class RemindersSync: ObservableObject {
     
     /// Sync a single task by invoking the unified reminders sync.
     func syncTask(_ item: TodoItem) async throws {
-        isSyncing = true
-        defer { isSyncing = false }
+        beginSyncOperation()
+        defer { endSyncOperation() }
         
         do {
             let reminderId = try await syncEngine.syncReminder(for: item)
@@ -73,8 +80,8 @@ final class RemindersSync: ObservableObject {
     
     /// Unified sync for all tasks (delegates to SyncEngine).
     func syncAllTasks() async {
-        isSyncing = true
-        defer { isSyncing = false }
+        beginSyncOperation()
+        defer { endSyncOperation() }
         
         do {
             try await syncEngine.syncTasksWithReminders()
@@ -88,6 +95,32 @@ final class RemindersSync: ObservableObject {
             lastSyncError = error.localizedDescription
         }
     }
+
+    /// Re-read Apple Reminders and push linked local updates back out.
+    func resynchronizeReminders() async {
+        await syncAllTasks()
+    }
+
+    /// Re-read one linked Apple Reminder into its local task.
+    func resynchronizeTaskFromReminder(_ item: TodoItem) async throws {
+        guard item.reminderIdentifier != nil else { return }
+
+        beginSyncOperation()
+        defer { endSyncOperation() }
+
+        do {
+            try await syncEngine.resyncTaskFromReminder(item)
+            lastSyncError = nil
+            lastSyncDate = Date()
+            resetAutoSyncBackoff()
+            DispatchQueue.main.async {
+                self.todoStore?.objectWillChange.send()
+            }
+        } catch {
+            lastSyncError = error.localizedDescription
+            throw error
+        }
+    }
     
     /// Remove Reminder link (does not delete remote)
     func unsyncFromReminders(_ item: TodoItem) {
@@ -97,6 +130,9 @@ final class RemindersSync: ObservableObject {
     
     /// Delete reminder from Apple Reminders via SyncEngine.
     func deleteReminder(_ item: TodoItem) async throws {
+        beginSyncOperation()
+        defer { endSyncOperation() }
+
         try await syncEngine.deleteReminder(for: item)
         todoStore?.unlinkFromReminder(itemId: item.id)
     }
@@ -112,6 +148,16 @@ final class RemindersSync: ObservableObject {
             .sink { [weak self] _ in
                 guard let self else { return }
                 self.scheduleChangeTriggeredAutoSync()
+            }
+    }
+
+    private func observeReminderStoreChanges() {
+        eventStoreChangeCancellable?.cancel()
+        eventStoreChangeCancellable = NotificationCenter.default
+            .publisher(for: .EKEventStoreChanged)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.scheduleReminderStoreChangeSync()
             }
     }
 
@@ -142,6 +188,8 @@ final class RemindersSync: ObservableObject {
         periodicAutoSyncTask = nil
         changeTriggeredSyncTask?.cancel()
         changeTriggeredSyncTask = nil
+        remindersChangeSyncTask?.cancel()
+        remindersChangeSyncTask = nil
         retryBackoffTask?.cancel()
         retryBackoffTask = nil
         autoSyncRetryAttempt = 0
@@ -149,6 +197,7 @@ final class RemindersSync: ObservableObject {
 
     private func scheduleChangeTriggeredAutoSync(immediate: Bool = false) {
         guard isAutoSyncEnabled else { return }
+        guard shouldHandleChangeTriggeredSync() else { return }
         changeTriggeredSyncTask?.cancel()
         changeTriggeredSyncTask = Task { [weak self] in
             guard let self else { return }
@@ -156,8 +205,21 @@ final class RemindersSync: ObservableObject {
                 let nanoseconds = UInt64(changeDebounceSeconds * 1_000_000_000)
                 try? await Task.sleep(nanoseconds: nanoseconds)
             }
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, self.shouldHandleChangeTriggeredSync() else { return }
             await self.triggerAutoSync(reason: "change")
+        }
+    }
+
+    private func scheduleReminderStoreChangeSync() {
+        guard isAutoSyncEnabled else { return }
+        guard isSyncAvailable else { return }
+        guard shouldHandleChangeTriggeredSync() else { return }
+        remindersChangeSyncTask?.cancel()
+        remindersChangeSyncTask = Task { [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(nanoseconds: UInt64(changeDebounceSeconds * 1_000_000_000))
+            guard !Task.isCancelled, self.shouldHandleChangeTriggeredSync() else { return }
+            await self.resynchronizeReminders()
         }
     }
 
@@ -178,8 +240,8 @@ final class RemindersSync: ObservableObject {
     }
 
     private func performAutoSync(mode: String) async -> Bool {
-        isSyncing = true
-        defer { isSyncing = false }
+        beginSyncOperation()
+        defer { endSyncOperation() }
 
         do {
             try await syncEngine.syncTasksWithReminders()
@@ -210,6 +272,24 @@ final class RemindersSync: ObservableObject {
         autoSyncRetryAttempt = 0
         retryBackoffTask?.cancel()
         retryBackoffTask = nil
+    }
+
+    private func beginSyncOperation() {
+        remindersChangeSyncTask?.cancel()
+        remindersChangeSyncTask = nil
+        changeTriggeredSyncTask?.cancel()
+        changeTriggeredSyncTask = nil
+        suppressChangeTriggeredSyncUntil = Date().addingTimeInterval(syncChangeSuppressionSeconds)
+        isSyncing = true
+    }
+
+    private func endSyncOperation() {
+        suppressChangeTriggeredSyncUntil = Date().addingTimeInterval(syncChangeSuppressionSeconds)
+        isSyncing = false
+    }
+
+    private func shouldHandleChangeTriggeredSync() -> Bool {
+        !isSyncing && Date() >= suppressChangeTriggeredSyncUntil
     }
 
     private func persistAutoSyncPreference() {
