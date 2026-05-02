@@ -26,6 +26,7 @@ final class FlowWindowManager: ObservableObject {
     private var appState: AppState?
     private var musicController: MusicController?
     private var audioSourceStore: AudioSourceStore?
+    private var audioMixerStore: AudioMixerStore?
     private var onboardingState: OnboardingState?
     private var authViewModel: AuthViewModel?
     private var languageManager: LanguageManager?
@@ -49,6 +50,7 @@ final class FlowWindowManager: ObservableObject {
         appState: AppState,
         musicController: MusicController,
         audioSourceStore: AudioSourceStore,
+        audioMixerStore: AudioMixerStore,
         onboardingState: OnboardingState,
         authViewModel: AuthViewModel,
         languageManager: LanguageManager,
@@ -58,6 +60,7 @@ final class FlowWindowManager: ObservableObject {
         self.appState = appState
         self.musicController = musicController
         self.audioSourceStore = audioSourceStore
+        self.audioMixerStore = audioMixerStore
         self.onboardingState = onboardingState
         self.authViewModel = authViewModel
         self.languageManager = languageManager
@@ -175,6 +178,7 @@ final class FlowWindowManager: ObservableObject {
         guard let appState,
               let musicController,
               let audioSourceStore,
+              let audioMixerStore,
               let onboardingState,
               let authViewModel,
               let languageManager,
@@ -194,6 +198,7 @@ final class FlowWindowManager: ObservableObject {
             .environmentObject(appState)
             .environmentObject(musicController)
             .environmentObject(audioSourceStore)
+            .environmentObject(audioMixerStore)
             .environmentObject(onboardingState)
             .environmentObject(authViewModel)
             .environmentObject(languageManager)

@@ -264,6 +264,7 @@ struct OrchestranaApp: App {
                     appState: appState,
                     musicController: musicController,
                     audioSourceStore: audioSourceStore,
+                    audioMixerStore: audioMixerStore,
                     onboardingState: onboardingState,
                     authViewModel: authViewModel,
                     languageManager: languageManager,

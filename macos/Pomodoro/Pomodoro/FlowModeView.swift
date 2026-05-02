@@ -1282,36 +1282,16 @@ private extension View {
 private struct AmbientAudioStrip: View {
     @EnvironmentObject private var musicController: MusicController
     @EnvironmentObject private var audioSourceStore: AudioSourceStore
+    @EnvironmentObject private var mixerStore: AudioMixerStore
     @EnvironmentObject private var localizationManager: LocalizationManager
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var ambientVolume: Double = 0.4
-    @State private var sliderEditing = false
-    @State private var sliderHover = false
+    @State private var showMixer = false
 
     var body: some View {
-        Group {
-            if audioSourceStore.externalMediaDetected, let media = audioSourceStore.externalMediaMetadata {
-                externalStrip(media)
-            } else {
-                ambientStrip
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .frame(maxWidth: 620)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.ultraThinMaterial)
-        )
-        .onAppear {
-            ambientVolume = Double(musicController.focusVolume)
-        }
-    }
-
-    private var ambientStrip: some View {
         HStack(spacing: 14) {
-            Button(action: toggleAmbient) {
-                Image(systemName: musicController.playbackState == .playing ? "pause.fill" : "play.fill")
+            Button {
+                toggleBottomBarPlayback()
+            } label: {
+                Image(systemName: bottomBarPlaybackIcon)
                     .font(.title3.weight(.semibold))
                     .frame(width: 42, height: 42)
                     .foregroundStyle(.primary)
@@ -1322,88 +1302,78 @@ private struct AmbientAudioStrip: View {
             }
             .buttonStyle(.plain)
 
-            HStack(spacing: 10) {
-                soundIcon
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 28, height: 28)
-                    .cornerRadius(6)
-                    .foregroundStyle(.primary.opacity(0.85))
+            Button {
+                showMixer = true
+            } label: {
+                HStack(spacing: 10) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.secondary)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(ambientTitle)
+                    Text(localizationManager.text("audio.open_mixer"))
                         .font(.subheadline.weight(.semibold))
-                    Text(localizationManager.text("audio.ambient_local"))
+                    Text(nowPlayingSubtitle)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
 
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer()
 
-            Slider(
-                value: $ambientVolume,
-                in: 0...1,
-                onEditingChanged: { editing in
-                    if reduceMotion {
-                        sliderEditing = editing
-                    } else {
-                        withAnimation(.easeOut(duration: 0.2)) { sliderEditing = editing }
-                    }
-                },
-                minimumValueLabel: Image(systemName: "speaker.wave.1.fill").foregroundStyle(.secondary),
-                maximumValueLabel: Image(systemName: "speaker.wave.3.fill").foregroundStyle(.secondary),
-                label: { EmptyView() }
-            )
-            .frame(width: 180)
-            .tint(.primary.opacity(0.65))
-            // Smooth track fill animation; matches macOS slider feel.
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: ambientVolume)
-            // Knob scales very slightly while dragging; no layout change.
-            .scaleEffect(sliderEditing ? 1.03 : 1.0, anchor: .center)
-            // Hover brightens softly to indicate focus without glow.
-            .opacity((sliderHover || sliderEditing) ? 1.0 : 0.95)
-            .onHover { hovering in
-                if reduceMotion {
-                    sliderHover = hovering
-                } else {
-                    withAnimation(.easeOut(duration: 0.18)) { sliderHover = hovering }
+                Image(systemName: "chevron.up")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
                 }
             }
-            .accessibilityLabel(localizationManager.text("audio.accessibility.ambient_volume"))
-            .onChange(of: ambientVolume) { _, newValue in
-                audioSourceStore.setVolume(Float(newValue))
-            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(maxWidth: 360)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .popover(isPresented: $showMixer, arrowEdge: .bottom) {
+            FlowAudioMixerPopover()
+                .environmentObject(musicController)
+                .environmentObject(audioSourceStore)
+                .environmentObject(mixerStore)
+                .environmentObject(localizationManager)
         }
     }
 
-    private func externalStrip(_ media: ExternalMedia) -> some View {
-        HStack(spacing: 14) {
-            artwork(for: media)
-                .frame(width: 52, height: 52)
+    private var bottomBarPlaybackIcon: String {
+        isBottomBarAudioPlaying ? "pause.fill" : "play.fill"
+    }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(localizationManager.format("audio.now_playing_source", media.source.displayName))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(media.title)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                Text(media.artist)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+    private var isBottomBarAudioPlaying: Bool {
+        mixerStore.isPlaying || musicController.playbackState == .playing
+    }
+
+    private func toggleBottomBarPlayback() {
+        if !mixerStore.selectedTracks.isEmpty {
+            if mixerStore.isPlaying {
+                mixerStore.pause()
+            } else {
+                audioSourceStore.selectAmbient(.off)
+                mixerStore.play()
             }
+            return
+        }
 
-            Spacer()
+        if musicController.currentFocusSound == .off {
+            audioSourceStore.selectAmbient(.white)
+        } else {
+            audioSourceStore.togglePlayPause()
         }
     }
 
-    private func toggleAmbient() {
-        audioSourceStore.togglePlayPause()
-    }
-
-    private var ambientTitle: String {
+    private var nowPlayingSubtitle: String {
+        if mixerStore.isPlaying || !mixerStore.selectedTracks.isEmpty {
+            return mixerStore.nowPlayingTitle
+        }
         if case .ambient(let type) = audioSourceStore.audioSource {
             return type.displayName
         }
@@ -1411,36 +1381,228 @@ private struct AmbientAudioStrip: View {
             ? localizationManager.text("audio.sound.white_noise")
             : musicController.currentFocusSound.displayName
     }
+}
 
-    private var soundIcon: Image {
-        switch musicController.currentFocusSound {
-        case .white, .off:
-            return Image(systemName: "waveform")
-        case .brown:
-            return Image(systemName: "wind")
-        case .rain:
-            return Image(systemName: "cloud.rain")
-        case .wind:
-            return Image(systemName: "wind.circle")
+private struct FlowAudioMixerPopover: View {
+    @EnvironmentObject private var musicController: MusicController
+    @EnvironmentObject private var audioSourceStore: AudioSourceStore
+    @EnvironmentObject private var mixerStore: AudioMixerStore
+    @EnvironmentObject private var localizationManager: LocalizationManager
+    @ObservedObject private var featureGate = FeatureGate.shared
+    @ObservedObject private var subscriptionStore = SubscriptionStore.shared
+    @State private var upgradePaywallContext: SubscriptionPaywallContext?
+    @State private var customPackErrorMessage: String?
+
+    private var cleanNoiseTypes: [FocusSoundType] {
+        [.white, .brown]
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(localizationManager.text("audio.mixer.title"))
+                        .font(.system(.headline, design: .rounded).weight(.semibold))
+                    Text(localizationManager.text("audio.mixer.subtitle"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+
+            cleanNoiseSection
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    customAudioPackSection
+
+                    ForEach(mixerStore.availablePacks) { pack in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 8) {
+                                Image(systemName: pack.symbolName)
+                                    .foregroundStyle(.secondary)
+                                Text(pack.name)
+                                    .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                                Spacer()
+                                Button(localizationManager.text("audio.mixer.select_pack")) {
+                                    audioSourceStore.selectAmbient(.off)
+                                    mixerStore.selectPack(pack)
+                                    mixerStore.play()
+                                }
+                                .controlSize(.small)
+                            }
+
+                            ForEach(pack.tracks) { track in
+                                FlowAudioMixerTrackRow(track: track)
+                                    .environmentObject(mixerStore)
+                            }
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .frame(maxHeight: 360)
+            .scrollIndicators(.hidden)
+        }
+        .sheet(item: $upgradePaywallContext) { context in
+            SubscriptionUpgradeSheetView(
+                context: context,
+                featureGate: featureGate,
+                subscriptionStore: subscriptionStore
+            )
+        }
+        .padding(16)
+        .frame(width: 430)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private var cleanNoiseSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(localizationManager.text("audio.generated_noise"))
+                .font(.system(.subheadline, design: .rounded).weight(.semibold))
+
+            HStack(spacing: 8) {
+                ForEach(cleanNoiseTypes, id: \.self) { type in
+                    Button {
+                        mixerStore.pause()
+                        audioSourceStore.selectAmbient(currentAmbient == type ? .off : type)
+                    } label: {
+                        Text(type.displayName)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(currentAmbient == type ? .white : .primary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(currentAmbient == type ? Color.accentColor : Color.primary.opacity(0.08))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
     }
 
-    @ViewBuilder
-    private func artwork(for media: ExternalMedia) -> some View {
-        if let artwork = media.artwork {
-            Image(nsImage: artwork)
-                .resizable()
-                .scaledToFill()
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        } else {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(.quaternary)
-                Image(systemName: "music.note")
-                    .font(.system(size: 18, weight: .semibold))
+    private var customAudioPackSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "folder.badge.plus")
                     .foregroundStyle(.secondary)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(localizationManager.text("audio.mixer.your_pack"))
+                        .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                    Text(localizationManager.text("audio.mixer.your_pack.subtitle"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                Button {
+                    chooseCustomAudioFolder()
+                } label: {
+                    Label(localizationManager.text("audio.mixer.choose_folder"), systemImage: featureGate.canUseCustomAudioPacks ? "folder" : "lock.fill")
+                }
+                .controlSize(.small)
+            }
+
+            if let customPackErrorMessage {
+                Text(customPackErrorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
             }
         }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.primary.opacity(0.045))
+        )
+    }
+
+    private var currentAmbient: FocusSoundType {
+        if case .ambient(let type) = audioSourceStore.audioSource {
+            return type
+        }
+        return .off
+    }
+
+    private func chooseCustomAudioFolder() {
+        guard featureGate.canUseCustomAudioPacks else {
+            upgradePaywallContext = SubscriptionPaywallContext(
+                requiredTier: .plus,
+                title: localizationManager.text("audio.mixer.your_pack.paywall_title"),
+                message: localizationManager.text("audio.mixer.your_pack.paywall_message")
+            )
+            return
+        }
+
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = false
+        panel.prompt = localizationManager.text("audio.mixer.choose_folder")
+
+        guard panel.runModal() == .OK, let folderURL = panel.url else { return }
+
+        do {
+            customPackErrorMessage = nil
+            try mixerStore.loadCustomPack(from: folderURL)
+            audioSourceStore.selectAmbient(.off)
+            mixerStore.play()
+        } catch {
+            customPackErrorMessage = error.localizedDescription
+        }
+    }
+}
+
+private struct FlowAudioMixerTrackRow: View {
+    @EnvironmentObject private var mixerStore: AudioMixerStore
+    let track: LofiAudioTrack
+
+    private var isSelected: Bool {
+        mixerStore.selectedTrackIDs.contains(track.id)
+    }
+
+    private var volumeBinding: Binding<Double> {
+        Binding(
+            get: { mixerStore.trackVolumes[track.id] ?? 0.45 },
+            set: { mixerStore.setVolume($0, for: track) }
+        )
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button {
+                mixerStore.toggleTrack(track)
+            } label: {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+            }
+            .buttonStyle(.plain)
+
+            Image(systemName: track.symbolName)
+                .frame(width: 18)
+                .foregroundStyle(.secondary)
+
+            Text(track.title)
+                .font(.caption.weight(.medium))
+                .frame(width: 110, alignment: .leading)
+                .lineLimit(1)
+
+            Slider(value: volumeBinding, in: 0...1)
+                .disabled(!isSelected)
+                .opacity(isSelected ? 1.0 : 0.45)
+        }
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(isSelected ? Color.accentColor.opacity(0.10) : Color.primary.opacity(0.045))
+        )
     }
 }
 
@@ -1455,11 +1617,13 @@ private struct AmbientAudioStrip: View {
             externalMonitor: externalMonitor,
             externalController: externalController
         )
+        let audioMixerStore = AudioMixerStore()
         let fullscreenFocusBackdropStore = FullscreenFocusBackdropStore()
         return FlowModeView()
             .environmentObject(appState)
             .environmentObject(musicController)
             .environmentObject(audioSourceStore)
+            .environmentObject(audioMixerStore)
             .environmentObject(fullscreenFocusBackdropStore)
     }
 }
