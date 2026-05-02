@@ -34,6 +34,8 @@ final class AppState: ObservableObject {
     @Published private(set) var currentPlanTitle: String?
     @Published private(set) var currentPlanPomodoros: Int?
     @Published private(set) var currentPlanPresetID: String?
+    @Published private(set) var currentPlanEntryID: UUID?
+    @Published private(set) var currentPlanSource: PlanExecutionSource?
     @Published private(set) var dailyStats: DailyStats
     @Published var notificationPreference: NotificationPreference {
         didSet {
@@ -81,6 +83,21 @@ final class AppState: ObservableObject {
         let title: String
         let pomodoros: Int
         let pomodoroPresetID: String?
+        let source: PlanExecutionSource
+    }
+
+    enum PlanExecutionSource: String, Codable, Equatable {
+        case plannedTask
+        case calendarSchedule
+
+        var displayName: String {
+            switch self {
+            case .plannedTask:
+                return "AI planned task"
+            case .calendarSchedule:
+                return "Calendar plan"
+            }
+        }
     }
 
     // Designated initializer - no default arguments to avoid linker symbol issues
@@ -263,10 +280,18 @@ final class AppState: ObservableObject {
         pomodoro.start()
     }
 
-    func applyPlan(title: String, pomodoroCount: Int, pomodoroPresetID: String? = nil) {
+    func applyPlan(
+        title: String,
+        pomodoroCount: Int,
+        pomodoroPresetID: String? = nil,
+        entryID: UUID? = nil,
+        source: PlanExecutionSource? = nil
+    ) {
         currentPlanTitle = title
         currentPlanPomodoros = max(1, pomodoroCount)
         currentPlanPresetID = pomodoroPresetID
+        currentPlanEntryID = entryID
+        currentPlanSource = source
     }
 
     func startExecutionPlan(_ entries: [PlanExecutionEntry]) {
@@ -275,7 +300,13 @@ final class AppState: ObservableObject {
         activeExecutionEntry = first
         pomodoro.reset()
         applyExecutionPreset(first.pomodoroPresetID)
-        applyPlan(title: first.title, pomodoroCount: first.pomodoros, pomodoroPresetID: first.pomodoroPresetID)
+        applyPlan(
+            title: first.title,
+            pomodoroCount: first.pomodoros,
+            pomodoroPresetID: first.pomodoroPresetID,
+            entryID: first.id,
+            source: first.source
+        )
         pomodoro.start()
     }
 
@@ -285,6 +316,37 @@ final class AppState: ObservableObject {
         currentPlanTitle = nil
         currentPlanPomodoros = nil
         currentPlanPresetID = nil
+        currentPlanEntryID = nil
+        currentPlanSource = nil
+    }
+
+    func finishActiveExecutionEntry() {
+        guard activeExecutionEntry != nil else {
+            clearExecutionPlan()
+            pomodoro.reset()
+            updatePomodoroConfiguration()
+            return
+        }
+
+        if let next = pendingExecutionQueue.first {
+            pendingExecutionQueue.removeFirst()
+            activeExecutionEntry = next
+            pomodoro.reset()
+            applyExecutionPreset(next.pomodoroPresetID)
+            applyPlan(
+                title: next.title,
+                pomodoroCount: next.pomodoros,
+                pomodoroPresetID: next.pomodoroPresetID,
+                entryID: next.id,
+                source: next.source
+            )
+            pomodoro.start()
+            return
+        }
+
+        pomodoro.reset()
+        clearExecutionPlan()
+        updatePomodoroConfiguration()
     }
 
     func startOrPausePomodoro() {
@@ -566,7 +628,13 @@ final class AppState: ObservableObject {
             pendingExecutionQueue.removeFirst()
             activeExecutionEntry = next
             applyExecutionPreset(next.pomodoroPresetID)
-            applyPlan(title: next.title, pomodoroCount: next.pomodoros, pomodoroPresetID: next.pomodoroPresetID)
+            applyPlan(
+                title: next.title,
+                pomodoroCount: next.pomodoros,
+                pomodoroPresetID: next.pomodoroPresetID,
+                entryID: next.id,
+                source: next.source
+            )
             return
         }
 

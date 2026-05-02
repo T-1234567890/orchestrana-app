@@ -30,6 +30,7 @@ final class FlowWindowManager: ObservableObject {
     private var authViewModel: AuthViewModel?
     private var languageManager: LanguageManager?
     private var fullscreenFocusBackdropStore: FullscreenFocusBackdropStore?
+    private var todoStore: TodoStore?
 
     deinit {
         premiumPreviewTask?.cancel()
@@ -51,7 +52,8 @@ final class FlowWindowManager: ObservableObject {
         onboardingState: OnboardingState,
         authViewModel: AuthViewModel,
         languageManager: LanguageManager,
-        fullscreenFocusBackdropStore: FullscreenFocusBackdropStore
+        fullscreenFocusBackdropStore: FullscreenFocusBackdropStore,
+        todoStore: TodoStore? = nil
     ) {
         self.appState = appState
         self.musicController = musicController
@@ -60,6 +62,12 @@ final class FlowWindowManager: ObservableObject {
         self.authViewModel = authViewModel
         self.languageManager = languageManager
         self.fullscreenFocusBackdropStore = fullscreenFocusBackdropStore
+        self.todoStore = todoStore
+        refreshFlowWindowContentIfNeeded()
+    }
+
+    func setTodoStore(_ todoStore: TodoStore) {
+        self.todoStore = todoStore
         refreshFlowWindowContentIfNeeded()
     }
 
@@ -170,7 +178,8 @@ final class FlowWindowManager: ObservableObject {
               let onboardingState,
               let authViewModel,
               let languageManager,
-              let fullscreenFocusBackdropStore else {
+              let fullscreenFocusBackdropStore,
+              let todoStore else {
             return nil
         }
 
@@ -189,6 +198,7 @@ final class FlowWindowManager: ObservableObject {
             .environmentObject(authViewModel)
             .environmentObject(languageManager)
             .environmentObject(fullscreenFocusBackdropStore)
+            .environmentObject(todoStore)
             .environmentObject(self)
         )
     }

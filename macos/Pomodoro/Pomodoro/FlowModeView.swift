@@ -13,6 +13,7 @@ struct FlowModeView: View {
     @EnvironmentObject private var localizationManager: LocalizationManager
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var fullscreenFocusBackdropStore: FullscreenFocusBackdropStore
+    @EnvironmentObject private var todoStore: TodoStore
     @EnvironmentObject private var flowWindowManager: FlowWindowManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject private var featureGate = FeatureGate.shared
@@ -306,6 +307,12 @@ struct FlowModeView: View {
                         .transition(.opacity)
                 }
 
+                if currentTaskTitle != nil {
+                    activePlanCard
+                        .padding(.top, 4)
+                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                }
+
                 if shouldShowTimerChip {
                     timerChip
                 }
@@ -403,6 +410,88 @@ struct FlowModeView: View {
         return title
     }
 
+    private var activePlanCard: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 8) {
+                Label(activePlanSourceLabel, systemImage: activePlanSourceIcon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                if let remaining = appState.currentPlanPomodoros {
+                    Text("\(remaining) Pomodoro\(remaining == 1 ? "" : "s") left")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            HStack(spacing: 10) {
+                Button {
+                    finishCurrentPlan()
+                } label: {
+                    Label("Finished", systemImage: "checkmark.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(appState.currentPlanEntryID == nil)
+
+                Button {
+                    toggleActiveTimer()
+                } label: {
+                    Label(timerToggleTitle, systemImage: timerToggleIcon)
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.10), lineWidth: 1)
+        )
+    }
+
+    private var activePlanSourceLabel: String {
+        appState.currentPlanSource?.displayName ?? "Current focus"
+    }
+
+    private var activePlanSourceIcon: String {
+        switch appState.currentPlanSource {
+        case .plannedTask:
+            return "checklist"
+        case .calendarSchedule:
+            return "calendar"
+        case .none:
+            return "target"
+        }
+    }
+
+    private var timerToggleTitle: String {
+        switch appState.pomodoro.state {
+        case .running, .breakRunning:
+            return "Pause"
+        case .paused, .breakPaused:
+            return "Resume"
+        case .idle:
+            return "Start"
+        }
+    }
+
+    private var timerToggleIcon: String {
+        switch appState.pomodoro.state {
+        case .running, .breakRunning:
+            return "pause.fill"
+        case .paused, .breakPaused:
+            return "play.fill"
+        case .idle:
+            return "play.fill"
+        }
+    }
+
     // MARK: - Clock styling
 
     private func clockFont(for size: CGSize) -> Font {
@@ -485,6 +574,12 @@ struct FlowModeView: View {
         case .paused, .breakPaused:
             appState.pomodoro.resume()
         }
+    }
+
+    private func finishCurrentPlan() {
+        guard let entryID = appState.currentPlanEntryID else { return }
+        todoStore.setCompletion(itemID: entryID, isCompleted: true)
+        appState.finishActiveExecutionEntry()
     }
 
     private func handleFullscreenButton() {

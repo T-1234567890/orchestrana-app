@@ -291,15 +291,7 @@ struct MainWindowView: View {
                         await checkSubscription()
                     }
                 } label: {
-                    if isCheckingPlans {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text("Your Plans")
-                        }
-                    } else {
-                        Text("Your Plans")
-                    }
+                    yourPlansButtonLabel
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(isCheckingPlans)
@@ -349,15 +341,7 @@ struct MainWindowView: View {
                                         await checkSubscription()
                                     }
                                 } label: {
-                                    if isCheckingPlans {
-                                        HStack(spacing: 8) {
-                                            ProgressView()
-                                                .controlSize(.small)
-                                            Text("Your Plans")
-                                        }
-                                    } else {
-                                        Text("Your Plans")
-                                    }
+                                    yourPlansButtonLabel
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .disabled(isCheckingPlans)
@@ -468,6 +452,7 @@ struct MainWindowView: View {
             syncDashboardPomodoroSessionDefaults()
             todoStore.attachPlanningStore(planningStore)
             remindersSync.setTodoStore(todoStore)
+            flowWindowManager.setTodoStore(todoStore)
         }
         .onChange(of: appState.durationConfig) { _, _ in
             syncDurationTexts()
@@ -572,6 +557,7 @@ struct MainWindowView: View {
                 }
             }
         )
+        .environmentObject(todoStore)
     }
 
     private var countdownView: some View {
@@ -3291,7 +3277,8 @@ struct MainWindowView: View {
                     id: item.id,
                     title: item.title,
                     pomodoros: max(1, item.plannedPomodoroCount ?? item.pomodoroEstimate ?? 1),
-                    pomodoroPresetID: item.pomodoroPresetID
+                    pomodoroPresetID: item.pomodoroPresetID,
+                    source: .plannedTask
                 )
             }
     }
@@ -3313,9 +3300,25 @@ struct MainWindowView: View {
                     id: item.id,
                     title: item.title,
                     pomodoros: max(1, item.plannedPomodoroCount ?? item.pomodoroEstimate ?? 1),
-                    pomodoroPresetID: item.pomodoroPresetID
+                    pomodoroPresetID: item.pomodoroPresetID,
+                    source: .calendarSchedule
                 )
             }
+    }
+
+    private var yourPlansButtonLabel: some View {
+        HStack(spacing: 8) {
+            if isCheckingPlans {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Image(systemName: "play.circle.fill")
+            }
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Your Plans")
+                    .font(.subheadline.weight(.semibold))
+            }
+        }
     }
 
     private func countdownActions(for state: TimerState) -> CountdownActionAvailability {

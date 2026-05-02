@@ -23,7 +23,7 @@ struct TodoListView: View {
     @State private var dueDateField = Date()
     /// Time is opt-in; we default to date-only for quick entry.
     @State private var includeDueTime = false
-    @State private var selectedSegment: Segment = .active
+    @State private var selectedSegment: Segment = .today
     @State private var taskViewMode: TaskViewMode = .list
     @State private var syncToCalendarField = false
     @State private var priorityField: TodoItem.Priority = .none
@@ -57,6 +57,7 @@ struct TodoListView: View {
     @State private var bouncingSubtaskCompletionIDs: Set<UUID> = []
     @State private var editorSubtasks: [TodoSubtask] = []
     @State private var collapsedEventGroupIDs: Set<UUID> = []
+    @State private var cachedTaskPlansByID: [UUID: PlanningItem] = [:]
     
     private static let taskHintDefaultsKey = "com.pomodoro.taskHintShown"
     private var taskExpansionAnimation: Animation {
@@ -81,6 +82,7 @@ struct TodoListView: View {
     }
     
     private enum Segment: String, CaseIterable, Identifiable {
+        case today
         case active
         case completed
 
@@ -139,6 +141,9 @@ struct TodoListView: View {
     }
     
     var body: some View {
+        let visibleItems = filteredItems
+        let visibleEventTaskGroups = filteredEventTaskGroups
+
         VStack(spacing: 0) {
             // Header
             VStack(spacing: 8) {
@@ -236,6 +241,7 @@ struct TodoListView: View {
                 }
                 
                 Picker("", selection: $selectedSegment) {
+                    Text(localizationManager.text("tasks.segment.today")).tag(Segment.today)
                     Text(localizationManager.text("tasks.segment.active")).tag(Segment.active)
                     Text(localizationManager.text("tasks.segment.completed")).tag(Segment.completed)
                 }
@@ -299,17 +305,17 @@ struct TodoListView: View {
             // Tasks list
             if taskViewMode == .matrix, featureGate.canUseEisenhowerMatrix, selectedSegment == .active {
                 ScrollView {
-                    EisenhowerMatrixView(tasks: filteredItems) { task in
+                    EisenhowerMatrixView(tasks: visibleItems) { task in
                         openEditorForEdit(task)
                     }
                     .padding(16)
                 }
             } else {
-                if filteredItems.isEmpty && filteredEventTaskGroups.isEmpty {
+                if visibleItems.isEmpty && visibleEventTaskGroups.isEmpty {
                     emptyState
                 } else {
                     List {
-                        ForEach(filteredItems) { item in
+                        ForEach(visibleItems) { item in
                             todoRow(item)
                                 .opacity(selectedSegment == .completed ? 0.9 : 1.0)
                                 .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
@@ -317,13 +323,13 @@ struct TodoListView: View {
                                 .listRowBackground(Color.clear)
                         }
 
-                        if !filteredEventTaskGroups.isEmpty {
+                        if !visibleEventTaskGroups.isEmpty {
                             eventSectionDivider
                                 .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16))
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
 
-                            ForEach(filteredEventTaskGroups) { group in
+                            ForEach(visibleEventTaskGroups) { group in
                                 eventTaskGroupRow(group)
                                     .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                                     .listRowSeparator(.hidden)
@@ -388,10 +394,14 @@ struct TodoListView: View {
             .environmentObject(localizationManager)
         }
         .onAppear {
+            rebuildTaskPlanCache()
             permissionsManager.refreshRemindersStatus()
             if !UserDefaults.standard.bool(forKey: Self.taskHintDefaultsKey) {
                 showTaskHint = true
             }
+        }
+        .onChange(of: planningStore.items) { _, _ in
+            rebuildTaskPlanCache()
         }
         .onReceive(NotificationCenter.default.publisher(for: .openNewTaskComposer)) { _ in
             openEditorForNew()
@@ -994,8 +1004,10 @@ struct TodoListView: View {
     
     private var filteredItems: [TodoItem] {
         switch selectedSegment {
+        case .today:
+            return todoStore.pendingItems.filter(isTodayTask)
         case .active:
-            return todoStore.pendingItems
+            return todoStore.pendingItems.filter { !isTodayTask($0) }
         case .completed:
             return todoStore.completedItems
         }
@@ -1005,8 +1017,10 @@ struct TodoListView: View {
         planningStore.localEvents.compactMap { event in
             let tasks = event.eventTasks.filter { task in
                 switch selectedSegment {
+                case .today:
+                    return !task.isCompleted && isTodayEvent(event)
                 case .active:
-                    return !task.isCompleted
+                    return !task.isCompleted && !isTodayEvent(event)
                 case .completed:
                     return task.isCompleted
                 }
@@ -1031,12 +1045,42 @@ struct TodoListView: View {
         }
     }
 
+    private func isTodayTask(_ item: TodoItem) -> Bool {
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: Date())
+        if let dueDate = item.dueDate {
+            let dueDay = calendar.startOfDay(for: dueDate)
+            if dueDay <= todayStart {
+                return true
+            }
+        }
+        if let start = taskPlansByID[item.id]?.startDate {
+            let plannedDay = calendar.startOfDay(for: start)
+            if plannedDay <= todayStart {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func isTodayEvent(_ event: PlanningItem) -> Bool {
+        guard let start = event.startDate else { return false }
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: Date())
+        return calendar.startOfDay(for: start) <= todayStart
+    }
+
+
     private var toolbarAICandidateTasks: [TodoItem] {
         filteredItems
     }
 
     private var taskPlansByID: [UUID: PlanningItem] {
-        planningStore.items.reduce(into: [UUID: PlanningItem]()) { result, plan in
+        cachedTaskPlansByID
+    }
+
+    private func rebuildTaskPlanCache() {
+        cachedTaskPlansByID = planningStore.items.reduce(into: [UUID: PlanningItem]()) { result, plan in
             guard plan.sourceType == .task,
                   let sourceID = plan.sourceID,
                   let taskID = UUID(uuidString: sourceID) else {

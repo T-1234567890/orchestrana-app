@@ -70,6 +70,17 @@ final class TodoStore: ObservableObject {
         }
     }
 
+    func setCompletion(itemID: UUID, isCompleted: Bool) {
+        guard let index = items.firstIndex(where: { $0.id == itemID }) else { return }
+        var updatedItem = items[index]
+        guard updatedItem.isCompleted != isCompleted else { return }
+        updatedItem.markComplete(isCompleted)
+        items[index] = updatedItem
+        saveItems()
+        rebuildDerivedState()
+        planningStore?.upsertFromTask(updatedItem)
+    }
+
     func addSubtask(to itemID: UUID, title: String) {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty,

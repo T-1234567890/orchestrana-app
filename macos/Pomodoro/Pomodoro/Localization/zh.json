@@ -560,6 +560,7 @@
   "tasks.reminders_access_denied.title": "提醒事项权限被拒绝",
   "tasks.reminders_sync_disabled.body": "启用提醒事项权限即可与 Apple Reminders 同步任务。",
   "tasks.reminders_sync_disabled.title": "提醒事项同步已禁用",
+  "tasks.segment.today": "今天",
   "tasks.segment.active": "进行中",
   "tasks.segment.completed": "已完成",
   "tasks.status.in_calendar": "已在日历中",
