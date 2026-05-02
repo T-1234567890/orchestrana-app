@@ -211,6 +211,15 @@ final class FeatureGate: ObservableObject {
         canAccess(.proLayout)
     }
 
+    var canUseCustomAudioPacks: Bool {
+        switch tier {
+        case .plus, .pro, .beta, .developer:
+            return true
+        case .free, .expired:
+            return false
+        }
+    }
+
     var canUseAdvancedCharts: Bool {
         canAccess(.advancedCharts)
     }

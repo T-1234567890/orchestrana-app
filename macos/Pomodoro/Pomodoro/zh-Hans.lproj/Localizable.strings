@@ -18,9 +18,14 @@
 "audio.lofi_packs" = "Lofi 音频包";
 "audio.lofi_packs.subtitle" = "选择一个音频包，再在混音器里微调每一层。";
 "audio.mixer" = "混音器";
+"audio.mixer.choose_folder" = "选择文件夹";
 "audio.mixer.select_pack" = "选择音频包";
 "audio.mixer.subtitle" = "选择多个音频并分别调整音量。";
 "audio.mixer.title" = "音频混音器";
+"audio.mixer.your_pack" = "你的音频包";
+"audio.mixer.your_pack.paywall_message" = "升级到 Plus 或 Pro 后，可以载入自己的音频文件夹，并和内置音频包一起混音。";
+"audio.mixer.your_pack.paywall_title" = "解锁你的音频包";
+"audio.mixer.your_pack.subtitle" = "载入本地音频文件夹，并混合这些音轨。";
 "audio.no_track_selected" = "未选择曲目";
 "audio.none_playing" = "当前没有外部音乐播放";
 "audio.now_playing" = "正在播放";
@@ -141,6 +146,12 @@
 "flow.exit" = "退出 Flow";
 "flow.focus_state" = "专注状态";
 "flow.help.return_main_workspace" = "返回主工作区";
+"flow.task_strip.done" = "完成";
+"flow.task_strip.next" = "下一个";
+"flow.task_strip.no_next" = "没有下一个任务";
+"flow.task_strip.pomodoros_left_format" = "剩余 %d 个番茄钟";
+"flow.task_strip.skip" = "跳过";
+"flow.task_strip.tomorrow" = "明天";
 "main.delivery" = "通知方式";
 "main.reminder" = "提醒";
 "main.sidebar.audio_music" = "音频与音乐";

@@ -297,18 +297,8 @@ struct FlowModeView: View {
                     .animation(minuteMorphAnimation, value: minuteMorphToken(for: currentDate))
                     .accessibilityLabel(localizationManager.text("flow.accessibility.current_time"))
 
-                if let currentTaskTitle {
-                    Text(currentTaskTitle)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.primary.opacity(0.82))
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .padding(.horizontal, 18)
-                        .transition(.opacity)
-                }
-
                 if currentTaskTitle != nil {
-                    activePlanCard
+                    flowTaskStrip
                         .padding(.top, 4)
                         .transition(.opacity.combined(with: .scale(scale: 0.98)))
                 }
@@ -410,29 +400,70 @@ struct FlowModeView: View {
         return title
     }
 
-    private var activePlanCard: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 8) {
-                Label(activePlanSourceLabel, systemImage: activePlanSourceIcon)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                if let remaining = appState.currentPlanPomodoros {
-                    Text("\(remaining) Pomodoro\(remaining == 1 ? "" : "s") left")
+    private var flowTaskStrip: some View {
+        HStack(alignment: .center, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Label(activePlanSourceLabel, systemImage: activePlanSourceIcon)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
+
+                    if let remaining = appState.currentPlanPomodoros {
+                        Text(localizationManager.format("flow.task_strip.pomodoros_left_format", remaining))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Text(currentTaskTitle ?? localizationManager.text("focus.fullscreen.no_task"))
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.primary.opacity(0.86))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+
+                HStack(spacing: 6) {
+                    Text(localizationManager.text("flow.task_strip.next"))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(nextPlanTitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary.opacity(0.9))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
             }
+            .frame(minWidth: 280, idealWidth: 420, maxWidth: 520, alignment: .leading)
+
+            Divider()
+                .frame(height: 42)
 
             HStack(spacing: 10) {
                 Button {
                     finishCurrentPlan()
                 } label: {
-                    Label("Finished", systemImage: "checkmark.circle.fill")
+                    Label(localizationManager.text("flow.task_strip.done"), systemImage: "checkmark.circle.fill")
                         .font(.subheadline.weight(.semibold))
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(appState.currentPlanEntryID == nil)
+
+                Button {
+                    skipCurrentPlan()
+                } label: {
+                    Label(localizationManager.text("flow.task_strip.skip"), systemImage: "forward.fill")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+                .disabled(appState.currentPlanEntryID == nil)
+
+                Button {
+                    rescheduleCurrentPlanToTomorrow()
+                } label: {
+                    Label(localizationManager.text("flow.task_strip.tomorrow"), systemImage: "calendar.badge.clock")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+                .disabled(!canRescheduleCurrentPlan)
 
                 Button {
                     toggleActiveTimer()
@@ -453,6 +484,14 @@ struct FlowModeView: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.10), lineWidth: 1)
         )
+    }
+
+    private var nextPlanTitle: String {
+        guard let title = appState.nextExecutionEntry?.title.trimmingCharacters(in: .whitespacesAndNewlines),
+              !title.isEmpty else {
+            return localizationManager.text("flow.task_strip.no_next")
+        }
+        return title
     }
 
     private var activePlanSourceLabel: String {
@@ -580,6 +619,32 @@ struct FlowModeView: View {
         guard let entryID = appState.currentPlanEntryID else { return }
         todoStore.setCompletion(itemID: entryID, isCompleted: true)
         appState.finishActiveExecutionEntry()
+    }
+
+    private func skipCurrentPlan() {
+        appState.skipActiveExecutionEntry()
+    }
+
+    private var canRescheduleCurrentPlan: Bool {
+        guard let entryID = appState.currentPlanEntryID,
+              appState.currentPlanSource == .plannedTask else {
+            return false
+        }
+        return todoStore.items.contains { $0.id == entryID && !$0.isCompleted }
+    }
+
+    private func rescheduleCurrentPlanToTomorrow() {
+        guard let entryID = appState.currentPlanEntryID,
+              appState.currentPlanSource == .plannedTask,
+              var item = todoStore.items.first(where: { $0.id == entryID }) else {
+            return
+        }
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+        item.dueDate = Calendar.current.startOfDay(for: tomorrow)
+        item.hasDueTime = false
+        item.modifiedAt = Date()
+        todoStore.updateItem(item)
+        appState.skipActiveExecutionEntry()
     }
 
     private func handleFullscreenButton() {

@@ -9,6 +9,25 @@ struct LofiAudioTrack: Identifiable, Hashable {
     let title: String
     let relativePath: String
     let symbolName: String
+    let fileURL: URL?
+
+    init(
+        id: String,
+        packID: String,
+        packName: String,
+        title: String,
+        relativePath: String,
+        symbolName: String,
+        fileURL: URL? = nil
+    ) {
+        self.id = id
+        self.packID = packID
+        self.packName = packName
+        self.title = title
+        self.relativePath = relativePath
+        self.symbolName = symbolName
+        self.fileURL = fileURL
+    }
 }
 
 struct LofiAudioPack: Identifiable, Hashable {
@@ -59,21 +78,35 @@ final class AudioMixerStore: ObservableObject {
 
     @Published private(set) var selectedTrackIDs: Set<String> = []
     @Published private(set) var activePackID: String?
+    @Published private(set) var customPack: LofiAudioPack?
     @Published private(set) var isPlaying = false
     @Published var trackVolumes: [String: Double] = [:] {
         didSet { applyVolumes() }
     }
 
     private var players: [String: AVAudioPlayer] = [:]
+    private var securityScopedFolderURL: URL?
     private let defaultVolume: Double = 0.45
+    private let supportedCustomAudioExtensions: Set<String> = ["aac", "aif", "aiff", "caf", "m4a", "mp3", "wav"]
+
+    deinit {
+        securityScopedFolderURL?.stopAccessingSecurityScopedResource()
+    }
+
+    var availablePacks: [LofiAudioPack] {
+        if let customPack {
+            return Self.packs + [customPack]
+        }
+        return Self.packs
+    }
 
     var selectedTracks: [LofiAudioTrack] {
-        Self.packs.flatMap(\.tracks).filter { selectedTrackIDs.contains($0.id) }
+        availablePacks.flatMap(\.tracks).filter { selectedTrackIDs.contains($0.id) }
     }
 
     var nowPlayingTitle: String {
         if let activePackID,
-           let pack = Self.packs.first(where: { $0.id == activePackID }),
+           let pack = availablePacks.first(where: { $0.id == activePackID }),
            selectedTracks.allSatisfy({ $0.packID == activePackID }) {
             return pack.name
         }
@@ -86,9 +119,12 @@ final class AudioMixerStore: ObservableObject {
 
     func selectPack(_ pack: LofiAudioPack) {
         activePackID = pack.id
-        selectedTrackIDs = Set(pack.tracks.map(\.id))
+        selectedTrackIDs = []
         for track in pack.tracks where trackVolumes[track.id] == nil {
             trackVolumes[track.id] = defaultVolume
+        }
+        for track in pack.tracks where preparePlayer(for: track) != nil {
+            selectedTrackIDs.insert(track.id)
         }
         rebuildPlayers()
         if isPlaying {
@@ -102,9 +138,12 @@ final class AudioMixerStore: ObservableObject {
             players[track.id]?.stop()
             players.removeValue(forKey: track.id)
         } else {
-            selectedTrackIDs.insert(track.id)
             trackVolumes[track.id] = trackVolumes[track.id] ?? defaultVolume
-            _ = preparePlayer(for: track)
+            guard preparePlayer(for: track) != nil else {
+                trackVolumes.removeValue(forKey: track.id)
+                return
+            }
+            selectedTrackIDs.insert(track.id)
             if isPlaying {
                 players[track.id]?.play()
             }
@@ -114,6 +153,64 @@ final class AudioMixerStore: ObservableObject {
 
     func setVolume(_ value: Double, for track: LofiAudioTrack) {
         trackVolumes[track.id] = max(0, min(value, 1))
+    }
+
+    func loadCustomPack(from folderURL: URL) throws {
+        stopCustomPackIfNeeded()
+        securityScopedFolderURL?.stopAccessingSecurityScopedResource()
+        securityScopedFolderURL = nil
+
+        let didAccess = folderURL.startAccessingSecurityScopedResource()
+        if didAccess {
+            securityScopedFolderURL = folderURL
+        }
+
+        let fileURLs = try FileManager.default.contentsOfDirectory(
+            at: folderURL,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]
+        )
+        .filter { supportedCustomAudioExtensions.contains($0.pathExtension.lowercased()) }
+        .sorted { lhs, rhs in
+            lhs.lastPathComponent.localizedStandardCompare(rhs.lastPathComponent) == .orderedAscending
+        }
+
+        guard !fileURLs.isEmpty else {
+            if didAccess {
+                folderURL.stopAccessingSecurityScopedResource()
+                securityScopedFolderURL = nil
+            }
+            throw AudioMixerError.noSupportedAudio
+        }
+
+        let folderName = folderURL.lastPathComponent.isEmpty ? "Your Pack" : folderURL.lastPathComponent
+        let packID = "custom-\(folderURL.path)"
+        let tracks = fileURLs.map { fileURL in
+            LofiAudioTrack(
+                id: "custom-\(fileURL.path)",
+                packID: packID,
+                packName: folderName,
+                title: fileURL.deletingPathExtension().lastPathComponent,
+                relativePath: "",
+                symbolName: "waveform",
+                fileURL: fileURL
+            )
+        }
+
+        customPack = LofiAudioPack(
+            id: packID,
+            name: folderName,
+            mood: "Your audio folder",
+            symbolName: "folder.fill",
+            tracks: tracks
+        )
+        selectPack(customPack!)
+        let customTrackIDs = Set(tracks.map(\.id))
+        guard !selectedTrackIDs.intersection(customTrackIDs).isEmpty else {
+            stopCustomPackIfNeeded()
+            customPack = nil
+            throw AudioMixerError.noPlayableAudio
+        }
     }
 
     func togglePlayPause() {
@@ -152,12 +249,16 @@ final class AudioMixerStore: ObservableObject {
 
     private func rebuildPlayers() {
         let selected = Set(selectedTracks.map(\.id))
-        for (id, player) in players where !selected.contains(id) {
-            player.stop()
+        let removedIDs = players.keys.filter { !selected.contains($0) }
+        for id in removedIDs {
+            players[id]?.stop()
             players.removeValue(forKey: id)
         }
         for track in selectedTracks {
-            _ = preparePlayer(for: track)
+            if preparePlayer(for: track) == nil {
+                selectedTrackIDs.remove(track.id)
+                trackVolumes.removeValue(forKey: track.id)
+            }
         }
         applyVolumes()
     }
@@ -175,7 +276,7 @@ final class AudioMixerStore: ObservableObject {
         if let player = players[track.id] {
             return player
         }
-        guard let url = Bundle.main.url(forResource: track.relativePath, withExtension: nil, subdirectory: "AudioAssets") else {
+        guard let url = track.fileURL ?? Bundle.main.url(forResource: track.relativePath, withExtension: nil, subdirectory: "AudioAssets") else {
             return nil
         }
         do {
@@ -197,7 +298,7 @@ final class AudioMixerStore: ObservableObject {
     }
 
     private func updateActivePackFromSelection() {
-        for pack in Self.packs {
+        for pack in availablePacks {
             let packIDs = Set(pack.tracks.map(\.id))
             if selectedTrackIDs == packIDs {
                 activePackID = pack.id
@@ -205,5 +306,33 @@ final class AudioMixerStore: ObservableObject {
             }
         }
         activePackID = nil
+    }
+
+    private func stopCustomPackIfNeeded() {
+        guard let customPack else { return }
+        let customTrackIDs = Set(customPack.tracks.map(\.id))
+        selectedTrackIDs.subtract(customTrackIDs)
+        for id in customTrackIDs {
+            players[id]?.stop()
+            players.removeValue(forKey: id)
+            trackVolumes.removeValue(forKey: id)
+        }
+        if activePackID == customPack.id {
+            activePackID = nil
+        }
+    }
+}
+
+enum AudioMixerError: LocalizedError {
+    case noSupportedAudio
+    case noPlayableAudio
+
+    var errorDescription: String? {
+        switch self {
+        case .noSupportedAudio:
+            return "No supported audio files were found in that folder."
+        case .noPlayableAudio:
+            return "The audio files in that folder could not be loaded."
+        }
     }
 }

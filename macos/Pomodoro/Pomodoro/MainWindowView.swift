@@ -4052,6 +4052,10 @@ private struct AudioMixerPopover: View {
     @EnvironmentObject private var mixerStore: AudioMixerStore
     @EnvironmentObject private var audioSourceStore: AudioSourceStore
     @EnvironmentObject private var languageManager: LanguageManager
+    @ObservedObject private var featureGate = FeatureGate.shared
+    @ObservedObject private var subscriptionStore = SubscriptionStore.shared
+    @State private var upgradePaywallContext: SubscriptionPaywallContext?
+    @State private var customPackErrorMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -4081,7 +4085,9 @@ private struct AudioMixerPopover: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    ForEach(AudioMixerStore.packs) { pack in
+                    customAudioPackSection
+
+                    ForEach(mixerStore.availablePacks) { pack in
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(spacing: 8) {
                                 Image(systemName: pack.symbolName)
@@ -4107,14 +4113,89 @@ private struct AudioMixerPopover: View {
                 .padding(.vertical, 2)
             }
             .frame(maxHeight: 420)
+            .scrollIndicators(.hidden)
 
             Text(languageManager.text("audio.cc0_license"))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
+        .sheet(item: $upgradePaywallContext) { context in
+            SubscriptionUpgradeSheetView(
+                context: context,
+                featureGate: featureGate,
+                subscriptionStore: subscriptionStore
+            )
+        }
         .padding(16)
         .frame(width: 420)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private var customAudioPackSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "folder.badge.plus")
+                    .foregroundStyle(.secondary)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(languageManager.text("audio.mixer.your_pack"))
+                        .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                    Text(languageManager.text("audio.mixer.your_pack.subtitle"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                Button {
+                    chooseCustomAudioFolder()
+                } label: {
+                    Label(languageManager.text("audio.mixer.choose_folder"), systemImage: featureGate.canUseCustomAudioPacks ? "folder" : "lock.fill")
+                }
+                .controlSize(.small)
+            }
+
+            if let customPackErrorMessage {
+                Text(customPackErrorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.primary.opacity(0.045))
+        )
+    }
+
+    private func chooseCustomAudioFolder() {
+        guard featureGate.canUseCustomAudioPacks else {
+            upgradePaywallContext = SubscriptionPaywallContext(
+                requiredTier: .plus,
+                title: languageManager.text("audio.mixer.your_pack.paywall_title"),
+                message: languageManager.text("audio.mixer.your_pack.paywall_message")
+            )
+            return
+        }
+
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = false
+        panel.prompt = languageManager.text("audio.mixer.choose_folder")
+
+        guard panel.runModal() == .OK, let folderURL = panel.url else { return }
+
+        do {
+            customPackErrorMessage = nil
+            try mixerStore.loadCustomPack(from: folderURL)
+            audioSourceStore.selectAmbient(.off)
+            mixerStore.play()
+        } catch {
+            customPackErrorMessage = error.localizedDescription
+        }
     }
 }
 

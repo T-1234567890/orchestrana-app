@@ -78,6 +78,10 @@ final class AppState: ObservableObject {
     private var pendingExecutionQueue: [PlanExecutionEntry] = []
     private var activeExecutionEntry: PlanExecutionEntry?
 
+    var nextExecutionEntry: PlanExecutionEntry? {
+        pendingExecutionQueue.first
+    }
+
     struct PlanExecutionEntry: Identifiable, Equatable {
         let id: UUID
         let title: String
@@ -321,6 +325,35 @@ final class AppState: ObservableObject {
     }
 
     func finishActiveExecutionEntry() {
+        guard activeExecutionEntry != nil else {
+            clearExecutionPlan()
+            pomodoro.reset()
+            updatePomodoroConfiguration()
+            return
+        }
+
+        if let next = pendingExecutionQueue.first {
+            pendingExecutionQueue.removeFirst()
+            activeExecutionEntry = next
+            pomodoro.reset()
+            applyExecutionPreset(next.pomodoroPresetID)
+            applyPlan(
+                title: next.title,
+                pomodoroCount: next.pomodoros,
+                pomodoroPresetID: next.pomodoroPresetID,
+                entryID: next.id,
+                source: next.source
+            )
+            pomodoro.start()
+            return
+        }
+
+        pomodoro.reset()
+        clearExecutionPlan()
+        updatePomodoroConfiguration()
+    }
+
+    func skipActiveExecutionEntry() {
         guard activeExecutionEntry != nil else {
             clearExecutionPlan()
             pomodoro.reset()
