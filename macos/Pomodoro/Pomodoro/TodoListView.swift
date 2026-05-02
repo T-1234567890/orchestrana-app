@@ -630,7 +630,7 @@ struct TodoListView: View {
                         if let dueDate = item.dueDate {
                             Label(formattedDueDate(item, dueDate: dueDate), systemImage: "calendar")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(dueDateColor(for: item, dueDate: dueDate, showsCompletedState: showsCompletedState))
                         }
                         
                         if item.reminderIdentifier != nil {
@@ -972,6 +972,22 @@ struct TodoListView: View {
             return Self.dateTimeFormatter.string(from: dueDate)
         }
         return Self.dateFormatter.string(from: dueDate)
+    }
+
+    private func dueDateColor(for item: TodoItem, dueDate: Date, showsCompletedState: Bool) -> Color {
+        guard !showsCompletedState, isOverdue(item, dueDate: dueDate) else {
+            return .secondary
+        }
+        return .red
+    }
+
+    private func isOverdue(_ item: TodoItem, dueDate: Date, now: Date = Date()) -> Bool {
+        if item.hasDueTime {
+            return dueDate < now
+        }
+
+        let calendar = Calendar.current
+        return calendar.startOfDay(for: dueDate) < calendar.startOfDay(for: now)
     }
 
     private func formatLastSyncDate(_ date: Date) -> String {
