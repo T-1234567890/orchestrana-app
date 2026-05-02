@@ -1,7 +1,10 @@
 # Orchestrana™ · Future Plans (Long-Term, Exploratory)
 
+> ⚠️ **Legacy / outdated document**  
+> This document was written before the current subscription and AI-service model. It is kept for historical context only. It should not be treated as the current pricing, entitlement, or release plan.
+
 > ⚠️ This document describes **long-term, forward-looking ideas** for Orchestrana.  
-> None of the features below are implemented today, and **no payment is required** at the current stage.
+> Some statements below may no longer match the current product state.
 
 Orchestrana started as a lightweight, local macOS focus tool.  
 Over time, the project may gradually explore features that require **cloud services, AI APIs, or ongoing infrastructure costs**.
@@ -15,12 +18,12 @@ This document exists to:
 
 ## Status Summary
 
-- Current version: **v1.x.x**
-- Distribution: GitHub Releases (unsigned)
-- Business model: **Free and Open Source**
-- Subscription plans: **Not launched / Not scheduled**
+- Current status: **legacy planning snapshot**
+- Distribution: GitHub Releases, TestFlight, and App Store channels may differ by version
+- Business model: **open-source client with commercial hosted services**
+- Subscription plans: **paid plans now exist for hosted / managed features**
 
-This is a **future concept**, not a commitment.
+This is a **legacy future concept**, not the active product contract.
 
 ---
 

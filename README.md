@@ -286,12 +286,11 @@ This was the **original prototype** used during the earliest stages of developme
 
 ### Long-term Future Directions
 
-**Orchestrana is free**.
+The **Orchestrana client is open source** under the repository license.
 
-A small number of long-term ideas (AI features, cloud sync, deeper analytics) are being brainstormed.  
-**No paid plan exists at this stage.**
+Orchestrana is also a commercial product with existing paid plans for hosted services and higher-cost features such as managed AI, subscription-gated capabilities, and backend-supported functionality. The open-source client does not mean every hosted service or production feature is free.
 
-Details: `docs/Future_Pro_Plan.md`
+Details: `Docs/Future_Pro_Plan.md` is a legacy planning document and may be outdated compared with the current product and App Store/TestFlight configuration.
 
 ## 🤝 Sponsors & Partners
 

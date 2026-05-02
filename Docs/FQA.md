@@ -20,30 +20,26 @@ The goal is not to replace existing tools, but to **bring focus, structure, and 
 
 ## Is Orchestrana free?
 
-**Yes.**
+The **client app repository is open source**.
 
-Orchestrana is currently **free and open source**, and all core features remain free:
+Orchestrana also has paid plans for hosted services and higher-cost features. The open-source client does not mean every production service, backend capability, or managed AI feature is free.
+
+Core local functionality is intended to remain useful without a subscription:
 - Timer and focus sessions
 - Tasks
 - Calendar & Reminders integration
 - Menu bar support
 - Local-first data storage
 
-There is **no active subscription**, and no paid features today.
-
 ---
 
 ## Is there a Pro or Plus plan?
 
-No — not at this stage.
+Yes. Paid plans exist for subscription-gated features and hosted services.
 
-You may see documents discussing **future Pro / Plus ideas**, but these are:
-- Exploratory
-- Long-term
-- Not scheduled
-- Not implemented
+Older documents discussing **future Pro / Plus ideas** are legacy planning notes and may be outdated.
 
-They exist to **share transparent thinking early**, not to announce pricing or lock features behind paywalls.
+Use the current app, App Store/TestFlight information, and official website for current plan behavior.
 
 ---
 
