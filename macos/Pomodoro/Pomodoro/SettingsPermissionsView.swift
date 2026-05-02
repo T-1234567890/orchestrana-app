@@ -14,6 +14,7 @@ struct SettingsPermissionsView: View {
     @EnvironmentObject private var localizationManager: LocalizationManager
     @State private var showAdvancedAccountTools = false
     @State private var upgradePaywallContext: SubscriptionPaywallContext?
+    @State private var showAcknowledgementsLicenses = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -128,31 +129,59 @@ struct SettingsPermissionsView: View {
         .background(Color.primary.opacity(0.05))
         .cornerRadius(12)
 
-        Button {
-            guard let url = URL(string: "https://orchestrana.app/policies.html") else {
-                return
+        VStack(spacing: 10) {
+            Button {
+                showAcknowledgementsLicenses = true
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "text.book.closed")
+                        .foregroundStyle(.secondary)
+
+                    Text("View Acknowledgements & Licenses")
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .frame(height: 42)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.primary.opacity(0.05))
+                .cornerRadius(12)
             }
-            NSWorkspace.shared.open(url)
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "doc.text")
-                    .foregroundStyle(.secondary)
+            .buttonStyle(.plain)
 
-                Text("Privacy & Policies")
-                    .foregroundStyle(.primary)
+            Button {
+                guard let url = URL(string: "https://orchestrana.app/policies.html") else {
+                    return
+                }
+                NSWorkspace.shared.open(url)
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "doc.text")
+                        .foregroundStyle(.secondary)
 
-                Spacer()
+                    Text("Privacy & Policies")
+                        .foregroundStyle(.primary)
 
-                Image(systemName: "arrow.up.right.square")
-                    .foregroundStyle(.secondary)
+                    Spacer()
+
+                    Image(systemName: "arrow.up.right.square")
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .frame(height: 42)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.primary.opacity(0.05))
+                .cornerRadius(12)
             }
-            .padding(.horizontal, 16)
-            .frame(height: 42)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.primary.opacity(0.05))
-            .cornerRadius(12)
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
+        .sheet(isPresented: $showAcknowledgementsLicenses) {
+            AcknowledgementsLicensesView()
+        }
     }
 
     private var aiSubscriptionSection: some View {

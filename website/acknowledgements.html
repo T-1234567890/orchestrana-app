@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-en="Acknowledgements &amp; Licenses · Orchestrana™" data-zh="致谢与许可证 · Orchestrana™">Acknowledgements &amp; Licenses · Orchestrana™</title>
+  <meta name="description" content="Third-party acknowledgements and license text for Orchestrana." />
+  <link rel="icon" type="image/png" href="screenshots/Orchestrana%20icon%201.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+
+  <style>
+    .ack-shell {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 68px 20px 120px;
+    }
+    .ack-header {
+      max-width: 760px;
+      margin: 0 auto 28px;
+      text-align: center;
+    }
+    .ack-header h1 {
+      margin: 10px 0 0;
+      font-size: clamp(28px, 4vw, 40px);
+      letter-spacing: -0.03em;
+    }
+    .ack-header .muted {
+      margin: 12px auto 0;
+      max-width: 680px;
+    }
+    .ack-card {
+      padding: clamp(22px, 4vw, 42px);
+      border-radius: 24px;
+      border: 1px solid var(--border);
+    }
+    .ack-intro {
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.7;
+    }
+    .ack-section {
+      padding: 24px 0;
+      border-top: 1px solid rgba(120, 98, 84, 0.14);
+    }
+    .ack-section:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+    .ack-section h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .ack-note {
+      margin: 0 0 16px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+    .license-text {
+      margin: 0;
+      padding: 18px;
+      border-radius: 16px;
+      border: 1px solid rgba(120, 98, 84, 0.12);
+      background: rgba(255, 250, 246, 0.68);
+      color: var(--text);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font: 14px/1.65 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    .legal-nav {
+      margin-top: 18px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    body.legal-document .footer {
+      display: none;
+    }
+  </style>
+</head>
+<body class="legal-document">
+  <header class="topbar glass">
+    <a class="logo logo-link" href="index.html#overview">
+      <img class="logo-icon" src="screenshots/Orchestrana%20icon%201.png" alt="Orchestrana icon" />
+      <span data-en="Orchestrana™" data-zh="Orchestrana™">Orchestrana™</span>
+    </a>
+    <nav class="nav-links">
+      <a href="index.html#overview" data-en="Overview" data-zh="概览">Overview</a>
+      <a href="index.html#features" data-en="Features" data-zh="功能">Features</a>
+      <a href="index.html#screenshots" data-en="Focus Cycle" data-zh="专注循环">Focus Cycle</a>
+      <a href="comparison.html" data-en="Comparison" data-zh="对比">Comparison</a>
+      <a href="index.html#docs" data-en="Docs" data-zh="文档">Docs</a>
+      <a href="index.html#download" data-en="Download" data-zh="下载">Download</a>
+      <a href="https://github.com/T-1234567890/orchestrana-app" target="_blank" rel="noreferrer" data-en="GitHub" data-zh="GitHub">GitHub</a>
+      <button id="lang-toggle" aria-label="Switch language" data-en="EN / 中文" data-zh="中文 / EN">EN / 中文</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="ack-shell">
+      <div class="ack-header reveal">
+        <p class="eyebrow" data-en="Legal" data-zh="法律">Legal</p>
+        <h1 data-en="Acknowledgements &amp; Licenses" data-zh="致谢与许可证">Acknowledgements &amp; Licenses</h1>
+        <p class="muted" data-en="Third-party resources and local client license details." data-zh="第三方资源与本地客户端许可详情。">Third-party resources and local client license details.</p>
+        <div class="legal-nav">
+          <a class="soft-btn primary-ish" href="policies.html" data-en="View All Policies" data-zh="查看全部政策">View All Policies</a>
+        </div>
+      </div>
+
+      <article class="ack-card glass fade-on-load" aria-label="Acknowledgements and licenses content">
+        <p class="ack-intro">Orchestrana includes third-party resources and open-source components. The notices below are provided for attribution and license compliance.</p>
+
+        <section class="ack-section">
+          <h2>App Icon Attribution</h2>
+          <p class="ack-note">Portions of the app icon include MIT-licensed Microsoft design resources.</p>
+          <pre class="license-text">MIT License
+
+Copyright (c) 2020 Microsoft Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
+        </section>
+
+        <section class="ack-section">
+          <h2>Orchestrana macOS Client</h2>
+          <p class="ack-note">The public client application is distributed under the MIT License.</p>
+          <pre class="license-text">MIT License
+
+Copyright (c) 2026 Tony and contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
+        </section>
+
+        <section class="ack-section">
+          <h2>Orchestrana Cloud Services</h2>
+          <p class="ack-note">The server-side implementation is not part of the open-source client license.</p>
+          <pre class="license-text">© 2026 Orchestrana. All rights reserved.</pre>
+        </section>
+      </article>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -74,6 +74,7 @@ struct MainWindowView: View {
     @AppStorage(AppearanceMode.appStorageKey) private var appearanceModeRawValue = AppearanceMode.standard.rawValue
     @State private var settingsSearchText = ""
     @State private var showSettingsPlansSheet = false
+    @State private var showAcknowledgementsLicenses = false
     
     // New: Calendar, Reminders, and Todo system
     @StateObject private var permissionsManager = PermissionsManager.shared
@@ -107,6 +108,9 @@ struct MainWindowView: View {
                 featureGate: featureGate,
                 subscriptionStore: subscriptionStore
             )
+        }
+        .sheet(isPresented: $showAcknowledgementsLicenses) {
+            AcknowledgementsLicensesView()
         }
         .sheet(isPresented: $showPlanTaskPicker) {
             PlanTaskSelectionSheet(
@@ -1416,25 +1420,42 @@ struct MainWindowView: View {
     private var settingsPoliciesModule: some View {
         SettingsModuleCard(
             title: "Privacy & Policies",
-            description: "Open the product policy page in your browser."
+            description: "Review product policies and local third-party acknowledgements."
         ) {
-            Button {
-                guard let url = URL(string: "https://orchestrana.app/policies.html") else {
-                    return
+            VStack(alignment: .leading, spacing: 12) {
+                Button {
+                    showAcknowledgementsLicenses = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "text.book.closed")
+                            .foregroundStyle(.secondary)
+                        Text("View Acknowledgements & Licenses")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                NSWorkspace.shared.open(url)
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "doc.text")
-                        .foregroundStyle(.secondary)
-                    Text("Open Privacy & Policies")
-                    Spacer()
-                    Image(systemName: "arrow.up.right.square")
-                        .foregroundStyle(.secondary)
+                .buttonStyle(.bordered)
+
+                Button {
+                    guard let url = URL(string: "https://orchestrana.app/policies.html") else {
+                        return
+                    }
+                    NSWorkspace.shared.open(url)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "doc.text")
+                            .foregroundStyle(.secondary)
+                        Text("Open Privacy & Policies")
+                        Spacer()
+                        Image(systemName: "arrow.up.right.square")
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.bordered)
         }
     }
 

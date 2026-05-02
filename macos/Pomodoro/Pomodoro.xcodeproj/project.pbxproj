@@ -90,6 +90,7 @@
 		D1A1B00D0000000000000001 /* RemindersSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A1B00E0000000000000001 /* RemindersSync.swift */; };
 		D1A1B00F0000000000000001 /* SettingsPermissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A1B0100000000000000001 /* SettingsPermissionsView.swift */; };
 		D1A1B0110000000000000001 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A1B0120000000000000001 /* SettingsView.swift */; };
+		D2A1B0130000000000000001 /* AcknowledgementsLicensesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2A1B0140000000000000001 /* AcknowledgementsLicensesView.swift */; };
 		E1E1E1E1234567890ABCDEF1 /* FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1E1E1E1234567890ABCDEF0 /* FeatureFlags.swift */; };
 		E2A1B0011A2B3C4D5E6F7001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = E2A1B0101A2B3C4D5E6F7001 /* Localizable.strings */; };
 		E2A1B0021A2B3C4D5E6F7001 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = E2A1B0111A2B3C4D5E6F7001 /* InfoPlist.strings */; };
@@ -173,6 +174,7 @@
 		D1A1B00E0000000000000001 /* RemindersSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemindersSync.swift; sourceTree = "<group>"; };
 		D1A1B0100000000000000001 /* SettingsPermissionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPermissionsView.swift; sourceTree = "<group>"; };
 		D1A1B0120000000000000001 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		D2A1B0140000000000000001 /* AcknowledgementsLicensesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcknowledgementsLicensesView.swift; sourceTree = "<group>"; };
 		D95945228BEC2D75F362FF53 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		E1E1E1E1234567890ABCDEF0 /* FeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureFlags.swift; sourceTree = "<group>"; };
 		E2A1B0201A2B3C4D5E6F7001 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -324,6 +326,7 @@
 				A1B2C3D70000000000000001 /* TaskMarkdownView.swift */,
 				D1A1B0100000000000000001 /* SettingsPermissionsView.swift */,
 				D1A1B0120000000000000001 /* SettingsView.swift */,
+				D2A1B0140000000000000001 /* AcknowledgementsLicensesView.swift */,
 				ECCF7A685FE13468A938ADD7 /* CloudSettingsSection.swift */,
 			);
 			name = UI;
@@ -548,6 +551,7 @@
 				D1A1B00D0000000000000001 /* RemindersSync.swift in Sources */,
 				D1A1B00F0000000000000001 /* SettingsPermissionsView.swift in Sources */,
 				D1A1B0110000000000000001 /* SettingsView.swift in Sources */,
+				D2A1B0130000000000000001 /* AcknowledgementsLicensesView.swift in Sources */,
 				B6A2001B2FFD4BD7B90F8AC1 /* ExternalID.swift in Sources */,
 				B6A2001C2FFD4BD7B90F8AC1 /* IntentMarkers.swift in Sources */,
 				B6A2001D2FFD4BD7B90F8AC1 /* SessionRecordStore.swift in Sources */,

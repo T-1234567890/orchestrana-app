@@ -83,6 +83,7 @@ enum FirebaseBootstrap {
 @main
 struct OrchestranaApp: App {
     static let mainWindowID = "main-window"
+    static let aboutWindowID = "about-window"
 
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var appState: AppState
@@ -131,6 +132,8 @@ struct OrchestranaApp: App {
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unifiedCompact)
         .commands {
+            AppInfoCommands()
+
             CommandMenu("Timer") {
                 Button("Start Session") {
                     startSession()
@@ -237,6 +240,11 @@ struct OrchestranaApp: App {
                 .keyboardShortcut("3", modifiers: [.command, .option])
             }
         }
+
+        Window("About Orchestrana", id: Self.aboutWindowID) {
+            AboutOrchestranaView()
+        }
+        .windowResizability(.contentSize)
     }
 
     @ViewBuilder
@@ -273,6 +281,18 @@ struct OrchestranaApp: App {
             }
 
         content
+    }
+
+    private struct AppInfoCommands: Commands {
+        @Environment(\.openWindow) private var openWindow
+
+        var body: some Commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About Orchestrana") {
+                    openWindow(id: OrchestranaApp.aboutWindowID)
+                }
+            }
+        }
     }
 
     private struct MainWindowSceneOpenerBridge: View {
