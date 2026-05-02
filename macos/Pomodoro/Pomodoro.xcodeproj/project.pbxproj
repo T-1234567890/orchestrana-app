@@ -23,8 +23,6 @@
 		7C360D5B2F191F17007313D3 /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D542F191F17007313D3 /* MainWindowView.swift */; };
 		7C360D5C2F191F17007313D3 /* OrchestranaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D552F191F17007313D3 /* OrchestranaApp.swift */; };
 		7C360D5D2F191F17007313D3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7C360D562F191F17007313D3 /* Assets.xcassets */; };
-		7C360D9E2F191F17007313D3 /* AudioMixerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D9D2F191F17007313D3 /* AudioMixerStore.swift */; };
-		7C360DA02F191F17007313D3 /* AudioAssets in Resources */ = {isa = PBXBuildFile; fileRef = 7C360D9F2F191F17007313D3 /* AudioAssets */; };
 		7C360D6A2F191F17007313D3 /* MenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D692F191F17007313D3 /* MenuBarController.swift */; };
 		7C360D6B2F191F17007313D3 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D6C2F191F17007313D3 /* AppDelegate.swift */; };
 		7C360D6D2F191F17007313D3 /* DurationConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D6E2F191F17007313D3 /* DurationConfig.swift */; };
@@ -35,6 +33,8 @@
 		7C360D902F191F17007313D3 /* MusicController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D962F191F17007313D3 /* MusicController.swift */; };
 		7C360D912F191F17007313D3 /* SystemMediaController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D972F191F17007313D3 /* SystemMediaController.swift */; };
 		7C360D922F191F17007313D3 /* MusicPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D982F191F17007313D3 /* MusicPanelView.swift */; };
+		7C360D9E2F191F17007313D3 /* AudioMixerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C360D9D2F191F17007313D3 /* AudioMixerStore.swift */; };
+		7C360DA02F191F17007313D3 /* AudioAssets in Resources */ = {isa = PBXBuildFile; fileRef = 7C360D9F2F191F17007313D3 /* AudioAssets */; };
 		7C46B6F62F5C3C180042C61E /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 7C46B6F52F5C3C180042C61E /* GoogleSignIn */; };
 		7C5B41642F68065A00C12AA1 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C5B41632F68065A00C12AA1 /* StoreKit.framework */; };
 		7C6BDD442F82B793001A1E6D /* Orchestranaicon1.icon in Resources */ = {isa = PBXBuildFile; fileRef = 7C6BDD432F82B793001A1E6D /* Orchestranaicon1.icon */; };
@@ -131,10 +131,10 @@
 		7C360D742F191F17007313D3 /* PresetSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresetSelection.swift; sourceTree = "<group>"; };
 		7C360D762F191F17007313D3 /* NotificationPreference.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPreference.swift; sourceTree = "<group>"; };
 		7C360D962F191F17007313D3 /* MusicController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicController.swift; sourceTree = "<group>"; };
-		7C360D9D2F191F17007313D3 /* AudioMixerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioMixerStore.swift; sourceTree = "<group>"; };
-		7C360D9F2F191F17007313D3 /* AudioAssets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = AudioAssets; sourceTree = "<group>"; };
 		7C360D972F191F17007313D3 /* SystemMediaController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemMediaController.swift; sourceTree = "<group>"; };
 		7C360D982F191F17007313D3 /* MusicPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicPanelView.swift; sourceTree = "<group>"; };
+		7C360D9D2F191F17007313D3 /* AudioMixerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioMixerStore.swift; sourceTree = "<group>"; };
+		7C360D9F2F191F17007313D3 /* AudioAssets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = AudioAssets; sourceTree = "<group>"; };
 		7C46B6F92F5C49420042C61E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7C4C2FDF2F38D57200994D30 /* Orchestrana.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Orchestrana.entitlements; sourceTree = "<group>"; };
 		7C5B41632F68065A00C12AA1 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
@@ -749,7 +749,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 2.0.1;
+				MARKETING_VERSION = 2.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.pomodoro.Pomodoro;
 				PRODUCT_NAME = Orchestrana;
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -811,7 +811,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 2.0.1;
+				MARKETING_VERSION = 2.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.pomodoro.Pomodoro;
 				PRODUCT_NAME = Orchestrana;
 				PROVISIONING_PROFILE_SPECIFIER = "";
