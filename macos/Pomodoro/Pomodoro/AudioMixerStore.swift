@@ -36,6 +36,15 @@ struct LofiAudioPack: Identifiable, Hashable {
     let mood: String
     let symbolName: String
     let tracks: [LofiAudioTrack]
+
+    var isCustom: Bool {
+        id.hasPrefix("custom-")
+    }
+}
+
+enum AudioMixerFocusMode: String, CaseIterable {
+    case workspace
+    case flow
 }
 
 @MainActor
@@ -78,26 +87,43 @@ final class AudioMixerStore: ObservableObject {
 
     @Published private(set) var selectedTrackIDs: Set<String> = []
     @Published private(set) var activePackID: String?
-    @Published private(set) var customPack: LofiAudioPack?
+    @Published private(set) var customPacks: [LofiAudioPack] = []
+    @Published private(set) var lastCustomPackImportMessage: String?
     @Published private(set) var isPlaying = false
     @Published var trackVolumes: [String: Double] = [:] {
         didSet { applyVolumes() }
     }
 
+    private struct CustomPackRecord: Codable, Equatable {
+        let id: String
+        var name: String
+        let bookmarkData: Data?
+        let fallbackPath: String
+    }
+
     private var players: [String: AVAudioPlayer] = [:]
-    private var securityScopedFolderURL: URL?
+    private var customPackRecords: [CustomPackRecord] = []
+    private var securityScopedFolderURLs: [String: URL] = [:]
+    private let userDefaults: UserDefaults
     private let defaultVolume: Double = 0.45
     private let supportedCustomAudioExtensions: Set<String> = ["aac", "aif", "aiff", "caf", "m4a", "mp3", "wav"]
+    private let customPackRecordsKey = "audioMixer.customPackRecords.v1"
+    private let lastPackByFocusModeKeyPrefix = "audioMixer.lastPack."
+
+    init(userDefaults: UserDefaults = .standard) {
+        self.userDefaults = userDefaults
+        loadPersistedCustomPacks()
+        restoreLastPack(for: .workspace)
+    }
 
     deinit {
-        securityScopedFolderURL?.stopAccessingSecurityScopedResource()
+        for url in securityScopedFolderURLs.values {
+            url.stopAccessingSecurityScopedResource()
+        }
     }
 
     var availablePacks: [LofiAudioPack] {
-        if let customPack {
-            return Self.packs + [customPack]
-        }
-        return Self.packs
+        Self.packs + customPacks
     }
 
     var selectedTracks: [LofiAudioTrack] {
@@ -117,8 +143,9 @@ final class AudioMixerStore: ObservableObject {
         "\(selectedTracks.count) audio layer\(selectedTracks.count == 1 ? "" : "s")"
     }
 
-    func selectPack(_ pack: LofiAudioPack) {
+    func selectPack(_ pack: LofiAudioPack, for focusMode: AudioMixerFocusMode = .workspace) {
         activePackID = pack.id
+        rememberLastPack(pack.id, for: focusMode)
         selectedTrackIDs = []
         for track in pack.tracks where trackVolumes[track.id] == nil {
             trackVolumes[track.id] = defaultVolume
@@ -155,62 +182,90 @@ final class AudioMixerStore: ObservableObject {
         trackVolumes[track.id] = max(0, min(value, 1))
     }
 
-    func loadCustomPack(from folderURL: URL) throws {
-        stopCustomPackIfNeeded()
-        securityScopedFolderURL?.stopAccessingSecurityScopedResource()
-        securityScopedFolderURL = nil
+    func restoreLastPack(for focusMode: AudioMixerFocusMode) {
+        guard let packID = userDefaults.string(forKey: lastPackKey(for: focusMode)),
+              let pack = availablePacks.first(where: { $0.id == packID }) else {
+            return
+        }
+        selectPack(pack, for: focusMode)
+    }
 
+    func loadCustomPack(from folderURL: URL, for focusMode: AudioMixerFocusMode = .workspace) throws {
         let didAccess = folderURL.startAccessingSecurityScopedResource()
-        if didAccess {
-            securityScopedFolderURL = folderURL
-        }
 
-        let fileURLs = try FileManager.default.contentsOfDirectory(
-            at: folderURL,
-            includingPropertiesForKeys: [.isRegularFileKey],
-            options: [.skipsHiddenFiles, .skipsPackageDescendants]
-        )
-        .filter { supportedCustomAudioExtensions.contains($0.pathExtension.lowercased()) }
-        .sorted { lhs, rhs in
-            lhs.lastPathComponent.localizedStandardCompare(rhs.lastPathComponent) == .orderedAscending
-        }
+        do {
+            let scan = try scanCustomAudioFolder(folderURL)
 
-        guard !fileURLs.isEmpty else {
+            guard !scan.supportedFileURLs.isEmpty else {
+                folderURL.stopAccessingSecurityScopedResource()
+                throw AudioMixerError.noSupportedAudio(
+                    unsupportedCount: scan.unsupportedCount,
+                    supportedExtensions: supportedExtensionsDescription
+                )
+            }
+
+            let folderName = folderURL.lastPathComponent.isEmpty ? "Your Pack" : folderURL.lastPathComponent
+            let packID = "custom-\(folderURL.standardizedFileURL.path)"
+            let pack = makeCustomPack(id: packID, name: folderName, fileURLs: scan.supportedFileURLs)
+
+            upsertCustomPack(pack, folderURL: folderURL)
+            selectPack(pack, for: focusMode)
+
+            let customTrackIDs = Set(pack.tracks.map(\.id))
+            guard !selectedTrackIDs.intersection(customTrackIDs).isEmpty else {
+                removeCustomPack(pack)
+                throw AudioMixerError.noPlayableAudio(packName: pack.name)
+            }
+
+            persistCustomPackRecord(
+                id: pack.id,
+                name: pack.name,
+                folderURL: folderURL
+            )
+            let ignored = scan.unsupportedCount
+            lastCustomPackImportMessage = ignored > 0
+                ? "Loaded \(pack.tracks.count) track\(pack.tracks.count == 1 ? "" : "s"). Ignored \(ignored) unsupported file\(ignored == 1 ? "" : "s")."
+                : "Loaded \(pack.tracks.count) track\(pack.tracks.count == 1 ? "" : "s")."
+        } catch {
             if didAccess {
                 folderURL.stopAccessingSecurityScopedResource()
-                securityScopedFolderURL = nil
             }
-            throw AudioMixerError.noSupportedAudio
+            throw error
         }
+    }
 
-        let folderName = folderURL.lastPathComponent.isEmpty ? "Your Pack" : folderURL.lastPathComponent
-        let packID = "custom-\(folderURL.path)"
-        let tracks = fileURLs.map { fileURL in
+    func renameCustomPack(_ pack: LofiAudioPack, to proposedName: String) {
+        let name = proposedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard pack.isCustom, !name.isEmpty else { return }
+        guard let index = customPacks.firstIndex(where: { $0.id == pack.id }) else { return }
+
+        let renamedTracks = customPacks[index].tracks.map { track in
             LofiAudioTrack(
-                id: "custom-\(fileURL.path)",
-                packID: packID,
-                packName: folderName,
-                title: fileURL.deletingPathExtension().lastPathComponent,
-                relativePath: "",
-                symbolName: "waveform",
-                fileURL: fileURL
+                id: track.id,
+                packID: track.packID,
+                packName: name,
+                title: track.title,
+                relativePath: track.relativePath,
+                symbolName: track.symbolName,
+                fileURL: track.fileURL
             )
         }
-
-        customPack = LofiAudioPack(
-            id: packID,
-            name: folderName,
-            mood: "Your audio folder",
-            symbolName: "folder.fill",
-            tracks: tracks
+        customPacks[index] = LofiAudioPack(
+            id: pack.id,
+            name: name,
+            mood: customPacks[index].mood,
+            symbolName: customPacks[index].symbolName,
+            tracks: renamedTracks
         )
-        selectPack(customPack!)
-        let customTrackIDs = Set(tracks.map(\.id))
-        guard !selectedTrackIDs.intersection(customTrackIDs).isEmpty else {
-            stopCustomPackIfNeeded()
-            customPack = nil
-            throw AudioMixerError.noPlayableAudio
+        if let recordIndex = customPackRecords.firstIndex(where: { $0.id == pack.id }) {
+            customPackRecords[recordIndex].name = name
+            saveCustomPackRecords()
         }
+    }
+
+    func removeCustomPack(_ pack: LofiAudioPack) {
+        guard pack.isCustom else { return }
+        removeCustomPack(id: pack.id)
     }
 
     func togglePlayPause() {
@@ -223,7 +278,9 @@ final class AudioMixerStore: ObservableObject {
 
     func play() {
         guard !selectedTrackIDs.isEmpty else {
-            if let firstPack = Self.packs.first {
+            if let activePackID, let activePack = availablePacks.first(where: { $0.id == activePackID }) {
+                selectPack(activePack)
+            } else if let firstPack = availablePacks.first {
                 selectPack(firstPack)
             }
             return
@@ -308,8 +365,79 @@ final class AudioMixerStore: ObservableObject {
         activePackID = nil
     }
 
-    private func stopCustomPackIfNeeded() {
-        guard let customPack else { return }
+    private func supportedCustomFileURLs(in folderURL: URL) throws -> [URL] {
+        try scanCustomAudioFolder(folderURL).supportedFileURLs
+    }
+
+    private func scanCustomAudioFolder(_ folderURL: URL) throws -> (supportedFileURLs: [URL], unsupportedCount: Int) {
+        let allFileURLs = try FileManager.default.contentsOfDirectory(
+            at: folderURL,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]
+        )
+        .filter { fileURL in
+            (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+        }
+
+        let supportedFileURLs = allFileURLs
+            .filter { supportedCustomAudioExtensions.contains($0.pathExtension.lowercased()) }
+            .sorted { lhs, rhs in
+                lhs.lastPathComponent.localizedStandardCompare(rhs.lastPathComponent) == .orderedAscending
+            }
+
+        return (supportedFileURLs, allFileURLs.count - supportedFileURLs.count)
+    }
+
+    private func makeCustomPack(id: String, name: String, fileURLs: [URL]) -> LofiAudioPack {
+        let tracks = fileURLs.map { fileURL in
+            LofiAudioTrack(
+                id: "custom-\(fileURL.standardizedFileURL.path)",
+                packID: id,
+                packName: name,
+                title: fileURL.deletingPathExtension().lastPathComponent,
+                relativePath: "",
+                symbolName: "waveform",
+                fileURL: fileURL
+            )
+        }
+
+        return LofiAudioPack(
+            id: id,
+            name: name,
+            mood: "\(tracks.count) track\(tracks.count == 1 ? "" : "s")",
+            symbolName: "folder.fill",
+            tracks: tracks
+        )
+    }
+
+    private func upsertCustomPack(_ pack: LofiAudioPack, folderURL: URL) {
+        if let existingIndex = customPacks.firstIndex(where: { $0.id == pack.id }) {
+            stopCustomPack(customPacks[existingIndex])
+            customPacks[existingIndex] = pack
+        } else {
+            customPacks.append(pack)
+        }
+        if let oldURL = securityScopedFolderURLs[pack.id], oldURL != folderURL {
+            oldURL.stopAccessingSecurityScopedResource()
+        }
+        securityScopedFolderURLs[pack.id] = folderURL
+    }
+
+    private func removeCustomPack(id: String) {
+        guard let pack = customPacks.first(where: { $0.id == id }) else { return }
+        stopCustomPack(pack)
+        customPacks.removeAll { $0.id == id }
+        customPackRecords.removeAll { $0.id == id }
+        saveCustomPackRecords()
+        if let folderURL = securityScopedFolderURLs.removeValue(forKey: id) {
+            folderURL.stopAccessingSecurityScopedResource()
+        }
+        for mode in AudioMixerFocusMode.allCases where userDefaults.string(forKey: lastPackKey(for: mode)) == id {
+            userDefaults.removeObject(forKey: lastPackKey(for: mode))
+        }
+    }
+
+    private func stopCustomPack(_ customPack: LofiAudioPack) {
         let customTrackIDs = Set(customPack.tracks.map(\.id))
         selectedTrackIDs.subtract(customTrackIDs)
         for id in customTrackIDs {
@@ -321,18 +449,99 @@ final class AudioMixerStore: ObservableObject {
             activePackID = nil
         }
     }
+
+    private func loadPersistedCustomPacks() {
+        guard let data = userDefaults.data(forKey: customPackRecordsKey),
+              let records = try? JSONDecoder().decode([CustomPackRecord].self, from: data) else {
+            return
+        }
+
+        var validRecords: [CustomPackRecord] = []
+        for record in records {
+            guard let folderURL = resolveFolderURL(for: record) else { continue }
+            guard let fileURLs = try? supportedCustomFileURLs(in: folderURL), !fileURLs.isEmpty else { continue }
+            let pack = makeCustomPack(id: record.id, name: record.name, fileURLs: fileURLs)
+            customPacks.append(pack)
+            validRecords.append(record)
+            securityScopedFolderURLs[record.id] = folderURL
+        }
+        customPackRecords = validRecords
+        if validRecords != records {
+            saveCustomPackRecords()
+        }
+    }
+
+    private func resolveFolderURL(for record: CustomPackRecord) -> URL? {
+        if let bookmarkData = record.bookmarkData {
+            var isStale = false
+            if let url = try? URL(
+                resolvingBookmarkData: bookmarkData,
+                options: [.withSecurityScope],
+                relativeTo: nil,
+                bookmarkDataIsStale: &isStale
+            ) {
+                _ = url.startAccessingSecurityScopedResource()
+                return url
+            }
+        }
+
+        let url = URL(fileURLWithPath: record.fallbackPath)
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        _ = url.startAccessingSecurityScopedResource()
+        return url
+    }
+
+    private func persistCustomPackRecord(id: String, name: String, folderURL: URL) {
+        let bookmarkData = try? folderURL.bookmarkData(
+            options: [.withSecurityScope],
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil
+        )
+        let record = CustomPackRecord(
+            id: id,
+            name: name,
+            bookmarkData: bookmarkData,
+            fallbackPath: folderURL.path
+        )
+        if let index = customPackRecords.firstIndex(where: { $0.id == id }) {
+            customPackRecords[index] = record
+        } else {
+            customPackRecords.append(record)
+        }
+        saveCustomPackRecords()
+    }
+
+    private func saveCustomPackRecords() {
+        guard let data = try? JSONEncoder().encode(customPackRecords) else { return }
+        userDefaults.set(data, forKey: customPackRecordsKey)
+    }
+
+    private func rememberLastPack(_ packID: String, for focusMode: AudioMixerFocusMode) {
+        userDefaults.set(packID, forKey: lastPackKey(for: focusMode))
+    }
+
+    private func lastPackKey(for focusMode: AudioMixerFocusMode) -> String {
+        "\(lastPackByFocusModeKeyPrefix)\(focusMode.rawValue)"
+    }
+
+    private var supportedExtensionsDescription: String {
+        supportedCustomAudioExtensions.sorted().joined(separator: ", ")
+    }
 }
 
 enum AudioMixerError: LocalizedError {
-    case noSupportedAudio
-    case noPlayableAudio
+    case noSupportedAudio(unsupportedCount: Int, supportedExtensions: String)
+    case noPlayableAudio(packName: String)
 
     var errorDescription: String? {
         switch self {
-        case .noSupportedAudio:
-            return "No supported audio files were found in that folder."
-        case .noPlayableAudio:
-            return "The audio files in that folder could not be loaded."
+        case .noSupportedAudio(let unsupportedCount, let supportedExtensions):
+            if unsupportedCount > 0 {
+                return "That folder contains \(unsupportedCount) unsupported file\(unsupportedCount == 1 ? "" : "s"). Supported audio formats: \(supportedExtensions)."
+            }
+            return "No audio files were found. Supported formats: \(supportedExtensions)."
+        case .noPlayableAudio(let packName):
+            return "\"\(packName)\" was found, but none of its supported audio files could be loaded."
         }
     }
 }

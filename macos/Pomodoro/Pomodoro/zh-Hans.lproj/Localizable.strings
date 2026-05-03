@@ -156,12 +156,13 @@
 "main.reminder" = "提醒";
 "main.sidebar.audio_music" = "音频与音乐";
 "main.sidebar.calendar" = "日历";
-"main.sidebar.countdown" = "倒计时";
+"main.sidebar.countdown" = "计时器";
 "main.sidebar.flow" = "Flow";
 "main.sidebar.pomodoro" = "Pomodoro";
 "main.sidebar.settings" = "设置";
 "main.sidebar.summary" = "总结";
 "main.sidebar.tasks" = "任务";
+"main.sidebar.timer" = "计时器";
 "main.summary.title" = "今日概览";
 "menu.open_app" = "打开应用";
 "menu.pause_with_icon" = "⏸ 暂停";
@@ -371,6 +372,7 @@
 "timer.custom" = "自定义";
 "timer.duration" = "时长";
 "timer.durations" = "时长设置";
+"timer.stopwatch" = "秒表";
 "timer.long_break" = "长休息";
 "timer.long_break_interval" = "长休息间隔";
 "timer.long_break_interval.every_sessions" = "每 %d 个专注会话";

@@ -1392,6 +1392,9 @@ private struct FlowAudioMixerPopover: View {
     @ObservedObject private var subscriptionStore = SubscriptionStore.shared
     @State private var upgradePaywallContext: SubscriptionPaywallContext?
     @State private var customPackErrorMessage: String?
+    @State private var customPackStatusMessage: String?
+    @State private var renamingPackID: String?
+    @State private var draftPackName = ""
 
     private var cleanNoiseTypes: [FocusSoundType] {
         [.white, .brown]
@@ -1419,19 +1422,7 @@ private struct FlowAudioMixerPopover: View {
 
                     ForEach(mixerStore.availablePacks) { pack in
                         VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 8) {
-                                Image(systemName: pack.symbolName)
-                                    .foregroundStyle(.secondary)
-                                Text(pack.name)
-                                    .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                                Spacer()
-                                Button(localizationManager.text("audio.mixer.select_pack")) {
-                                    audioSourceStore.selectAmbient(.off)
-                                    mixerStore.selectPack(pack)
-                                    mixerStore.play()
-                                }
-                                .controlSize(.small)
-                            }
+                            packHeader(pack)
 
                             ForEach(pack.tracks) { track in
                                 FlowAudioMixerTrackRow(track: track)
@@ -1451,6 +1442,9 @@ private struct FlowAudioMixerPopover: View {
                 featureGate: featureGate,
                 subscriptionStore: subscriptionStore
             )
+        }
+        .onAppear {
+            mixerStore.restoreLastPack(for: .flow)
         }
         .padding(16)
         .frame(width: 430)
@@ -1514,6 +1508,12 @@ private struct FlowAudioMixerPopover: View {
                     .font(.caption)
                     .foregroundStyle(.red)
             }
+
+            if let customPackStatusMessage {
+                Text(customPackStatusMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(10)
         .background(
@@ -1527,6 +1527,68 @@ private struct FlowAudioMixerPopover: View {
             return type
         }
         return .off
+    }
+
+    private func packHeader(_ pack: LofiAudioPack) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: pack.symbolName)
+                    .foregroundStyle(.secondary)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    if renamingPackID == pack.id {
+                        TextField("Pack name", text: $draftPackName)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 150)
+                    } else {
+                        Text(pack.name)
+                            .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                    }
+
+                    Text("\(pack.tracks.count) track\(pack.tracks.count == 1 ? "" : "s")")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if renamingPackID == pack.id {
+                    Button("Save") {
+                        mixerStore.renameCustomPack(pack, to: draftPackName)
+                        renamingPackID = nil
+                    }
+                    .controlSize(.small)
+
+                    Button("Cancel") {
+                        renamingPackID = nil
+                    }
+                    .controlSize(.small)
+                } else {
+                    Button(localizationManager.text("audio.mixer.select_pack")) {
+                        audioSourceStore.selectAmbient(.off)
+                        mixerStore.selectPack(pack, for: .flow)
+                        mixerStore.play()
+                    }
+                    .controlSize(.small)
+
+                    if pack.isCustom {
+                        Menu {
+                            Button("Rename") {
+                                draftPackName = pack.name
+                                renamingPackID = pack.id
+                            }
+                            Button("Remove", role: .destructive) {
+                                mixerStore.removeCustomPack(pack)
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
+                    }
+                }
+            }
+        }
     }
 
     private func chooseCustomAudioFolder() {
@@ -1550,9 +1612,11 @@ private struct FlowAudioMixerPopover: View {
 
         do {
             customPackErrorMessage = nil
-            try mixerStore.loadCustomPack(from: folderURL)
+            customPackStatusMessage = nil
+            try mixerStore.loadCustomPack(from: folderURL, for: .flow)
             audioSourceStore.selectAmbient(.off)
             mixerStore.play()
+            customPackStatusMessage = mixerStore.lastCustomPackImportMessage
         } catch {
             customPackErrorMessage = error.localizedDescription
         }

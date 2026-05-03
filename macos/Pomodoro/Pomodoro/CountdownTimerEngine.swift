@@ -102,3 +102,60 @@ final class CountdownTimerEngine: ObservableObject {
         durationProvider(durationConfig)
     }
 }
+
+final class StopwatchTimerEngine: ObservableObject {
+    @Published private(set) var state: TimerState = .idle
+    @Published private(set) var elapsedSeconds: Int = 0
+    @Published private(set) var laps: [Int] = []
+
+    private var timer: Timer?
+
+    func start() {
+        guard state == .idle else { return }
+        elapsedSeconds = 0
+        laps = []
+        state = .running
+        startTimer()
+    }
+
+    func pause() {
+        guard state == .running else { return }
+        state = .paused
+        stopTimer()
+    }
+
+    func resume() {
+        guard state == .paused else { return }
+        state = .running
+        startTimer()
+    }
+
+    func reset() {
+        stopTimer()
+        state = .idle
+        elapsedSeconds = 0
+        laps = []
+    }
+
+    func lap() {
+        guard elapsedSeconds > 0 else { return }
+        switch state {
+        case .running, .paused:
+            laps.insert(elapsedSeconds, at: 0)
+        case .idle, .breakRunning, .breakPaused:
+            return
+        }
+    }
+
+    private func startTimer() {
+        stopTimer()
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.elapsedSeconds += 1
+        }
+    }
+
+    private func stopTimer() {
+        timer?.invalidate()
+        timer = nil
+    }
+}

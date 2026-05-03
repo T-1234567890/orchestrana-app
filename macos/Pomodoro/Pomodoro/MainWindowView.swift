@@ -32,6 +32,7 @@ struct MainWindowView: View {
     @State private var longBreakMinutesText = ""
     @State private var countdownMinutesText = ""
     @State private var countdownSecondsText = ""
+    @State private var dashboardTimerMode: DashboardTimerMode = .countdown
     @State private var dashboardPresetSelection: PresetSelection = .preset(Preset.shortestBuiltIn)
     @State private var dashboardWorkMinutes: Int = 25
     @State private var dashboardShortBreakMinutes: Int = 5
@@ -399,13 +400,36 @@ struct MainWindowView: View {
                     DashboardPanel {
                         VStack(alignment: .leading, spacing: 16) {
                             SectionHeaderView(
-                                title: languageManager.text("timer.countdown"),
-                                subtitle: "Keep a simple deadline visible and adjustable without leaving the dashboard."
+                                title: languageManager.text("main.sidebar.countdown"),
+                                subtitle: "Use one timer surface for countdowns or open-ended stopwatch sessions."
                             )
-                            Text(formattedTime(appState.countdown.remainingSeconds))
-                                .font(.system(size: 38, weight: .bold, design: .rounded).monospacedDigit())
-                            countdownConfigurationPanel
-                            countdownActionsRow
+
+                            Picker("", selection: $dashboardTimerMode) {
+                                Text(languageManager.text("timer.countdown")).tag(DashboardTimerMode.countdown)
+                                Text(languageManager.text("timer.stopwatch")).tag(DashboardTimerMode.stopwatch)
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+
+                            Text(dashboardTimerText)
+                                .font(.system(size: 58, weight: .heavy, design: .rounded).monospacedDigit())
+                                .contentTransition(.numericText())
+                                .animation(mainTimerUpdateAnimation, value: appState.countdown.remainingSeconds)
+                                .animation(mainTimerUpdateAnimation, value: appState.stopwatch.elapsedSeconds)
+
+                            Text(languageManager.format("timer.state_format", labelForPomodoroState(dashboardTimerState)))
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundStyle(.secondary)
+
+                            if dashboardTimerMode == .countdown {
+                                countdownConfigurationPanel
+                                countdownActionsRow
+                            } else {
+                                stopwatchActionsRow
+                                if !appState.stopwatch.laps.isEmpty {
+                                    stopwatchLapsView
+                                }
+                            }
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     }
@@ -571,7 +595,7 @@ struct MainWindowView: View {
                     .font(.system(.headline, design: .default))
                     .foregroundStyle(.secondary)
                 Text(formattedTime(appState.countdown.remainingSeconds))
-                    .font(.system(size: 72, weight: .heavy, design: .default).monospacedDigit())
+                    .font(.system(size: 84, weight: .heavy, design: .default).monospacedDigit())
                     .scaleEffect(countdownStatePulse ? 1.0 : 0.98)
                     .opacity(countdownStatePulse ? 1.0 : 0.94)
                     .contentTransition(.numericText())
@@ -1115,10 +1139,6 @@ struct MainWindowView: View {
                     .pickerStyle(.radioGroup)
                 }
 
-                Divider()
-
-                settingsInfoRow(title: "Style", value: "System materials and native controls")
-                settingsInfoRow(title: "Layout", value: "Adaptive modules that expand with window size")
             }
         }
     }
@@ -2022,6 +2042,62 @@ struct MainWindowView: View {
         }
     }
 
+    private var stopwatchActionsRow: some View {
+        HStack(spacing: 10) {
+            let actions = stopwatchActions(for: appState.stopwatch.state)
+            ActionButton(languageManager.text("common.start"), isEnabled: actions.canStart) {
+                appState.stopwatch.start()
+            }
+            ActionButton(languageManager.text("common.pause"), isEnabled: actions.canPause) {
+                appState.stopwatch.pause()
+            }
+            ActionButton(languageManager.text("common.resume"), isEnabled: actions.canResume) {
+                appState.stopwatch.resume()
+            }
+            ActionButton("Lap", isEnabled: appState.stopwatch.elapsedSeconds > 0) {
+                appState.stopwatch.lap()
+            }
+            ActionButton(languageManager.text("common.reset")) {
+                appState.stopwatch.reset()
+            }
+        }
+    }
+
+    private var stopwatchLapsView: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(appState.stopwatch.laps.prefix(8).enumerated()), id: \.offset) { index, lap in
+                HStack {
+                    Text("Lap \(appState.stopwatch.laps.count - index)")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(formattedTime(lap))
+                        .font(.caption.monospacedDigit().weight(.semibold))
+                }
+            }
+        }
+        .padding(10)
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var dashboardTimerText: String {
+        switch dashboardTimerMode {
+        case .countdown:
+            return formattedTime(appState.countdown.remainingSeconds)
+        case .stopwatch:
+            return formattedTime(appState.stopwatch.elapsedSeconds)
+        }
+    }
+
+    private var dashboardTimerState: TimerState {
+        switch dashboardTimerMode {
+        case .countdown:
+            return appState.countdown.state
+        case .stopwatch:
+            return appState.stopwatch.state
+        }
+    }
+
     private func miniStatPill(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
@@ -2245,6 +2321,11 @@ struct MainWindowView: View {
         case longBreak
         case countdown
         case countdownSeconds
+    }
+
+    private enum DashboardTimerMode: Hashable {
+        case countdown
+        case stopwatch
     }
 
     private enum SidebarItem: String, CaseIterable, Identifiable {
@@ -3355,6 +3436,10 @@ struct MainWindowView: View {
         }
     }
 
+    private func stopwatchActions(for state: TimerState) -> CountdownActionAvailability {
+        countdownActions(for: state)
+    }
+
     private var workMinutesValue: Int {
         max(1, appState.durationConfig.workDuration / 60)
     }
@@ -4077,6 +4162,9 @@ private struct AudioMixerPopover: View {
     @ObservedObject private var subscriptionStore = SubscriptionStore.shared
     @State private var upgradePaywallContext: SubscriptionPaywallContext?
     @State private var customPackErrorMessage: String?
+    @State private var customPackStatusMessage: String?
+    @State private var renamingPackID: String?
+    @State private var draftPackName = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -4110,19 +4198,7 @@ private struct AudioMixerPopover: View {
 
                     ForEach(mixerStore.availablePacks) { pack in
                         VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 8) {
-                                Image(systemName: pack.symbolName)
-                                    .foregroundStyle(.secondary)
-                                Text(pack.name)
-                                    .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                                Spacer()
-                                Button(languageManager.text("audio.mixer.select_pack")) {
-                                    audioSourceStore.selectAmbient(.off)
-                                    mixerStore.selectPack(pack)
-                                    mixerStore.play()
-                                }
-                                .controlSize(.small)
-                            }
+                            packHeader(pack)
 
                             ForEach(pack.tracks) { track in
                                 AudioMixerTrackRow(track: track)
@@ -4146,6 +4222,9 @@ private struct AudioMixerPopover: View {
                 featureGate: featureGate,
                 subscriptionStore: subscriptionStore
             )
+        }
+        .onAppear {
+            mixerStore.restoreLastPack(for: .workspace)
         }
         .padding(16)
         .frame(width: 420)
@@ -4182,12 +4261,80 @@ private struct AudioMixerPopover: View {
                     .font(.caption)
                     .foregroundStyle(.red)
             }
+
+            if let customPackStatusMessage {
+                Text(customPackStatusMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(10)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.primary.opacity(0.045))
         )
+    }
+
+    private func packHeader(_ pack: LofiAudioPack) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: pack.symbolName)
+                    .foregroundStyle(.secondary)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    if renamingPackID == pack.id {
+                        TextField("Pack name", text: $draftPackName)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 150)
+                    } else {
+                        Text(pack.name)
+                            .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                    }
+
+                    Text("\(pack.tracks.count) track\(pack.tracks.count == 1 ? "" : "s")")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if renamingPackID == pack.id {
+                    Button("Save") {
+                        mixerStore.renameCustomPack(pack, to: draftPackName)
+                        renamingPackID = nil
+                    }
+                    .controlSize(.small)
+
+                    Button("Cancel") {
+                        renamingPackID = nil
+                    }
+                    .controlSize(.small)
+                } else {
+                    Button(languageManager.text("audio.mixer.select_pack")) {
+                        audioSourceStore.selectAmbient(.off)
+                        mixerStore.selectPack(pack, for: .workspace)
+                        mixerStore.play()
+                    }
+                    .controlSize(.small)
+
+                    if pack.isCustom {
+                        Menu {
+                            Button("Rename") {
+                                draftPackName = pack.name
+                                renamingPackID = pack.id
+                            }
+                            Button("Remove", role: .destructive) {
+                                mixerStore.removeCustomPack(pack)
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
+                    }
+                }
+            }
+        }
     }
 
     private func chooseCustomAudioFolder() {
@@ -4211,9 +4358,11 @@ private struct AudioMixerPopover: View {
 
         do {
             customPackErrorMessage = nil
-            try mixerStore.loadCustomPack(from: folderURL)
+            customPackStatusMessage = nil
+            try mixerStore.loadCustomPack(from: folderURL, for: .workspace)
             audioSourceStore.selectAmbient(.off)
             mixerStore.play()
+            customPackStatusMessage = mixerStore.lastCustomPackImportMessage
         } catch {
             customPackErrorMessage = error.localizedDescription
         }

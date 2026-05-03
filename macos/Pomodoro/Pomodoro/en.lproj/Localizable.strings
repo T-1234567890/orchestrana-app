@@ -156,12 +156,13 @@
 "main.reminder" = "Reminder";
 "main.sidebar.audio_music" = "Audio & Music";
 "main.sidebar.calendar" = "Calendar";
-"main.sidebar.countdown" = "Countdown";
+"main.sidebar.countdown" = "Timer";
 "main.sidebar.flow" = "Flow";
 "main.sidebar.pomodoro" = "Pomodoro";
 "main.sidebar.settings" = "Settings";
 "main.sidebar.summary" = "Summary";
 "main.sidebar.tasks" = "Tasks";
+"main.sidebar.timer" = "Timer";
 "main.summary.title" = "Today's Summary";
 "menu.open_app" = "Open App";
 "menu.pause_with_icon" = "⏸ Pause";
@@ -371,6 +372,7 @@
 "timer.custom" = "Custom";
 "timer.duration" = "Duration";
 "timer.durations" = "Durations";
+"timer.stopwatch" = "Stopwatch";
 "timer.long_break" = "Long Break";
 "timer.long_break_interval" = "Long Break Interval";
 "timer.long_break_interval.every_sessions" = "Every %d sessions";

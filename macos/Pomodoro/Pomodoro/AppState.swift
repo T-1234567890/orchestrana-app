@@ -13,6 +13,7 @@ import EventKit
 final class AppState: ObservableObject {
     let pomodoro: PomodoroTimerEngine
     let countdown: CountdownTimerEngine
+    let stopwatch: StopwatchTimerEngine
     let ambientNoiseEngine: AmbientNoiseEngine
     let nowPlayingRouter: NowPlayingRouter
 
@@ -109,12 +110,14 @@ final class AppState: ObservableObject {
     init(
         pomodoro: PomodoroTimerEngine,
         countdown: CountdownTimerEngine,
+        stopwatch: StopwatchTimerEngine,
         durationConfig: DurationConfig,
         userDefaults: UserDefaults,
         ambientNoiseEngine: AmbientNoiseEngine
     ) {
         self.pomodoro = pomodoro
         self.countdown = countdown
+        self.stopwatch = stopwatch
         self.ambientNoiseEngine = ambientNoiseEngine
         self.nowPlayingRouter = NowPlayingRouter(startPolling: false)
         self.durationConfig = durationConfig
@@ -169,6 +172,14 @@ final class AppState: ObservableObject {
             }
             .store(in: &cancellables)
 
+        stopwatch.objectWillChange
+            .sink { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.objectWillChange.send()
+                }
+            }
+            .store(in: &cancellables)
+
         pomodoro.$remainingSeconds
             .removeDuplicates()
             .sink { [weak self] seconds in
@@ -214,6 +225,7 @@ final class AppState: ObservableObject {
         self.init(
             pomodoro: pomodoro,
             countdown: countdown,
+            stopwatch: StopwatchTimerEngine(),
             durationConfig: storedConfig,
             userDefaults: userDefaults,
             ambientNoiseEngine: ambientNoiseEngine
