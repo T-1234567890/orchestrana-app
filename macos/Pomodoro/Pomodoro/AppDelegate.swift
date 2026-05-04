@@ -47,7 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag {
+        if !hasVisibleMainWindow {
             openMainWindow()
         }
         return true
@@ -55,7 +55,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func openMainWindow() {
         NSApplication.shared.activate(ignoringOtherApps: true)
+        if focusExistingMainWindow() {
+            return
+        }
+
         openMainWindowScene?()
+        DispatchQueue.main.async { [weak self] in
+            _ = self?.focusExistingMainWindow()
+        }
     }
 
     private func quitApp() {
@@ -92,5 +99,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func registerMainWindowSceneOpener(_ opener: @escaping () -> Void) {
         openMainWindowScene = opener
+    }
+
+    private var hasVisibleMainWindow: Bool {
+        NSApplication.shared.windows.contains { window in
+            window.identifier?.rawValue == OrchestranaApp.mainWindowID &&
+            window.isVisible &&
+            !window.isMiniaturized
+        }
+    }
+
+    @discardableResult
+    private func focusExistingMainWindow() -> Bool {
+        guard let window = NSApplication.shared.windows.first(where: {
+            $0.identifier?.rawValue == OrchestranaApp.mainWindowID
+        }) else {
+            return false
+        }
+
+        if window.isMiniaturized {
+            window.deminiaturize(nil)
+        }
+        window.makeKeyAndOrderFront(nil)
+        return true
     }
 }

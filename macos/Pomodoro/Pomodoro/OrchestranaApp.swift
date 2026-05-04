@@ -83,7 +83,6 @@ enum FirebaseBootstrap {
 @main
 struct OrchestranaApp: App {
     static let mainWindowID = "main-window"
-    static let aboutWindowID = "about-window"
 
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var appState: AppState
@@ -126,7 +125,7 @@ struct OrchestranaApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("Orchestrana", id: Self.mainWindowID) {
+        Window("Orchestrana", id: Self.mainWindowID) {
             rootContentView
         }
         .windowStyle(.hiddenTitleBar)
@@ -241,10 +240,6 @@ struct OrchestranaApp: App {
             }
         }
 
-        Window("About Orchestrana", id: Self.aboutWindowID) {
-            AboutOrchestranaView()
-        }
-        .windowResizability(.contentSize)
     }
 
     @ViewBuilder
@@ -284,12 +279,10 @@ struct OrchestranaApp: App {
     }
 
     private struct AppInfoCommands: Commands {
-        @Environment(\.openWindow) private var openWindow
-
         var body: some Commands {
             CommandGroup(replacing: .appInfo) {
                 Button("About Orchestrana") {
-                    openWindow(id: OrchestranaApp.aboutWindowID)
+                    AboutWindowPresenter.open()
                 }
             }
         }
@@ -329,20 +322,20 @@ struct OrchestranaApp: App {
         private func configureWindow(for view: NSView, context: Context) {
             DispatchQueue.main.async {
                 guard let window = view.window else { return }
+                guard context.coordinator.configuredWindow !== window else { return }
+                context.coordinator.configuredWindow = window
+
+                window.identifier = NSUserInterfaceItemIdentifier(OrchestranaApp.mainWindowID)
                 window.collectionBehavior.remove(.fullScreenPrimary)
                 window.collectionBehavior.remove(.fullScreenAuxiliary)
                 window.collectionBehavior.insert(.fullScreenNone)
-                if let zoomButton = window.standardWindowButton(.zoomButton) {
-                    zoomButton.target = window
-                    zoomButton.action = #selector(NSWindow.performZoom(_:))
-                    zoomButton.isEnabled = true
-                    zoomButton.needsDisplay = true
-                }
                 window.delegate = context.coordinator
             }
         }
 
         final class Coordinator: NSObject, NSWindowDelegate {
+            weak var configuredWindow: NSWindow?
+
             func windowWillUseStandardFrame(_ window: NSWindow, defaultFrame newFrame: NSRect) -> NSRect {
                 newFrame
             }

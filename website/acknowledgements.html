@@ -69,9 +69,20 @@
       border: 1px solid rgba(120, 98, 84, 0.12);
       background: rgba(255, 250, 246, 0.68);
       color: var(--text);
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-      font: 14px/1.65 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 15px;
+      line-height: 1.75;
+    }
+    .license-text p {
+      margin: 0 0 12px;
+    }
+    .license-text p:last-child {
+      margin-bottom: 0;
+    }
+    .license-link-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
     }
     .legal-nav {
       margin-top: 18px;
@@ -118,61 +129,53 @@
         <p class="ack-intro">Orchestrana includes third-party resources and open-source components. The notices below are provided for attribution and license compliance.</p>
 
         <section class="ack-section">
-          <h2>App Icon Attribution</h2>
-          <p class="ack-note">Portions of the app icon include MIT-licensed Microsoft design resources.</p>
-          <pre class="license-text">MIT License
-
-Copyright (c) 2020 Microsoft Corporation
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.</pre>
-        </section>
-
-        <section class="ack-section">
           <h2>Orchestrana macOS Client</h2>
           <p class="ack-note">The public client application is distributed under the MIT License.</p>
-          <pre class="license-text">MIT License
-
-Copyright (c) 2026 Tony and contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.</pre>
+          <div class="license-text">
+            <p>MIT License</p>
+            <p>Copyright (c) 2026 Tony and contributors</p>
+            <p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the &quot;Software&quot;), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
+            <p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
+            <p>THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+          </div>
         </section>
 
         <section class="ack-section">
           <h2>Orchestrana Cloud Services</h2>
           <p class="ack-note">The server-side implementation is not part of the open-source client license.</p>
-          <pre class="license-text">© 2026 Orchestrana. All rights reserved.</pre>
+          <div class="license-text">
+            <p>© 2026 Orchestrana. All rights reserved.</p>
+          </div>
+        </section>
+
+        <section class="ack-section">
+          <h2>Audio Pack Resources</h2>
+          <p class="ack-note">Bundled focus audio resources are provided under the Creative Commons CC0 public domain dedication from Freesound.org.</p>
+          <div class="license-text">
+            <p>The bundled ambient audio packs include edited and compressed sound resources sourced from Freesound.org. These resources are marked as Creative Commons CC0/public domain by their original uploaders, allowing use, modification, and redistribution without attribution requirements.</p>
+            <p>Orchestrana still provides this acknowledgement as a courtesy to the creators and the Freesound community. The audio resources are included only as optional focus ambience and are provided as-is, without warranty, endorsement, or guarantee of fitness for any particular purpose.</p>
+          </div>
+        </section>
+
+        <section class="ack-section">
+          <h2>App Icon Attribution</h2>
+          <p class="ack-note">Portions of the app icon include MIT-licensed Microsoft design resources.</p>
+          <div class="license-text">
+            <p>MIT License</p>
+            <p>Copyright (c) 2020 Microsoft Corporation</p>
+            <p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the &quot;Software&quot;), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
+            <p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
+            <p>THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+          </div>
+        </section>
+
+        <section class="ack-section">
+          <h2>License Links</h2>
+          <div class="license-link-buttons">
+            <a class="soft-btn primary-ish" href="https://creativecommons.org/publicdomain/zero/1.0/deed.en" target="_blank" rel="noreferrer">CC0 Summary</a>
+            <a class="soft-btn primary-ish" href="https://creativecommons.org/publicdomain/zero/1.0/legalcode.en" target="_blank" rel="noreferrer">CC0 Legal Code</a>
+            <a class="soft-btn primary-ish" href="https://opensource.org/license/mit" target="_blank" rel="noreferrer">MIT License</a>
+          </div>
         </section>
       </article>
     </section>

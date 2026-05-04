@@ -51,15 +51,17 @@ struct OnboardingFlowView: View {
 
     var body: some View {
         GeometryReader { proxy in
+            let contentWidth = contentColumnWidth(in: proxy.size)
+
             ZStack {
                 AppBackground()
 
                 VStack(spacing: 0) {
-                    topBar
+                    topBar(width: contentWidth)
 
                     Spacer(minLength: shellSpacerLength)
 
-                    contentColumn(in: proxy.size)
+                    contentColumn(width: contentWidth)
 
                     Spacer(minLength: shellSpacerLength)
                 }
@@ -102,7 +104,7 @@ struct OnboardingFlowView: View {
         }
     }
 
-    private var topBar: some View {
+    private func topBar(width: CGFloat) -> some View {
         HStack(spacing: 16) {
             HStack(spacing: 12) {
                 Image(nsImage: NSApp.applicationIconImage)
@@ -129,21 +131,20 @@ struct OnboardingFlowView: View {
                 .font(.system(size: 13, weight: .medium))
             }
         }
+        .frame(width: width, alignment: .leading)
     }
 
-    private func contentColumn(in availableSize: CGSize) -> some View {
-        let width = contentColumnWidth(in: availableSize)
-
-        return VStack(alignment: .leading, spacing: 14) {
+    private func contentColumn(width: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
             stepPanel(width: width)
             footerBar(width: width)
         }
-        .frame(maxWidth: width, alignment: .leading)
+        .frame(width: width, alignment: .leading)
         .frame(maxWidth: .infinity)
     }
 
     private func stepPanel(width: CGFloat) -> some View {
-        ZStack {
+        ZStack(alignment: .leading) {
             OnboardingGlassPanel(isCompact: step == .features) {
                 VStack(alignment: .leading, spacing: panelContentSpacing) {
                     if step != .welcome {
@@ -155,9 +156,9 @@ struct OnboardingFlowView: View {
                 .id(step.id)
                 .transition(stepTransition)
             }
+            .frame(width: width, alignment: .leading)
         }
-        .frame(maxWidth: width)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(width: width, alignment: .leading)
         .animation(panelAnimation, value: step.id)
     }
 
@@ -712,35 +713,44 @@ struct OnboardingFlowView: View {
     }
 
     private func footerBar(width: CGFloat) -> some View {
-        HStack(alignment: .center, spacing: 16) {
+        ZStack(alignment: .trailing) {
             progressIndicator
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer(minLength: 24)
+            footerNavigationButtons
+        }
+        .frame(width: width, alignment: .trailing)
+        .frame(minHeight: 46)
+    }
 
-            HStack(spacing: 14) {
-                if index > 0 {
-                    Button(localizationManager.text("onboarding.back")) {
-                        back()
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                    .font(onboardingPrimaryLabelFont)
-                    .frame(minWidth: 112, minHeight: 46)
+    private var footerNavigationButtons: some View {
+        HStack(spacing: 8) {
+            if index > 0 {
+                Button {
+                    back()
+                } label: {
+                    Text(localizationManager.text("onboarding.back"))
+                        .font(onboardingPrimaryLabelFont)
+                        .frame(minWidth: 72)
                 }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+            }
 
-                if let footerActionTitle {
-                    Button(footerActionTitle) {
-                        performFooterAction()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .font(onboardingPrimaryLabelFont)
-                    .frame(minWidth: 168, minHeight: 46)
-                    .disabled(isFooterActionDisabled)
+            if let footerActionTitle {
+                Button {
+                    performFooterAction()
+                } label: {
+                    Text(footerActionTitle)
+                        .font(onboardingPrimaryLabelFont)
+                        .frame(minWidth: 112)
                 }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(isFooterActionDisabled)
             }
         }
-        .frame(width: width, alignment: .leading)
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     private var progressIndicator: some View {
@@ -1210,6 +1220,7 @@ private struct OnboardingGlassPanel<Content: View>: View {
         }
         .padding(.horizontal, isCompact ? 26 : 34)
         .padding(.vertical, isCompact ? 24 : 32)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 30, style: .continuous)
                 .fill(.regularMaterial)
