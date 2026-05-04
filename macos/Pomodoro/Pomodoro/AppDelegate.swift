@@ -30,6 +30,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             configureControllersIfNeeded()
         }
     }
+    var audioMixerStore: AudioMixerStore? {
+        didSet {
+            configureControllersIfNeeded()
+        }
+    }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
     }
@@ -71,11 +76,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func configureControllersIfNeeded() {
         guard !appStateConfigured else { return }
-        guard let appState, let musicController else { return }
+        guard let appState, let musicController, let audioSourceStore, let audioMixerStore else { return }
         appStateConfigured = true
         menuBarController = MenuBarController(
             appState: appState,
             musicController: musicController,
+            audioSourceStore: audioSourceStore,
+            audioMixerStore: audioMixerStore,
             openMainWindow: { [weak self] in
                 self?.openMainWindow()
             },

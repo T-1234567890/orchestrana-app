@@ -44,6 +44,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     private unowned let appState: AppState
     private let musicController: MusicController
+    private let audioSourceStore: AudioSourceStore
+    private let audioMixerStore: AudioMixerStore
     private let localizationManager = LocalizationManager.shared
     private let statusItem: NSStatusItem
     private let menu: NSMenu
@@ -56,11 +58,15 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     init(
         appState: AppState,
         musicController: MusicController,
+        audioSourceStore: AudioSourceStore,
+        audioMixerStore: AudioMixerStore,
         openMainWindow: @escaping () -> Void,
         quitApp: @escaping () -> Void
     ) {
         self.appState = appState
         self.musicController = musicController
+        self.audioSourceStore = audioSourceStore
+        self.audioMixerStore = audioMixerStore
         self.openMainWindow = openMainWindow
         self.quitHandler = quitApp
         if let existingItem = Self.liveStatusItem {
@@ -128,6 +134,41 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             .store(in: &cancellables)
 
         musicController.$activeSource
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.rebuildMenu()
+            }
+            .store(in: &cancellables)
+
+        audioSourceStore.$audioSource
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.rebuildMenu()
+            }
+            .store(in: &cancellables)
+
+        audioMixerStore.$isPlaying
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.rebuildMenu()
+            }
+            .store(in: &cancellables)
+
+        audioMixerStore.$selectedTrackIDs
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.rebuildMenu()
+            }
+            .store(in: &cancellables)
+
+        audioMixerStore.$activePackID
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.rebuildMenu()
+            }
+            .store(in: &cancellables)
+
+        audioMixerStore.$customPacks
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 self?.rebuildMenu()
@@ -379,33 +420,54 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     private func musicMenuItem() -> NSMenuItem {
         let musicMenu = NSMenu()
-        musicMenu.addItem(actionItem(title: musicPlayPauseTitle(), action: #selector(toggleMusicPlayback)))
+        musicMenu.addItem(actionItem(title: audioPlayPauseTitle(), action: #selector(toggleAudioPlayback)))
         musicMenu.addItem(.separator())
 
-        let ambientSoundMenu = NSMenu()
-        for sound in FocusSoundType.allCases {
-            let item = NSMenuItem(title: sound.displayName, action: #selector(selectFocusSound(_:)), keyEquivalent: "")
+        let packsMenu = NSMenu()
+        for pack in audioMixerStore.availablePacks {
+            let item = NSMenuItem(title: pack.name, action: #selector(selectLofiPack(_:)), keyEquivalent: "")
             item.target = self
-            item.state = sound == musicController.currentFocusSound ? .on : .off
-            item.representedObject = sound
-            ambientSoundMenu.addItem(item)
+            item.state = pack.id == audioMixerStore.activePackID ? .on : .off
+            item.representedObject = pack.id
+            packsMenu.addItem(item)
         }
-        let ambientSoundItem = NSMenuItem(title: localizationManager.text("audio.ambient_sound"), action: nil, keyEquivalent: "")
-        ambientSoundItem.submenu = ambientSoundMenu
-        musicMenu.addItem(ambientSoundItem)
+        let packsItem = NSMenuItem(title: localizationManager.text("audio.lofi_packs"), action: nil, keyEquivalent: "")
+        packsItem.submenu = packsMenu
+        musicMenu.addItem(packsItem)
+
+        let cleanNoiseMenu = NSMenu()
+        for sound in cleanNoiseTypes {
+            let item = NSMenuItem(title: sound.displayName, action: #selector(selectCleanNoise(_:)), keyEquivalent: "")
+            item.target = self
+            item.state = currentAmbient == sound ? .on : .off
+            item.representedObject = sound
+            cleanNoiseMenu.addItem(item)
+        }
+        let cleanNoiseItem = NSMenuItem(title: localizationManager.text("audio.generated_noise"), action: nil, keyEquivalent: "")
+        cleanNoiseItem.submenu = cleanNoiseMenu
+        musicMenu.addItem(cleanNoiseItem)
 
         let musicItem = NSMenuItem(title: localizationManager.text("main.sidebar.audio_music"), action: nil, keyEquivalent: "")
         musicItem.submenu = musicMenu
         return musicItem
     }
 
-    private func musicPlayPauseTitle() -> String {
-        switch musicController.playbackState {
-        case .playing:
-            return localizationManager.text("menu.pause_with_icon")
-        case .paused, .idle:
-            return localizationManager.text("menu.play_with_icon")
+    private var cleanNoiseTypes: [FocusSoundType] {
+        [.white, .brown]
+    }
+
+    private var currentAmbient: FocusSoundType? {
+        if case .ambient(let type) = audioSourceStore.audioSource {
+            return type
         }
+        return nil
+    }
+
+    private func audioPlayPauseTitle() -> String {
+        if audioMixerStore.isPlaying || musicController.playbackState == .playing {
+            return localizationManager.text("menu.pause_with_icon")
+        }
+        return localizationManager.text("menu.play_with_icon")
     }
 
     private func pomodoroMenuActions(for state: TimerState) -> PomodoroMenuActionAvailability {
@@ -518,21 +580,42 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         NotificationCenter.default.post(name: .navigateToCalendar, object: nil)
     }
 
-    @objc private func toggleMusicPlayback() {
+    @objc private func toggleAudioPlayback() {
+        if audioMixerStore.isPlaying {
+            audioMixerStore.pause()
+            return
+        }
+
         if musicController.playbackState == .playing {
-            musicController.pause()
+            audioSourceStore.togglePlayPause()
+            return
+        }
+
+        if !audioMixerStore.selectedTracks.isEmpty || audioMixerStore.activePackID != nil {
+            audioSourceStore.selectAmbient(.off)
+            audioMixerStore.play()
+            return
+        }
+
+        if musicController.currentFocusSound != .off {
+            audioSourceStore.togglePlayPause()
         } else {
-            musicController.play()
+            audioSourceStore.selectAmbient(.white)
         }
     }
 
-    @objc private func selectFocusSound(_ sender: NSMenuItem) {
+    @objc private func selectLofiPack(_ sender: NSMenuItem) {
+        guard let packID = sender.representedObject as? String,
+              let pack = audioMixerStore.availablePacks.first(where: { $0.id == packID }) else { return }
+        audioSourceStore.selectAmbient(.off)
+        audioMixerStore.selectPack(pack)
+        audioMixerStore.play()
+    }
+
+    @objc private func selectCleanNoise(_ sender: NSMenuItem) {
         guard let sound = sender.representedObject as? FocusSoundType else { return }
-        if sound == .off {
-            musicController.stopFocusSound()
-        } else {
-            musicController.startFocusSound(sound)
-        }
+        audioMixerStore.pause()
+        audioSourceStore.selectAmbient(currentAmbient == sound ? .off : sound)
     }
 
     @objc private func quitApp() {

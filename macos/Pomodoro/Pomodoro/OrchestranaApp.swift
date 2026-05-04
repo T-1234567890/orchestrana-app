@@ -263,6 +263,7 @@ struct OrchestranaApp: App {
                 appDelegate.appState = appState
                 appDelegate.musicController = musicController
                 appDelegate.audioSourceStore = audioSourceStore
+                appDelegate.audioMixerStore = audioMixerStore
                 flowWindowManager.configure(
                     appState: appState,
                     musicController: musicController,
