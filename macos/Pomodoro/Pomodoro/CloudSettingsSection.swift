@@ -27,7 +27,6 @@ enum AuthProvider: CaseIterable, Identifiable {
 struct CloudSettingsSection: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var localizationManager: LocalizationManager
-    @State private var deleteConfirmationStep: DeleteAccountConfirmationStep?
     @State private var supportId: String?
     @State private var supportIdErrorMessage: String?
     @State private var isLoadingSupportId = false
@@ -38,49 +37,21 @@ struct CloudSettingsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(localizationManager.text("settings.account.title"))
-                .font(.title3.bold())
-
             if authViewModel.isLoggedIn {
                 loggedInSection
             } else {
-                LoginView()
+                accountOverviewPanel {
+                    LoginView()
+                }
             }
         }
         .task(id: authViewModel.currentUser?.uid) {
             await loadSupportId()
         }
-        .padding(16)
-        .background(Color.primary.opacity(0.05))
-        .cornerRadius(12)
-        .alert(item: $deleteConfirmationStep) { step in
-            switch step {
-            case .deletePurchases:
-                return Alert(
-                    title: Text(localizationManager.text("settings.account.delete_purchases_title")),
-                    message: Text(localizationManager.text("settings.account.delete_purchases_message")),
-                    primaryButton: .destructive(Text(localizationManager.text("settings.account.delete_purchases_continue"))) {
-                        deleteConfirmationStep = .areYouSure
-                    },
-                    secondaryButton: .cancel(Text(localizationManager.text("common.cancel")))
-                )
-            case .areYouSure:
-                return Alert(
-                    title: Text(localizationManager.text("settings.account.delete_confirm_title")),
-                    message: Text(localizationManager.text("settings.account.delete_confirm_message")),
-                    primaryButton: .destructive(Text(localizationManager.text("settings.account.delete_confirm_button"))) {
-                        Task { @MainActor in
-                            await authViewModel.deleteAccount()
-                        }
-                    },
-                    secondaryButton: .cancel(Text(localizationManager.text("common.cancel")))
-                )
-            }
-        }
     }
 
     private var loggedInSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        accountOverviewPanel {
             HStack(spacing: 12) {
                 avatarView(url: authViewModel.user?.photoURL)
                 VStack(alignment: .leading, spacing: 2) {
@@ -103,37 +74,19 @@ struct CloudSettingsSection: View {
             }
             .buttonStyle(.bordered)
             .disabled(authViewModel.isAuthenticating || authViewModel.isDeletingAccount)
-
-            Divider()
-                .padding(.vertical, 2)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text(localizationManager.text("settings.account.delete_account_title"))
-                    .font(.subheadline.weight(.semibold))
-                Text(localizationManager.text("settings.account.delete_account_body"))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-
-                Button(role: .destructive) {
-                    deleteConfirmationStep = .deletePurchases
-                } label: {
-                    if authViewModel.isDeletingAccount {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Text(localizationManager.text("settings.account.delete_account_button"))
-                    }
-                }
-                .buttonStyle(.bordered)
-                .disabled(authViewModel.isAuthenticating || authViewModel.isDeletingAccount)
-            }
-
-            if let message = authViewModel.authError, !message.isEmpty {
-                Text(message)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-            }
         }
+    }
+
+    private func accountOverviewPanel<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(localizationManager.text("settings.account.title"))
+                .font(.title3.bold())
+
+            content()
+        }
+        .padding(16)
+        .background(Color.primary.opacity(0.05))
+        .cornerRadius(12)
     }
 
     private var supportIdRow: some View {
@@ -286,6 +239,217 @@ struct CloudSettingsSection: View {
         guard let supportId, !supportId.isEmpty else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(supportId, forType: .string)
+    }
+}
+
+struct AccountSecuritySettingsSection: View {
+    @EnvironmentObject private var authViewModel: AuthViewModel
+    @EnvironmentObject private var localizationManager: LocalizationManager
+    @State private var deleteConfirmationStep: DeleteAccountConfirmationStep?
+    @State private var emailChangeAddress = ""
+    @State private var emailChangeMessage: String?
+    @State private var emailChangeErrorMessage: String?
+    @State private var isSendingEmailChangeVerification = false
+    @State private var passwordResetMessage: String?
+    @State private var passwordResetErrorMessage: String?
+    @State private var isSendingPasswordReset = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if authViewModel.isLoggedIn {
+                passwordResetRow
+
+                Divider()
+
+                emailChangeRow
+
+                Divider()
+
+                deleteAccountRow
+
+                if let message = authViewModel.authError, !message.isEmpty {
+                    Text(message)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
+            } else {
+                Text(localizationManager.text("auth.error.authentication_required"))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .alert(item: $deleteConfirmationStep) { step in
+            switch step {
+            case .deletePurchases:
+                return Alert(
+                    title: Text(localizationManager.text("settings.account.delete_purchases_title")),
+                    message: Text(localizationManager.text("settings.account.delete_purchases_message")),
+                    primaryButton: .destructive(Text(localizationManager.text("settings.account.delete_purchases_continue"))) {
+                        deleteConfirmationStep = .areYouSure
+                    },
+                    secondaryButton: .cancel(Text(localizationManager.text("common.cancel")))
+                )
+            case .areYouSure:
+                return Alert(
+                    title: Text(localizationManager.text("settings.account.delete_confirm_title")),
+                    message: Text(localizationManager.text("settings.account.delete_confirm_message")),
+                    primaryButton: .destructive(Text(localizationManager.text("settings.account.delete_confirm_button"))) {
+                        Task { @MainActor in
+                            await authViewModel.deleteAccount()
+                        }
+                    },
+                    secondaryButton: .cancel(Text(localizationManager.text("common.cancel")))
+                )
+            }
+        }
+    }
+
+    private var passwordResetRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(localizationManager.text("settings.account.password_reset_title"))
+                .font(.footnote.weight(.semibold))
+            Text(
+                localizationManager.format(
+                    "settings.account.password_reset_body",
+                    authViewModel.currentUserEmail.isEmpty ? localizationManager.text("settings.account.no_email") : authViewModel.currentUserEmail
+                )
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+
+            HStack(spacing: 10) {
+                Button {
+                    Task { @MainActor in
+                        await sendPasswordResetForCurrentUser()
+                    }
+                } label: {
+                    if isSendingPasswordReset {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text(localizationManager.text("settings.account.password_reset_button"))
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(authViewModel.isAuthenticating || isSendingPasswordReset || authViewModel.currentUserEmail.isEmpty)
+
+                statusText(message: passwordResetMessage, errorMessage: passwordResetErrorMessage)
+            }
+        }
+    }
+
+    private var emailChangeRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(localizationManager.text("settings.account.email_change_title"))
+                .font(.footnote.weight(.semibold))
+            Text(localizationManager.text("settings.account.email_change_body"))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 10) {
+                TextField(localizationManager.text("settings.account.email_change_placeholder"), text: $emailChangeAddress)
+                    .textFieldStyle(.roundedBorder)
+                    .textContentType(.emailAddress)
+                    .autocorrectionDisabled()
+                    .disabled(authViewModel.isAuthenticating || isSendingEmailChangeVerification)
+
+                Button {
+                    Task { @MainActor in
+                        await sendEmailChangeVerification()
+                    }
+                } label: {
+                    if isSendingEmailChangeVerification {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text(localizationManager.text("settings.account.email_change_button"))
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(
+                    authViewModel.isAuthenticating
+                    || isSendingEmailChangeVerification
+                    || emailChangeAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                )
+            }
+
+            statusText(message: emailChangeMessage, errorMessage: emailChangeErrorMessage)
+        }
+    }
+
+    private var deleteAccountRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(localizationManager.text("settings.account.delete_account_title"))
+                .font(.footnote.weight(.semibold))
+            Text(localizationManager.text("settings.account.delete_account_body"))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            Button(role: .destructive) {
+                deleteConfirmationStep = .deletePurchases
+            } label: {
+                if authViewModel.isDeletingAccount {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Text(localizationManager.text("settings.account.delete_account_button"))
+                }
+            }
+            .buttonStyle(.bordered)
+            .disabled(authViewModel.isAuthenticating || authViewModel.isDeletingAccount)
+        }
+    }
+
+    @ViewBuilder
+    private func statusText(message: String?, errorMessage: String?) -> some View {
+        if let message, !message.isEmpty {
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.green)
+        }
+        if let errorMessage, !errorMessage.isEmpty {
+            Text(errorMessage)
+                .font(.footnote)
+                .foregroundStyle(.red)
+        }
+    }
+
+    @MainActor
+    private func sendPasswordResetForCurrentUser() async {
+        let email = authViewModel.currentUserEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !email.isEmpty else { return }
+
+        isSendingPasswordReset = true
+        passwordResetMessage = nil
+        passwordResetErrorMessage = nil
+        authViewModel.clearError()
+        defer { isSendingPasswordReset = false }
+
+        do {
+            try await authViewModel.sendPasswordReset(email: email)
+            passwordResetMessage = localizationManager.text("settings.account.password_reset_success")
+        } catch {
+            passwordResetErrorMessage = (error as NSError).localizedDescription
+        }
+    }
+
+    @MainActor
+    private func sendEmailChangeVerification() async {
+        let newEmail = emailChangeAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !newEmail.isEmpty else { return }
+
+        isSendingEmailChangeVerification = true
+        emailChangeMessage = nil
+        emailChangeErrorMessage = nil
+        authViewModel.clearError()
+        defer { isSendingEmailChangeVerification = false }
+
+        do {
+            try await authViewModel.sendEmailChangeVerification(newEmail: newEmail)
+            emailChangeMessage = localizationManager.text("settings.account.email_change_success")
+        } catch {
+            emailChangeErrorMessage = (error as NSError).localizedDescription
+        }
     }
 }
 

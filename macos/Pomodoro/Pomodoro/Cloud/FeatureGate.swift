@@ -511,16 +511,18 @@ final class FeatureGate: ObservableObject {
         guard cached.uid == uid else { return }
         guard cached.tier == .free || cached.tier == .expired else { return }
 
-        tier = cached.tier
+        let cachedTier = Self.normalizeClientTier(cached.tier)
+
+        tier = cachedTier
         subscriptionEndAt = cached.subscriptionEndAt
-        analyticsLevel = cached.analyticsLevel
-        aiLevel = cached.aiLevel
-        featureFlags = Self.decodeFeatureFlags(from: cached.features)
+        analyticsLevel = cachedTier == .free ? .basic : cached.analyticsLevel
+        aiLevel = cachedTier == .free ? .none : cached.aiLevel
+        featureFlags = cachedTier == .free ? Self.defaultFeatures(for: .free) : Self.decodeFeatureFlags(from: cached.features)
     }
 
     @MainActor
     private func apply(payload: AllowancePayload) {
-        let backendTier = payload.tier ?? .free
+        let backendTier = Self.normalizeClientTier(payload.tier ?? .free)
 
         tier = backendTier
         deepSeekRemainingTokens = payload.deepSeekRemainingTokens
@@ -555,6 +557,10 @@ final class FeatureGate: ObservableObject {
         )
         guard let data = try? JSONEncoder().encode(cached) else { return }
         defaults.set(data, forKey: Self.cachedEntitlementKey)
+    }
+
+    private static func normalizeClientTier(_ tier: Tier) -> Tier {
+        tier == .expired ? .free : tier
     }
 
     private func decodeAllowancePayload(from data: Any) throws -> AllowancePayload {

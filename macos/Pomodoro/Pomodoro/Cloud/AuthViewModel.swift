@@ -141,6 +141,31 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
+    func sendEmailChangeVerification(newEmail: String) async throws {
+        startListeningIfNeeded()
+        let auth = try currentAuth()
+        guard let user = auth.currentUser else {
+            throw AuthViewModelError.notAuthenticated
+        }
+
+        let sanitizedEmail = newEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sanitizedEmail.isEmpty else {
+            throw AuthViewModelError.invalidEmail
+        }
+
+        let _: Void = try await performExclusiveAuthOperation {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                user.sendEmailVerification(beforeUpdatingEmail: sanitizedEmail) { error in
+                    if let error {
+                        continuation.resume(throwing: error)
+                    } else {
+                        continuation.resume(returning: ())
+                    }
+                }
+            }
+        }
+    }
+
     func getValidIDToken() async throws -> String {
         startListeningIfNeeded()
         let auth = try currentAuth()
@@ -483,6 +508,10 @@ final class AuthViewModel: ObservableObject {
             return AuthViewModelError.accountDisabled
         case .accountExistsWithDifferentCredential:
             return AuthViewModelError.accountExistsWithDifferentCredential
+        case .emailAlreadyInUse:
+            return AuthViewModelError.emailAlreadyInUse
+        case .requiresRecentLogin:
+            return AuthViewModelError.requiresRecentLogin
         default:
             return error
         }
@@ -507,6 +536,8 @@ final class AuthViewModel: ObservableObject {
         case signInCancelled
         case accountDisabled
         case accountExistsWithDifferentCredential
+        case emailAlreadyInUse
+        case requiresRecentLogin
 
         @MainActor
         var errorDescription: String? {
@@ -547,6 +578,10 @@ final class AuthViewModel: ObservableObject {
                 return LocalizationManager.shared.text("auth.error.account_disabled")
             case .accountExistsWithDifferentCredential:
                 return LocalizationManager.shared.text("auth.error.account_exists_different_provider")
+            case .emailAlreadyInUse:
+                return LocalizationManager.shared.text("auth.error.email_already_in_use")
+            case .requiresRecentLogin:
+                return LocalizationManager.shared.text("auth.error.requires_recent_login")
             }
         }
     }

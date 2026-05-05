@@ -1069,6 +1069,7 @@ struct MainWindowView: View {
         case .account:
             AdaptivePageGrid(minimumWidth: 360, spacing: 20) {
                 settingsAccountModule
+                settingsAccountSecurityModule
                 settingsPoliciesModule
             }
         }
@@ -1432,6 +1433,17 @@ struct MainWindowView: View {
             description: "Manage sign-in state and cloud-connected access from one place."
         ) {
             CloudSettingsSection()
+                .environmentObject(authViewModel)
+                .environmentObject(LocalizationManager.shared)
+        }
+    }
+
+    private var settingsAccountSecurityModule: some View {
+        SettingsModuleCard(
+            title: LocalizationManager.shared.text("settings.account.security_title"),
+            description: LocalizationManager.shared.text("settings.account.security_body")
+        ) {
+            AccountSecuritySettingsSection()
                 .environmentObject(authViewModel)
                 .environmentObject(LocalizationManager.shared)
         }
