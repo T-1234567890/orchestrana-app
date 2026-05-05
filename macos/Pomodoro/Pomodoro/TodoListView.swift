@@ -303,7 +303,7 @@ struct TodoListView: View {
             }
             
             // Tasks list
-            if taskViewMode == .matrix, featureGate.canUseEisenhowerMatrix, selectedSegment == .active {
+            if shouldShowMatrixView {
                 ScrollView {
                     EisenhowerMatrixView(tasks: visibleItems) { task in
                         openEditorForEdit(task)
@@ -1027,6 +1027,12 @@ struct TodoListView: View {
         case .completed:
             return todoStore.completedItems
         }
+    }
+
+    private var shouldShowMatrixView: Bool {
+        taskViewMode == .matrix
+            && featureGate.canUseEisenhowerMatrix
+            && selectedSegment != .completed
     }
 
     private var filteredEventTaskGroups: [EventTaskGroupEntry] {
