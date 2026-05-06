@@ -1,6 +1,11 @@
 # Orchestrana™ — Detailed Roadmap  
 **Versions: v1.1.x → v2.0**
 
+> ## Legacy Notice
+> This is a legacy roadmap snapshot kept for historical context.
+> It may not reflect the current product direction, subscription model, or AI / PKB planning.
+> For the current public roadmap, see `Docs/Public_Roadmap.md`.
+
 This document outlines the development direction of **Orchestrana** from the current 1.1.x releases toward version 2.0.
 
 The roadmap focuses on **experience stability, system coherence, and long-term sustainability**, rather than rapid feature expansion.

@@ -176,7 +176,7 @@ body.lang-switching-in [data-en] {
   transition-duration: var(--lang-in);
 }
 
-.hero, .features, .rhythm, .docs, .download, .story, .faq, .join-us, #join {
+.hero, .features, .rhythm, .docs, .download, .story, .faq, .join-us, .pricing-overview, #join {
   scroll-margin-top: 110px;
 }
 
@@ -284,7 +284,7 @@ body.lang-switching-in [data-en] {
 .section-head h2 { margin: 8px 0 10px; font-size: clamp(26px, 4vw, 36px); letter-spacing: -0.02em; font-family: 'Literata', 'Georgia', 'Times New Roman', serif; }
 .muted { color: var(--muted); line-height: 1.6; }
 
-.features, .docs, .download { padding: 40px 20px 72px; max-width: 1180px; margin: 0 auto; }
+.features, .docs, .download, .pricing-overview { padding: 40px 20px 72px; max-width: 1180px; margin: 0 auto; }
 .visual-compare { padding: 40px 20px 52px; max-width: 1180px; margin: 0 auto; }
 .waitlist { padding: 40px 20px 72px; max-width: 1180px; margin: 0 auto; text-align: center; }
 .join-us { padding: 40px 20px 82px; max-width: 1180px; margin: 0 auto; }
@@ -804,6 +804,65 @@ body.lang-switching-in [data-en] {
 
 .download .cta-row { justify-content: center; }
 
+/* Pricing */
+.pricing-overview {
+  text-align: center;
+}
+.pricing-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(14px, 3vw, 22px);
+}
+.pricing-preview-card {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  min-height: 230px;
+  padding: clamp(18px, 3vw, 26px);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(150deg, rgba(255,243,233,0.88), rgba(255,240,229,0.72));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.62),
+              0 0 0 0.5px rgba(255,240,230,0.42),
+              0 12px 22px rgba(114,76,58,0.1);
+}
+.pricing-preview-card.is-featured {
+  border-color: rgba(216, 104, 86, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.66),
+              0 0 0 0.5px rgba(216,104,86,0.18),
+              0 16px 30px rgba(114,76,58,0.14);
+}
+.pricing-preview-card h3 {
+  margin: 0;
+  font-size: 24px;
+}
+.pricing-preview-card p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+.pricing-preview-price {
+  color: var(--text);
+  font-size: clamp(28px, 4vw, 38px) !important;
+  font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'San Francisco', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+.pricing-preview-price span {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.pricing-preview-alt {
+  color: #8a6f62 !important;
+  font-weight: 700;
+}
+.pricing-overview .waitlist-note {
+  margin: 16px auto 0;
+  max-width: 720px;
+}
+
 /* Feature comparison */
 .comparison-grid {
   display: grid;
@@ -940,25 +999,159 @@ body.lang-switching-in [data-en] {
   line-height: 1.45;
   font-size: 14px;
 }
-.plan-summary-grid {
+.pricing-panel {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(255,243,233,0.9), rgba(255,240,229,0.76));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.62),
+              0 0 0 0.5px rgba(255,240,230,0.45),
+              0 12px 22px rgba(114,76,58,0.1);
+}
+.comparison-page .pricing-panel {
+  gap: 12px;
+  padding: clamp(12px, 2vw, 16px);
+  border-radius: 16px;
+}
+.pricing-panel-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 360px);
+  gap: 18px;
+  align-items: end;
+}
+.pricing-panel-head .eyebrow,
+.pricing-panel-head h2,
+.pricing-panel-head .muted {
+  margin: 0;
+}
+.pricing-panel-head h2 {
+  margin-top: 6px;
+  font-size: clamp(24px, 4vw, 34px);
+}
+.comparison-page .pricing-panel-head {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 340px);
   gap: 12px;
 }
-.plan-summary-card {
-  padding: 14px;
+.comparison-page .pricing-panel-head h2 {
+  font-size: clamp(20px, 3vw, 26px);
+}
+.comparison-page .pricing-panel-head .muted {
+  font-size: 13px;
+  line-height: 1.45;
+}
+.pricing-radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.pricing-billing-control {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px;
   border: 1px solid rgba(0,0,0,0.06);
   border-radius: 14px;
-  background: rgba(255, 244, 235, 0.56);
+  background: rgba(255, 242, 232, 0.72);
 }
-.plan-summary-card h2 {
-  margin: 0 0 6px;
+.comparison-page .pricing-billing-control {
+  padding: 4px;
+  border-radius: 12px;
+}
+.pricing-billing-control span {
+  padding: 0 8px;
+  color: var(--text);
+  font-weight: 700;
+}
+.pricing-billing-control label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  color: var(--text);
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 180ms var(--ease-soft), background 180ms var(--ease-soft), box-shadow 180ms var(--ease-soft);
+}
+.comparison-page .pricing-billing-control label {
+  min-height: 32px;
+  padding: 7px 12px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+#pricing-monthly:checked ~ .pricing-billing-control label[for="pricing-monthly"],
+#pricing-annual:checked ~ .pricing-billing-control label[for="pricing-annual"] {
+  color: #fffaf6;
+  background: linear-gradient(145deg, var(--accent), var(--accent-strong));
+  box-shadow: 0 8px 16px rgba(200, 110, 90, 0.2);
+}
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(12px, 3vw, 18px);
+}
+.comparison-page .pricing-grid {
+  gap: 10px;
+}
+.pricing-card {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 230px;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid rgba(0,0,0,0.07);
+  border-radius: 16px;
+  background: rgba(255, 244, 235, 0.62);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.62);
+}
+.comparison-page .pricing-card {
+  min-height: 0;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 14px;
+}
+.pricing-card.is-featured {
+  border-color: rgba(216, 104, 86, 0.42);
+  background: linear-gradient(150deg, rgba(255, 248, 242, 0.78), rgba(255, 238, 225, 0.68));
+}
+.pricing-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pricing-card h3 {
+  margin: 0;
+  font-size: 25px;
+}
+.comparison-page .pricing-card h3 {
   font-size: 18px;
 }
-.plan-summary-card p {
+.pricing-price {
   margin: 0;
-  font-size: 13.5px;
-  line-height: 1.45;
+  color: var(--text);
+  font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'San Francisco', sans-serif;
+  font-size: clamp(28px, 4vw, 38px);
+  line-height: 1;
+  font-weight: 850;
+  letter-spacing: -0.045em;
+}
+.comparison-page .pricing-price {
+  font-size: clamp(22px, 3vw, 28px);
+}
+.price-annual {
+  display: none;
+}
+#pricing-annual:checked ~ .pricing-grid .price-monthly {
+  display: none;
+}
+#pricing-annual:checked ~ .pricing-grid .price-annual {
+  display: inline-flex;
 }
 .full-plan-table {
   min-width: 1080px;
@@ -1004,8 +1197,17 @@ body.lang-switching-in [data-en] {
   background: rgba(255, 235, 220, 0.78);
 }
 @media (max-width: 760px) {
-  .plan-summary-grid {
+  .pricing-preview-grid,
+  .pricing-grid,
+  .pricing-panel-head {
     grid-template-columns: 1fr;
+  }
+  .pricing-billing-control {
+    justify-self: stretch;
+  }
+  .pricing-billing-control label {
+    flex: 1;
+    justify-content: center;
   }
 }
 

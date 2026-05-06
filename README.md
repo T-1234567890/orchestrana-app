@@ -197,6 +197,10 @@ The goal of upcoming versions is to transition toward a softer, macOS-inspired l
 
 Planned for future versions:
 
+- 🧠 Personal Knowledge Base and AI-ready context
+- 📝 Lightweight notes connected to focus, tasks, and plans
+- 🧩 AI Jam for structured idea generation and transformation
+- 📦 Exportable context packs for external AI tools
 - 🎨 More macOS-style liquid glass theme refinements
 - 🪄 Smoother button & timer animations
 - 💡 Better logic
@@ -204,7 +208,19 @@ Planned for future versions:
 - ⌨️ More features
 - 🛎️ Issue requirements
 
-See: `docs/Future_Pro_Plan.md` and `docs/Roadmap_1.0-2.0.md`
+See: `Docs/Public_Roadmap.md`, `Docs/Future_Pro_Plan.md`, and `Docs/Roadmap_1.0-2.0.md`
+
+## Pricing
+
+Orchestrana currently uses three public plan levels:
+
+- **Free** — Included
+- **Plus** — $4.99/month or $39.99/year
+- **Pro** — $7.99/month or $69.99/year
+
+See the public comparison page for the full feature breakdown: https://orchestrana.app/comparison
+
+Prices are shown in USD. App Store regional pricing, taxes, offers, and availability may vary. The App Store and current app build are the source of truth for active subscription terms.
 
 ## 🤝 Collaboration & Contributions
 

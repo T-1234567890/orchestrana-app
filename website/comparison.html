@@ -63,20 +63,40 @@
           <p data-en="Subscriptions are billed through the Apple App Store. They automatically renew unless canceled at least 24 hours before the end of the current period. Renewal is charged within 24 hours before the end of the period. Manage or cancel your subscription in your App Store account settings." data-zh="订阅通过 Apple App Store 计费。除非在当前周期结束前至少 24 小时取消，否则订阅会自动续订。续订费用会在周期结束前 24 小时内扣取。你可以在 App Store 账户设置中管理或取消订阅。">Subscriptions are billed through the Apple App Store. They automatically renew unless canceled at least 24 hours before the end of the current period. Renewal is charged within 24 hours before the end of the period. Manage or cancel your subscription in your App Store account settings.</p>
         </div>
 
-        <div class="plan-summary-grid">
-          <section class="plan-summary-card">
-            <h2 data-en="Free" data-zh="Free">Free</h2>
-            <p data-en="Local-first timer, tasks, calendar visibility, reminders sync, basic dashboard and focus workflow." data-zh="本地优先的计时器、任务、日历查看、提醒事项同步、基础仪表盘与专注流程。">Local-first timer, tasks, calendar visibility, reminders sync, basic dashboard and focus workflow.</p>
-          </section>
-          <section class="plan-summary-card">
-            <h2 data-en="Plus" data-zh="Plus">Plus</h2>
-            <p data-en="Standard Models-powered AI, advanced task structure, fullscreen Flow Mode, custom backgrounds, advanced charts, and manual event tasks." data-zh="Standard Models AI、高级任务结构、全屏 Flow Mode、自定义背景、高级图表与手动事件任务。">Standard Models-powered AI, advanced task structure, fullscreen Flow Mode, custom backgrounds, advanced charts, and manual event tasks.</p>
-          </section>
-          <section class="plan-summary-card">
-            <h2 data-en="Pro" data-zh="Pro">Pro</h2>
-            <p data-en="Everything in Plus, plus Frontier Models summaries/deep analysis, AI scheduling, AI event tasks, custom Flow layout, and Eisenhower Matrix." data-zh="包含 Plus 的所有功能，并加入 Frontier Models 总结/深度分析、AI 排程、AI 事件任务、自定义 Flow 布局与艾森豪威尔矩阵。">Everything in Plus, plus Frontier Models summaries/deep analysis, AI scheduling, AI event tasks, custom Flow layout, and Eisenhower Matrix.</p>
-          </section>
-        </div>
+        <section class="pricing-panel glass reveal" aria-labelledby="comparison-pricing-title">
+          <div class="pricing-panel-head">
+            <div>
+              <p class="eyebrow" data-en="Pricing" data-zh="价格">Pricing</p>
+              <h2 id="comparison-pricing-title" data-en="Plan pricing" data-zh="套餐价格">Plan pricing</h2>
+            </div>
+            <p class="muted" data-en="Prices are shown in USD. App Store regional pricing, taxes, offers, and availability may vary." data-zh="价格以美元显示。App Store 地区价格、税费、优惠与可用性可能不同。">Prices are shown in USD. App Store regional pricing, taxes, offers, and availability may vary.</p>
+          </div>
+
+          <input class="pricing-radio" type="radio" name="comparison-billing" id="pricing-monthly" checked>
+          <input class="pricing-radio" type="radio" name="comparison-billing" id="pricing-annual">
+          <div class="pricing-billing-control" aria-label="Billing period">
+            <span data-en="Billing" data-zh="计费">Billing</span>
+            <label for="pricing-monthly" data-en="Monthly" data-zh="月付">Monthly</label>
+            <label for="pricing-annual" data-en="Annually" data-zh="年付">Annually</label>
+          </div>
+
+          <div class="pricing-grid">
+            <article class="pricing-card">
+              <h3 data-en="Free" data-zh="Free">Free</h3>
+              <p class="pricing-price" data-en="Included" data-zh="已包含">Included</p>
+            </article>
+            <article class="pricing-card is-featured">
+              <div class="pricing-card-title-row">
+                <h3 data-en="Plus" data-zh="Plus">Plus</h3>
+              </div>
+              <p class="pricing-price"><span class="price-monthly">$4.99</span><span class="price-annual">$39.99</span></p>
+            </article>
+            <article class="pricing-card">
+              <h3 data-en="Pro" data-zh="Pro">Pro</h3>
+              <p class="pricing-price"><span class="price-monthly">$7.99</span><span class="price-annual">$69.99</span></p>
+            </article>
+          </div>
+        </section>
 
         <div class="compare-wrapper">
           <table class="compare-table full-plan-table">
@@ -114,7 +134,7 @@
               <tr><td data-en="Advanced analysis charts" data-zh="高级分析图表">Advanced analysis charts</td><td data-en="Additional chart depth beyond the basic local analysis charts." data-zh="在基础本地图表之外提供更深入的分析图表。">Additional chart depth beyond the basic local analysis charts.</td><td>—</td><td>✓</td><td>✓</td></tr>
               <tr><td data-en="Weekly AI overview" data-zh="每周 AI 概览">Weekly AI overview</td><td data-en="Plus uses Standard Models. Pro uses the Frontier Models summary route for the full weekly summary." data-zh="Plus 使用 Standard Models。Pro 的完整每周总结使用 Frontier Models 总结路由。">Plus uses Standard Models. Pro uses the Frontier Models summary route for the full weekly summary.</td><td>—</td><td>Standard Models</td><td>Frontier Models summary</td></tr>
               <tr><td data-en="Small section and metric explanations" data-zh="小节与指标解释">Small section and metric explanations</td><td data-en="Selectable insight explanations stay on Standard Models for both Plus and Pro." data-zh="可选择的洞察解释在 Plus 和 Pro 中都使用 Standard Models。">Selectable insight explanations stay on Standard Models for both Plus and Pro.</td><td>—</td><td>Standard Models</td><td>Standard Models</td></tr>
-              <tr><td data-en="Deep analysis" data-zh="深度分析">Deep analysis</td><td data-en="Pro-only longer report using Frontier Models." data-zh="Pro 专属的 Frontier Models 深度报告。">Pro-only longer report using Frontier Models.</td><td>—</td><td>—</td><td>Frontier Models</td></tr>
+              <tr><td data-en="Deep analysis" data-zh="深度分析">Deep analysis</td><td data-en="Pro longer report using Frontier Models." data-zh="Pro 的 Frontier Models 深度报告。">Pro longer report using Frontier Models.</td><td>—</td><td>—</td><td>Frontier Models</td></tr>
 
               <tr class="feature-category"><td colspan="5" data-en="Calendar and event tasks" data-zh="日历与事件任务">Calendar and event tasks</td></tr>
               <tr><td data-en="Manual event tasks" data-zh="手动事件任务">Manual event tasks</td><td data-en="Enable tasks inside an internal app event and add/edit/complete them manually." data-zh="在应用内部事件中启用任务，并手动添加、编辑和完成。">Enable tasks inside an internal app event and add/edit/complete them manually.</td><td>—</td><td>✓</td><td>✓</td></tr>
@@ -130,9 +150,9 @@
 
               <tr class="feature-category"><td colspan="5" data-en="Usage and quota" data-zh="用量与配额">Usage and quota</td></tr>
               <tr><td data-en="Daily Standard Models allowance" data-zh="每日 Standard Models 用量">Daily Standard Models allowance</td><td data-en="General daily allowance for Standard Models-backed AI features." data-zh="Standard Models AI 功能的日常用量范围。">General daily allowance for Standard Models-backed AI features.</td><td>—</td><td>High</td><td>Highest</td></tr>
-              <tr><td data-en="Daily Frontier Models allowance" data-zh="每日 Frontier Models 用量">Daily Frontier Models allowance</td><td data-en="Daily allowance for Pro-only Frontier Models summary and deep analysis features." data-zh="Pro 专属 Frontier Models 总结与深度分析功能的日常用量范围。">Daily allowance for Pro-only Frontier Models summary and deep analysis features.</td><td>—</td><td>—</td><td>High</td></tr>
+              <tr><td data-en="Daily Frontier Models allowance" data-zh="每日 Frontier Models 用量">Daily Frontier Models allowance</td><td data-en="Daily allowance for Pro Frontier Models summary and deep analysis features." data-zh="Pro Frontier Models 总结与深度分析功能的日常用量范围。">Daily allowance for Pro Frontier Models summary and deep analysis features.</td><td>—</td><td>—</td><td>High</td></tr>
               <tr><td data-en="Monthly Standard Models allowance" data-zh="每月 Standard Models 用量">Monthly Standard Models allowance</td><td data-en="Monthly allowance for Standard Models-backed AI features." data-zh="Standard Models AI 功能的每月用量范围。">Monthly allowance for Standard Models-backed AI features.</td><td>—</td><td>High</td><td>High</td></tr>
-              <tr><td data-en="Monthly Frontier Models allowance" data-zh="每月 Frontier Models 用量">Monthly Frontier Models allowance</td><td data-en="Monthly allowance for Pro-only Frontier Models features." data-zh="Pro 专属 Frontier Models 功能的每月用量范围。">Monthly allowance for Pro-only Frontier Models features.</td><td>—</td><td>—</td><td>High</td></tr>
+              <tr><td data-en="Monthly Frontier Models allowance" data-zh="每月 Frontier Models 用量">Monthly Frontier Models allowance</td><td data-en="Monthly allowance for Pro Frontier Models features." data-zh="Pro Frontier Models 功能的每月用量范围。">Monthly allowance for Pro Frontier Models features.</td><td>—</td><td>—</td><td>High</td></tr>
             </tbody>
           </table>
         </div>
