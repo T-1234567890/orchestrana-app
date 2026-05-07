@@ -335,11 +335,6 @@ final class FlowWindowManager: ObservableObject {
     ) async {
         guard let authViewModel else { return }
 
-        guard authViewModel.isAuthenticated else {
-            authViewModel.isPurchaseLoginPromptPresented = true
-            return
-        }
-
         await authViewModel.preparePurchaseReadiness()
         await FeatureGate.shared.refreshTier()
 
@@ -360,10 +355,6 @@ final class FlowWindowManager: ObservableObject {
             return
         }
         guard let authViewModel else { return }
-        guard authViewModel.isAuthenticated else {
-            authViewModel.isPurchaseLoginPromptPresented = true
-            return
-        }
 
         await authViewModel.preparePurchaseReadiness()
         await FeatureGate.shared.refreshTier()

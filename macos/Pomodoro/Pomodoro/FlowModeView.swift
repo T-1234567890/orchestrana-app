@@ -90,11 +90,6 @@ struct FlowModeView: View {
                 premiumPreviewOverlay
             }
         }
-        .sheet(isPresented: purchaseLoginPromptBinding) {
-            PurchaseAuthenticationSheet()
-                .environmentObject(authViewModel)
-                .environmentObject(localizationManager)
-        }
         .task(id: authViewModel.currentUser?.uid) {
             await authViewModel.preparePurchaseReadiness()
             layoutStore.load(for: authViewModel.currentUser?.uid)
@@ -800,7 +795,6 @@ struct FlowModeView: View {
                             Button(previewPurchaseButtonTitle) {
                                 Task {
                                     guard let product = selectedPreviewUpgradeProduct else { return }
-                                    guard await handlePreviewPurchaseIntent() else { return }
                                     await subscriptionStore.purchase(product)
                                 }
                             }
@@ -858,33 +852,10 @@ struct FlowModeView: View {
         flowWindowManager.requestCustomBackgroundFolder()
     }
 
-    private func handlePreviewPurchaseIntent() async -> Bool {
-        guard authViewModel.isAuthenticated else {
-            await MainActor.run {
-                authViewModel.isPurchaseLoginPromptPresented = true
-            }
-            return false
-        }
-        return authViewModel.canStartPurchase
-    }
 }
 
 private extension FlowModeView {
-    var purchaseLoginPromptBinding: Binding<Bool> {
-        Binding(
-            get: { authViewModel.isPurchaseLoginPromptPresented },
-            set: { isPresented in
-                if !isPresented {
-                    authViewModel.dismissPurchaseLoginPrompt()
-                }
-            }
-        )
-    }
-
     var previewPurchaseButtonTitle: String {
-        if !authViewModel.isAuthenticated {
-            return "Sign in to continue"
-        }
         if authViewModel.isLoading || authViewModel.isPreparingPurchase {
             return "Loading…"
         }
@@ -893,9 +864,6 @@ private extension FlowModeView {
 
     var isPreviewPurchaseButtonDisabled: Bool {
         guard !isPreviewUpgradeCurrentPlan, selectedPreviewUpgradeProduct != nil else { return true }
-        if !authViewModel.isAuthenticated {
-            return false
-        }
         return !authViewModel.canStartPurchase
     }
 

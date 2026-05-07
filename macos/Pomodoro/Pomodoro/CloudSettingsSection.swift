@@ -4,7 +4,6 @@ import SwiftUI
 
 enum AuthProvider: CaseIterable, Identifiable {
     case google
-    case github
     case apple
     case email
 
@@ -14,8 +13,6 @@ enum AuthProvider: CaseIterable, Identifiable {
         switch self {
         case .google:
             return localizationManager.text("auth.continue_google")
-        case .github:
-            return localizationManager.text("auth.continue_github")
         case .apple:
             return localizationManager.text("auth.continue_apple")
         case .email:
@@ -55,25 +52,37 @@ struct CloudSettingsSection: View {
             HStack(spacing: 12) {
                 avatarView(url: authViewModel.user?.photoURL)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(authViewModel.user?.displayName ?? localizationManager.text("settings.account.signed_in"))
+                    Text(accountDisplayName)
                         .font(.headline)
-                    Text(authViewModel.currentUserEmail.isEmpty ? localizationManager.text("settings.account.no_email") : authViewModel.currentUserEmail)
+                    Text(accountSubtitle)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                statusChip(isLoggedIn: true)
+                statusChip(isLoggedIn: true, isAnonymous: authViewModel.isAnonymousUser)
             }
 
             supportIdRow
 
-            Button(localizationManager.text("settings.account.logout")) {
-                Task { @MainActor in
-                    await authViewModel.signOut()
+            if authViewModel.isAnonymousUser {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Sign in or create an account to make account recovery easier for support.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
+                    LoginView()
                 }
             }
-            .buttonStyle(.bordered)
-            .disabled(authViewModel.isAuthenticating || authViewModel.isDeletingAccount)
+
+            if !authViewModel.isAnonymousUser {
+                Button(localizationManager.text("settings.account.logout")) {
+                    Task { @MainActor in
+                        await authViewModel.signOut()
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(authViewModel.isAuthenticating || authViewModel.isDeletingAccount)
+            }
         }
     }
 
@@ -87,6 +96,20 @@ struct CloudSettingsSection: View {
         .padding(16)
         .background(Color.primary.opacity(0.05))
         .cornerRadius(12)
+    }
+
+    private var accountDisplayName: String {
+        if authViewModel.isAnonymousUser {
+            return "Continue without account"
+        }
+        return authViewModel.user?.displayName ?? localizationManager.text("settings.account.signed_in")
+    }
+
+    private var accountSubtitle: String {
+        if authViewModel.isAnonymousUser {
+            return "Subscription and quota are tied to this private purchase session."
+        }
+        return authViewModel.currentUserEmail.isEmpty ? localizationManager.text("settings.account.no_email") : authViewModel.currentUserEmail
     }
 
     private var supportIdRow: some View {
@@ -134,12 +157,12 @@ struct CloudSettingsSection: View {
         return localizationManager.text("settings.account.support_id_loading")
     }
 
-    private func statusChip(isLoggedIn: Bool) -> some View {
+    private func statusChip(isLoggedIn: Bool, isAnonymous: Bool = false) -> some View {
         HStack(spacing: 8) {
             Circle()
                 .fill(isLoggedIn ? Color.green : Color.orange.opacity(0.65))
                 .frame(width: 10, height: 10)
-            Text(isLoggedIn ? localizationManager.text("settings.account.logged_in") : localizationManager.text("settings.account.optional_login"))
+            Text(statusChipTitle(isLoggedIn: isLoggedIn, isAnonymous: isAnonymous))
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
         }
@@ -147,6 +170,13 @@ struct CloudSettingsSection: View {
         .padding(.vertical, 6)
         .background(Color.primary.opacity(0.05))
         .cornerRadius(8)
+    }
+
+    private func statusChipTitle(isLoggedIn: Bool, isAnonymous: Bool) -> String {
+        if isAnonymous {
+            return "No account"
+        }
+        return isLoggedIn ? localizationManager.text("settings.account.logged_in") : localizationManager.text("settings.account.optional_login")
     }
 
     @ViewBuilder
@@ -256,7 +286,11 @@ struct AccountSecuritySettingsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            if authViewModel.isLoggedIn {
+            if authViewModel.isAnonymousUser {
+                Text("You can purchase and restore subscriptions without creating an account. Use any sign-in method from the account panel only if you want an easier account-recovery path for support.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else if authViewModel.isLoggedIn {
                 passwordResetRow
 
                 Divider()
@@ -576,7 +610,7 @@ private struct AuthProviderButtonChrome: View {
 
             Spacer()
 
-            if isLoading, provider == .google || provider == .github || provider == .apple {
+            if isLoading, provider == .google || provider == .apple {
                 ProgressView()
                     .controlSize(.small)
             }
@@ -609,7 +643,7 @@ struct EmailLoginView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(localizationManager.text("auth.email_auto_create_hint"))
+            Text(emailHintText)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
@@ -641,7 +675,7 @@ struct EmailLoginView: View {
                         )
                         password = ""
                     } catch {
-                        if isAccountNotFound(error) {
+                        if !authViewModel.isAnonymousUser, isAccountNotFound(error) {
                             showingCreateAccountPrompt = true
                         } else {
                             emailErrorMessage = (error as NSError).localizedDescription
@@ -652,23 +686,25 @@ struct EmailLoginView: View {
             .buttonStyle(.borderedProminent)
             .disabled(authViewModel.isAuthenticating || !canSubmit)
 
-            Button(localizationManager.text("auth.create_account")) {
-                Task { @MainActor in
-                    emailErrorMessage = nil
-                    authViewModel.clearError()
-                    do {
-                        try await authViewModel.signUpWithEmail(
-                            email: email.trimmingCharacters(in: .whitespacesAndNewlines),
-                            password: password
-                        )
-                        password = ""
-                    } catch {
-                        emailErrorMessage = (error as NSError).localizedDescription
+            if !authViewModel.isAnonymousUser {
+                Button(localizationManager.text("auth.create_account")) {
+                    Task { @MainActor in
+                        emailErrorMessage = nil
+                        authViewModel.clearError()
+                        do {
+                            try await authViewModel.signUpWithEmail(
+                                email: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                                password: password
+                            )
+                            password = ""
+                        } catch {
+                            emailErrorMessage = (error as NSError).localizedDescription
+                        }
                     }
                 }
+                .buttonStyle(.bordered)
+                .disabled(authViewModel.isAuthenticating || !canSubmit)
             }
-            .buttonStyle(.bordered)
-            .disabled(authViewModel.isAuthenticating || !canSubmit)
 
             HStack {
                 Spacer()
@@ -784,6 +820,13 @@ struct EmailLoginView: View {
         !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !password.isEmpty
     }
 
+    private var emailHintText: String {
+        if authViewModel.isAnonymousUser {
+            return "Add an email and password to transfer this temporary account into a regular account."
+        }
+        return localizationManager.text("auth.email_auto_create_hint")
+    }
+
     private func isAccountNotFound(_ error: Error) -> Bool {
         guard let authError = error as? AuthViewModel.AuthViewModelError else {
             return false
@@ -800,10 +843,6 @@ private struct AuthProviderIcon: View {
             switch provider {
             case .google:
                 Image("GoogleLogo")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-            case .github:
-                Image("GitHubLogo")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
             case .apple:

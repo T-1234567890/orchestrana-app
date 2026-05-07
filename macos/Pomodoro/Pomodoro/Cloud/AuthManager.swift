@@ -8,12 +8,6 @@ import GoogleSignIn
 import Security
 
 @objc
-private protocol OAuthProviderCredentialBridge {
-    @objc(getCredentialWithUIDelegate:completion:)
-    func getCredential(withUIDelegate uiDelegate: AnyObject?, completion: @escaping (AuthCredential?, Error?) -> Void)
-}
-
-@objc
 private protocol AuthRedirectHandlingBridge {
     @objc(canHandleURL:)
     func canHandleURL(_ url: URL) -> Bool
@@ -22,7 +16,6 @@ private protocol AuthRedirectHandlingBridge {
 @MainActor
 final class AuthManager {
     static let shared = AuthManager()
-    private var activeOAuthProvider: OAuthProvider?
     private var activeAppleSignInCoordinator: AppleSignInCoordinator?
     private var currentAuthorizationController: ASAuthorizationController?
 
@@ -77,41 +70,6 @@ final class AuthManager {
             log(error, prefix: "[Auth] Google sign-in failed")
             throw error
         }
-    }
-
-    func signInWithGitHub() async throws -> String {
-        guard FirebaseApp.app() != nil else {
-            throw AuthManagerError.firebaseNotConfigured
-        }
-        guard let window = presentingWindow() else {
-            throw AuthManagerError.missingPresentingWindow
-        }
-
-        let provider = OAuthProvider(providerID: "github.com")
-        provider.scopes = ["user:email"]
-        activeOAuthProvider = provider
-        activate(window: window)
-        ClientLog.debug("[Auth] Starting GitHub OAuth")
-
-        do {
-            ClientLog.debug("[Auth] Requesting GitHub Firebase credential")
-            let credential = try await gitHubCredential(with: provider)
-            ClientLog.debug("[Auth] Firebase credential created for GitHub")
-            let authResult = try await signIn(with: credential)
-            let uid = authResult.user.uid
-            ClientLog.debug("[Auth] GitHub OAuth returned result")
-            ClientLog.debug("[Auth] GitHub sign-in succeeded")
-            activeOAuthProvider = nil
-            return uid
-        } catch {
-            activeOAuthProvider = nil
-            log(error, prefix: "[Auth] GitHub sign-in failed")
-            throw error
-        }
-    }
-
-    func signInWithGithub() async throws -> String {
-        try await signInWithGitHub()
     }
 
     func signInWithApple() async throws -> String {
@@ -169,6 +127,30 @@ final class AuthManager {
         Auth.auth().currentUser
     }
 
+    func signInAnonymously() async throws -> String {
+        guard FirebaseApp.app() != nil else {
+            throw AuthManagerError.firebaseNotConfigured
+        }
+
+        ClientLog.debug("[Auth] Starting anonymous Firebase sign-in")
+        let authResult: AuthDataResult = try await withCheckedThrowingContinuation { continuation in
+            Auth.auth().signInAnonymously { result, error in
+                if let error {
+                    ClientLog.debugError("[Auth] Anonymous Firebase sign-in error", error)
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let result else {
+                    continuation.resume(throwing: AuthManagerError.missingResult)
+                    return
+                }
+                continuation.resume(returning: result)
+            }
+        }
+        ClientLog.debug("[Auth] Anonymous Firebase sign-in succeeded")
+        return authResult.user.uid
+    }
+
     func handleOpenURLs(_ urls: [URL]) {
         guard !urls.isEmpty else { return }
 
@@ -188,7 +170,25 @@ final class AuthManager {
     }
 
     private func signIn(with credential: AuthCredential) async throws -> AuthDataResult {
-        try await withCheckedThrowingContinuation { continuation in
+        if let currentUser = Auth.auth().currentUser, currentUser.isAnonymous {
+            return try await withCheckedThrowingContinuation { continuation in
+                currentUser.link(with: credential) { result, error in
+                    if let error {
+                        ClientLog.debugError("[Auth] Firebase account linking error", error)
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    guard let result else {
+                        continuation.resume(throwing: AuthManagerError.missingResult)
+                        return
+                    }
+                    ClientLog.debug("[Auth] Anonymous Firebase account linked")
+                    continuation.resume(returning: result)
+                }
+            }
+        }
+
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<AuthDataResult, Error>) in
             Auth.auth().signIn(with: credential) { result, error in
                 if let error {
                     ClientLog.debugError("[Auth] Firebase sign-in error", error)
@@ -200,27 +200,6 @@ final class AuthManager {
                     return
                 }
                 continuation.resume(returning: result)
-            }
-        }
-    }
-
-    private func gitHubCredential(with provider: OAuthProvider) async throws -> AuthCredential {
-        guard let providerBridge = provider as? OAuthProviderCredentialBridge else {
-            throw AuthManagerError.missingResult
-        }
-
-        return try await withCheckedThrowingContinuation { continuation in
-            providerBridge.getCredential(withUIDelegate: nil) { credential, error in
-                if let error {
-                    ClientLog.debugError("[Auth] GitHub credential error", error)
-                    continuation.resume(throwing: error)
-                    return
-                }
-                guard let credential else {
-                    continuation.resume(throwing: AuthManagerError.missingResult)
-                    return
-                }
-                continuation.resume(returning: credential)
             }
         }
     }
@@ -286,18 +265,6 @@ final class AuthManager {
         return urlTypes
             .flatMap { $0["CFBundleURLSchemes"] as? [String] ?? [] }
             .filter { !$0.isEmpty }
-    }
-
-    private func defaultBrowserDescription() -> String {
-        guard let url = URL(string: "https://github.com") else {
-            return "unavailable"
-        }
-
-        if let browserURL = NSWorkspace.shared.urlForApplication(toOpen: url) {
-            return browserURL.path
-        }
-
-        return "not found"
     }
 
     private func activate(window: NSWindow) {

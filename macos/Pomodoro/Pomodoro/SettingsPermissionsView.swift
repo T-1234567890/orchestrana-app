@@ -178,6 +178,32 @@ struct SettingsPermissionsView: View {
                 .cornerRadius(12)
             }
             .buttonStyle(.plain)
+
+            Button {
+                guard let url = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") else {
+                    return
+                }
+                NSWorkspace.shared.open(url)
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "doc.plaintext")
+                        .foregroundStyle(.secondary)
+
+                    Text("Apple Standard EULA")
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Image(systemName: "arrow.up.right.square")
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .frame(height: 42)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.primary.opacity(0.05))
+                .cornerRadius(12)
+            }
+            .buttonStyle(.plain)
         }
         .sheet(isPresented: $showAcknowledgementsLicenses) {
             AcknowledgementsLicensesView()
@@ -633,6 +659,8 @@ struct PlansComparisonView: View {
     var billingCycleSelection: Binding<PlanBillingCycle>? = nil
     @State private var billingCycle: PlanBillingCycle = .yearly
     @State private var expandedSections: Set<PlanFeatureSection> = []
+    @State private var pendingPurchaseProduct: Product?
+    @State private var isAccountRecommendationPresented = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -661,10 +689,7 @@ struct PlansComparisonView: View {
                         productLoadErrorMessage: subscriptionStore.productLoadErrorMessage,
                         emphasizedTier: emphasizedTier,
                         onSelectPlan: { product in
-                            Task {
-                                guard await handlePurchaseIntent() else { return }
-                                await subscriptionStore.purchase(product)
-                            }
+                            beginPurchase(product)
                         }
                     )
                 }
@@ -701,43 +726,61 @@ struct PlansComparisonView: View {
             await subscriptionStore.ensureProductsLoaded()
             await authViewModel.preparePurchaseReadiness()
         }
-        .sheet(isPresented: purchaseLoginPromptBinding) {
-            PurchaseAuthenticationSheet()
-                .environmentObject(authViewModel)
-                .environmentObject(LocalizationManager.shared)
+        .sheet(isPresented: $isAccountRecommendationPresented) {
+            PurchaseAccountRecommendationSheet {
+                continuePendingPurchase()
+            }
+            .environmentObject(authViewModel)
+            .environmentObject(LocalizationManager.shared)
         }
     }
 
-    private func handlePurchaseIntent() async -> Bool {
-        guard authViewModel.isAuthenticated else {
-            await MainActor.run {
-                authViewModel.isPurchaseLoginPromptPresented = true
+    private func beginPurchase(_ product: Product) {
+        guard shouldRecommendAccountBeforePurchase else {
+            Task {
+                await subscriptionStore.purchase(product)
             }
-            return false
+            return
         }
-        return authViewModel.canStartPurchase
+
+        pendingPurchaseProduct = product
+        isAccountRecommendationPresented = true
     }
 
-    private var purchaseLoginPromptBinding: Binding<Bool> {
-        Binding(
-            get: { authViewModel.isPurchaseLoginPromptPresented },
-            set: { isPresented in
-                if !isPresented {
-                    authViewModel.dismissPurchaseLoginPrompt()
-                }
-            }
-        )
+    private func continuePendingPurchase() {
+        guard let product = pendingPurchaseProduct else { return }
+        pendingPurchaseProduct = nil
+        Task {
+            await subscriptionStore.purchase(product)
+        }
+    }
+
+    private var shouldRecommendAccountBeforePurchase: Bool {
+        !authViewModel.isAuthenticated || authViewModel.isAnonymousUser
     }
 
     private var billingNotice: some View {
-        Text("Subscriptions are billed through the Apple App Store and renew automatically unless canceled at least 24 hours before the current period ends. Manage or cancel in your App Store account settings.")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.primary.opacity(0.04))
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Subscriptions are billed through the Apple App Store and renew automatically unless canceled at least 24 hours before the current period ends. Manage or cancel in your App Store account settings.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            legalLinks
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(0.04))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var legalLinks: some View {
+        HStack(spacing: 12) {
+            Link("Privacy Policy", destination: URL(string: "https://orchestrana.app/privacy")!)
+            Link("Terms of Service", destination: URL(string: "https://orchestrana.app/terms")!)
+            Link("Apple Standard EULA", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
+        }
+        .font(.caption)
     }
 
     private var keyComparisonSection: some View {
@@ -1043,7 +1086,7 @@ struct PlanCardView: View {
                     } else if productLoadErrorMessage != nil {
                         Text("Price unavailable")
                     } else {
-                        Text(!authViewModel.isAuthenticated ? "Sign in to continue" : "Loading…")
+                        Text("Loading…")
                     }
                 }
                 .buttonStyle(.bordered)
@@ -1104,18 +1147,12 @@ struct PlanCardView: View {
     }
 
     private var isDisabled: Bool {
-        if !authViewModel.isAuthenticated {
-            return isRestoring || isPurchasing || isCurrentPaidPlan || currentTier == .developer
-        }
         return isRestoring || isPurchasing || isCurrentPaidPlan || currentTier == .developer || !authViewModel.canStartPurchase
     }
 
     private var buttonTitle: String {
         if isCurrentPaidPlan {
             return "Current Plan"
-        }
-        if !authViewModel.isAuthenticated {
-            return "Sign in to continue"
         }
         if isPurchaseBusy {
             return "Loading…"
@@ -1165,6 +1202,8 @@ struct SubscriptionUpgradeSheetView: View {
     @EnvironmentObject private var localizationManager: LocalizationManager
     @Environment(\.dismiss) private var dismiss
     @State private var billingCycle: PlanBillingCycle = .yearly
+    @State private var pendingPurchaseProduct: Product?
+    @State private var isAccountRecommendationPresented = false
 
     var body: some View {
         ScrollView {
@@ -1206,11 +1245,8 @@ struct SubscriptionUpgradeSheetView: View {
                     Spacer()
 
                     Button(primaryPurchaseButtonTitle) {
-                        Task {
-                            guard let product = selectedUpgradeProduct else { return }
-                            guard await handlePurchaseIntent() else { return }
-                            await subscriptionStore.purchase(product)
-                        }
+                        guard let product = selectedUpgradeProduct else { return }
+                        beginPurchase(product)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(isPurchaseButtonDisabled)
@@ -1222,10 +1258,12 @@ struct SubscriptionUpgradeSheetView: View {
         .task(id: authViewModel.currentUser?.uid) {
             await authViewModel.preparePurchaseReadiness()
         }
-        .sheet(isPresented: purchaseLoginPromptBinding) {
-            PurchaseAuthenticationSheet()
-                .environmentObject(authViewModel)
-                .environmentObject(localizationManager)
+        .sheet(isPresented: $isAccountRecommendationPresented) {
+            PurchaseAccountRecommendationSheet {
+                continuePendingPurchase()
+            }
+            .environmentObject(authViewModel)
+            .environmentObject(localizationManager)
         }
     }
 
@@ -1259,77 +1297,78 @@ struct SubscriptionUpgradeSheetView: View {
 
     private var isPurchaseButtonDisabled: Bool {
         guard !isUpgradingCurrentPlan, selectedUpgradeProduct != nil else { return true }
-        if !authViewModel.isAuthenticated {
-            return false
-        }
         return !authViewModel.canStartPurchase
     }
 
     private var primaryPurchaseButtonTitle: String {
-        if !authViewModel.isAuthenticated {
-            return "Sign in to continue"
-        }
         if authViewModel.isLoading || authViewModel.isPreparingPurchase {
             return "Loading…"
         }
         return localizationManager.text("tasks.ai_assistant.upgrade")
     }
 
-    private func handlePurchaseIntent() async -> Bool {
-        guard authViewModel.isAuthenticated else {
-            await MainActor.run {
-                authViewModel.isPurchaseLoginPromptPresented = true
+    private func beginPurchase(_ product: Product) {
+        guard shouldRecommendAccountBeforePurchase else {
+            Task {
+                await subscriptionStore.purchase(product)
             }
-            return false
+            return
         }
-        return authViewModel.canStartPurchase
+
+        pendingPurchaseProduct = product
+        isAccountRecommendationPresented = true
     }
 
-    private var purchaseLoginPromptBinding: Binding<Bool> {
-        Binding(
-            get: { authViewModel.isPurchaseLoginPromptPresented },
-            set: { isPresented in
-                if !isPresented {
-                    authViewModel.dismissPurchaseLoginPrompt()
-                }
-            }
-        )
+    private func continuePendingPurchase() {
+        guard let product = pendingPurchaseProduct else { return }
+        pendingPurchaseProduct = nil
+        Task {
+            await subscriptionStore.purchase(product)
+        }
+    }
+
+    private var shouldRecommendAccountBeforePurchase: Bool {
+        !authViewModel.isAuthenticated || authViewModel.isAnonymousUser
     }
 }
 
-struct PurchaseAuthenticationSheet: View {
+struct PurchaseAccountRecommendationSheet: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
-    @EnvironmentObject private var localizationManager: LocalizationManager
     @Environment(\.dismiss) private var dismiss
+    let onContinue: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Sign in to continue")
+            Text("Recommended to sign in before purchase")
                 .font(.title3.weight(.semibold))
 
-            Text("Please sign in before purchasing so your subscription can be validated and synced.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
             LoginView()
+                .transition(.move(edge: .top).combined(with: .opacity))
 
-            HStack {
-                Spacer()
-
-                Button(localizationManager.text("common.close")) {
-                    authViewModel.dismissPurchaseLoginPrompt()
+            HStack(spacing: 10) {
+                Button("Cancel", role: .cancel) {
                     dismiss()
                 }
                 .buttonStyle(.bordered)
+
+                Spacer()
+
+                Button(primaryContinueTitle) {
+                    dismiss()
+                    onContinue()
+                }
+                .buttonStyle(.borderedProminent)
             }
         }
         .padding(24)
-        .frame(minWidth: 420)
-        .onChange(of: authViewModel.isAuthenticated) { _, isAuthenticated in
-            guard isAuthenticated else { return }
-            authViewModel.dismissPurchaseLoginPrompt()
-            dismiss()
+        .frame(minWidth: 460, idealWidth: 520)
+    }
+
+    private var primaryContinueTitle: String {
+        if authViewModel.isAuthenticated && !authViewModel.isAnonymousUser {
+            return "Continue Purchase"
         }
+        return "Continue without account"
     }
 }
 

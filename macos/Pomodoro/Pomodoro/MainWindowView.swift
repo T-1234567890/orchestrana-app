@@ -1487,6 +1487,24 @@ struct MainWindowView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.bordered)
+
+                Button {
+                    guard let url = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") else {
+                        return
+                    }
+                    NSWorkspace.shared.open(url)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "doc.plaintext")
+                            .foregroundStyle(.secondary)
+                        Text("Apple Standard EULA")
+                        Spacer()
+                        Image(systemName: "arrow.up.right.square")
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.bordered)
             }
         }
     }

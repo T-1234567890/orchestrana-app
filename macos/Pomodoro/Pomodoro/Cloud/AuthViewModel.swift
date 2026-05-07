@@ -63,8 +63,12 @@ final class AuthViewModel: ObservableObject {
         currentUser?.email ?? ""
     }
 
+    var isAnonymousUser: Bool {
+        currentUser?.isAnonymous == true
+    }
+
     var canStartPurchase: Bool {
-        isAuthenticated && !isAuthenticating && !isPreparingPurchase && hasValidPurchaseToken
+        !isAuthenticating && !isPreparingPurchase && (currentUser == nil || hasValidPurchaseToken)
     }
 
     var errorMessage: String? {
@@ -85,16 +89,24 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
-    func signInWithGitHub() async throws {
-        try await performAuthenticationFlow {
-            _ = try await authManager.signInWithGitHub()
-        }
-    }
-
     func signInWithApple() async throws {
         try await performAuthenticationFlow {
             _ = try await authManager.signInWithApple()
         }
+    }
+
+    func signInAnonymouslyForPurchaseIfNeeded() async throws {
+        startListeningIfNeeded()
+        guard currentUser == nil else { return }
+        if let existingUser = authManager.currentUser() {
+            handleAuthStateChange(existingUser)
+            return
+        }
+
+        try await performExclusiveAuthOperation {
+            _ = try await authManager.signInAnonymously()
+        }
+        handleAuthStateChange(authManager.currentUser())
     }
 
     func recordAuthenticationError(_ error: Error) {
@@ -105,7 +117,11 @@ final class AuthViewModel: ObservableObject {
     func signUpWithEmail(email: String, password: String) async throws {
         let credentials = try sanitizeEmailCredentials(email: email, password: password)
         try await performAuthenticationFlow {
-            _ = try await createUser(email: credentials.email, password: credentials.password)
+            if self.isAnonymousUser {
+                _ = try await linkAnonymousUserWithEmail(email: credentials.email, password: credentials.password)
+            } else {
+                _ = try await createUser(email: credentials.email, password: credentials.password)
+            }
         }
     }
 
@@ -113,7 +129,11 @@ final class AuthViewModel: ObservableObject {
         let credentials = try sanitizeEmailCredentials(email: email, password: password)
         try await performAuthenticationFlow {
             do {
-                _ = try await signIn(email: credentials.email, password: credentials.password)
+                if self.isAnonymousUser {
+                    _ = try await linkAnonymousUserWithEmail(email: credentials.email, password: credentials.password)
+                } else {
+                    _ = try await signIn(email: credentials.email, password: credentials.password)
+                }
             } catch {
                 throw mapEmailSignInError(error)
             }
@@ -193,6 +213,7 @@ final class AuthViewModel: ObservableObject {
 
     func signOut() async {
         startListeningIfNeeded()
+        guard currentUser?.isAnonymous != true else { return }
 
         do {
             let _: Void = try await performExclusiveAuthOperation {
@@ -256,9 +277,8 @@ final class AuthViewModel: ObservableObject {
     func prepareForPurchase() async throws -> String {
         startListeningIfNeeded()
 
-        guard isAuthenticated else {
-            isPurchaseLoginPromptPresented = true
-            throw AuthViewModelError.purchaseAuthenticationRequired
+        if currentUser == nil {
+            try await signInAnonymouslyForPurchaseIfNeeded()
         }
 
         guard !isAuthenticating else {
@@ -383,6 +403,30 @@ final class AuthViewModel: ObservableObject {
                     continuation.resume(throwing: AuthViewModelError.missingResult)
                     return
                 }
+                continuation.resume(returning: result)
+            }
+        }
+    }
+
+    private func linkAnonymousUserWithEmail(email: String, password: String) async throws -> AuthDataResult {
+        let auth = try currentAuth()
+        guard let user = auth.currentUser, user.isAnonymous else {
+            throw AuthViewModelError.notAuthenticated
+        }
+
+        let credential = EmailAuthProvider.credential(withEmail: email, password: password)
+        return try await withCheckedThrowingContinuation { continuation in
+            user.link(with: credential) { result, error in
+                if let error {
+                    ClientLog.debugError("[Auth] Anonymous email account linking error", error)
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let result else {
+                    continuation.resume(throwing: AuthViewModelError.missingResult)
+                    return
+                }
+                ClientLog.debug("[Auth] Anonymous Firebase account linked with email credential")
                 continuation.resume(returning: result)
             }
         }

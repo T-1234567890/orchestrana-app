@@ -970,6 +970,7 @@ final class SubscriptionStore: ObservableObject {
 
     private struct ActiveSubscriptionContext {
         let transaction: Transaction
+        let signedTransactionInfo: String?
         let renewalInfo: Product.SubscriptionInfo.RenewalInfo?
         let renewalInfoJWS: String?
         let productID: String
@@ -1075,11 +1076,23 @@ final class SubscriptionStore: ObservableObject {
         defer { activePurchaseProductID = nil }
 
         do {
-            _ = try await AuthViewModel.shared.prepareForPurchase()
+            do {
+                _ = try await AuthViewModel.shared.prepareForPurchase()
+            } catch {
+                ClientLog.debugError("[StoreKit] Purchase auth preparation failed", error)
+                errorMessage = "Could not prepare the secure purchase session: \(error.localizedDescription)"
+                return
+            }
+
             let activeContext = try await activeSubscriptionContext(preferredProduct: product)
             let changeKind = determineChangeKind(from: activeContext, to: product.id)
             if changeKind == .noChange {
-                errorMessage = "This subscription is already active."
+                guard let activeContext else {
+                    errorMessage = "This subscription is already active in the App Store, but Orchestrana could not read the transaction for server verification."
+                    return
+                }
+
+                await verifyAlreadyActiveSubscription(activeContext)
                 return
             }
 
@@ -1098,8 +1111,8 @@ final class SubscriptionStore: ObservableObject {
                 }
                 applyLocalEntitlements(from: [transaction])
                 await transaction.finish()
-                syncBackendInBackground(
-                    for: transaction,
+                await verifyPurchasedSubscription(
+                    transaction,
                     signedTransactionInfo: verification.jwsRepresentation,
                     reason: "purchase"
                 )
@@ -1111,7 +1124,8 @@ final class SubscriptionStore: ObservableObject {
                 errorMessage = "Purchase status is temporarily unavailable."
             }
         } catch {
-            errorMessage = error.localizedDescription
+            ClientLog.debugError("[StoreKit] Purchase failed", error)
+            errorMessage = "StoreKit purchase failed: \(error.localizedDescription)"
         }
     }
 
@@ -1119,6 +1133,13 @@ final class SubscriptionStore: ObservableObject {
         isRestoring = true
         errorMessage = nil
         defer { isRestoring = false }
+
+        do {
+            _ = try await AuthViewModel.shared.prepareForPurchase()
+        } catch {
+            errorMessage = error.localizedDescription
+            return
+        }
 
         do {
             try await AppStore.sync()
@@ -1230,6 +1251,7 @@ final class SubscriptionStore: ObservableObject {
         }
 
         var fallbackTransaction: Transaction?
+        var fallbackSignedTransactionInfo: String?
         for await verification in Transaction.currentEntitlements {
             let transaction: Transaction
             do {
@@ -1240,6 +1262,7 @@ final class SubscriptionStore: ObservableObject {
             }
             if productIDs.contains(transaction.productID) {
                 fallbackTransaction = transaction
+                fallbackSignedTransactionInfo = verification.jwsRepresentation
                 break
             }
         }
@@ -1251,6 +1274,7 @@ final class SubscriptionStore: ObservableObject {
 
         return ActiveSubscriptionContext(
             transaction: fallbackTransaction,
+            signedTransactionInfo: fallbackSignedTransactionInfo,
             renewalInfo: nil,
             renewalInfoJWS: nil,
             productID: fallbackTransaction.productID,
@@ -1284,6 +1308,7 @@ final class SubscriptionStore: ObservableObject {
             let renewalInfo = try? verified(status.renewalInfo)
             return ActiveSubscriptionContext(
                 transaction: transaction,
+                signedTransactionInfo: status.transaction.jwsRepresentation,
                 renewalInfo: renewalInfo,
                 renewalInfoJWS: renewalInfo == nil ? nil : status.renewalInfo.jwsRepresentation,
                 productID: transaction.productID,
@@ -1377,6 +1402,41 @@ final class SubscriptionStore: ObservableObject {
             tier: tier,
             subscriptionEndAt: bestTransaction.expirationDate
         )
+    }
+
+    private func verifyAlreadyActiveSubscription(_ activeContext: ActiveSubscriptionContext) async {
+        applyLocalEntitlements(from: [activeContext.transaction])
+        await verifyPurchasedSubscription(
+            activeContext.transaction,
+            signedTransactionInfo: activeContext.signedTransactionInfo,
+            reason: "already_active"
+        )
+    }
+
+    private func verifyPurchasedSubscription(
+        _ transaction: Transaction,
+        signedTransactionInfo: String?,
+        reason: String
+    ) async {
+        do {
+            let entitlement = try await syncBackend(
+                for: transaction,
+                signedTransactionInfo: signedTransactionInfo,
+                reason: reason
+            )
+            lastEntitlement = entitlement
+            await FeatureGate.shared.refreshAllowance()
+            if isSubscribed {
+                FeatureGate.shared.applyLocalStoreKitEntitlement(
+                    tier: localSubscriptionTier,
+                    subscriptionEndAt: localSubscriptionEndAt
+                )
+            }
+            errorMessage = nil
+        } catch {
+            errorMessage = subscriptionSyncErrorMessage(for: error)
+            ClientLog.debugError("[SubscriptionAPI] Backend sync failed", error)
+        }
     }
 
     private func syncBackendInBackground(
@@ -1500,7 +1560,12 @@ final class SubscriptionStore: ObservableObject {
         guard FeatureGate.shared.tier == .plus || FeatureGate.shared.tier == .pro else {
             return nil
         }
-        return lastEntitlement?.effectiveProductId ?? lastEntitlement?.productId
+        if let serverProductID = lastEntitlement?.effectiveProductId ?? lastEntitlement?.productId {
+            return serverProductID
+        }
+        return activeProductIDs.sorted {
+            Self.productSortRank(for: $0) > Self.productSortRank(for: $1)
+        }.first
     }
 
     var currentTier: FeatureGate.Tier {
