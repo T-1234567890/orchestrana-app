@@ -190,6 +190,50 @@ Planned export options:
 - Export as plain text.
 - Generate context packs for tools such as ChatGPT, Claude, or other AI assistants.
 
+Planned file format conventions:
+
+Core user files:
+
+- `.md` for normal notes, phase notes, task notes, and plan notes, with optional YAML front matter.
+- `.context.md` for human-readable context files.
+- `.jam.md` for human-readable AI Jam sessions.
+- `.context.json` for structured context import/export.
+- `.jam.json` for structured AI Jam state or resumable sessions.
+- `.orchkdb` for a full Orchestrana knowledge archive.
+
+Pack and archive files:
+
+- `.context.zip` for a context pack with `.context.md`, `.context.json`, assets, and a manifest.
+- `.jam.zip` for an AI Jam pack with `.jam.md`, `.jam.json`, assets, and a manifest.
+- `.phase.zip` for a focus phase or session pack with notes, decisions, blockers, and timer metadata.
+- `.workspace.zip` for a workspace context pack with current goals, tasks, plans, notes, and summaries.
+- `.orchbackup.zip` for a user backup archive used for app data export/import.
+
+Structured JSON files inside packs:
+
+- `manifest.json` for pack metadata, version, app build, and schema version.
+- `context.json` for normalized context records.
+- `jam.json` for AI Jam graph/session state.
+- `notes.index.json` for note indexes and backlinks.
+- `tasks.snapshot.json` for task state snapshots.
+- `focus.sessions.json` for focus session history.
+- `workspace.summary.json` for current workspace summaries.
+- `pkb.records.json` for PKB knowledge records.
+- `assets.index.json` for images and files referenced by notes or Jam sessions.
+
+Optional human-readable files inside packs:
+
+- `README.md` to explain what is inside the export.
+- `notes.md` for exported notes.
+- `context.md` for a readable context summary.
+- `jam.md` for a readable Jam transcript or structure.
+- `workspace.md` for a readable workspace summary.
+- `decisions.md` for decisions captured during work.
+- `open-questions.md` for unresolved questions.
+- `next-actions.md` for suggested next actions.
+
+The public extension surface should stay small. Most complexity should live inside ZIP packs with `manifest.json` so exported data remains portable without creating too many custom extensions.
+
 Example context pack sections:
 
 - User goal.
@@ -282,6 +326,17 @@ Planned rules:
 - JSON export.
 - Plain text export.
 - External AI context packs.
+- Markdown notes with YAML front matter.
+- Human-readable `.context.md` context files.
+- Human-readable `.jam.md` AI Jam files.
+- Structured `.context.json` context exports.
+- Structured `.jam.json` AI Jam exports.
+- Complete `.orchkdb` knowledge archives.
+- Portable `.jam.zip` AI Jam packs.
+- Portable `.context.zip` context packs.
+- Import from Orchestrana context files.
+- Import from Orchestrana AI Jam files.
+- Archive restore for Personal Knowledge Base data.
 - Workspace context summaries.
 - Active-goal summaries.
 - Recent-decision summaries.

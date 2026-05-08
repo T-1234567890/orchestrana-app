@@ -132,7 +132,7 @@ p {
   transition: transform 220ms var(--ease-soft), box-shadow 220ms var(--ease-soft);
 }
 
-main a:not(.primary-btn):not(.ghost-btn):not(.doc-link):not(.logo):not(.nav-links a):not(.soft-btn):not(.contributor-avatar):not(.sponsor-link) {
+main a:not(.primary-btn):not(.ghost-btn):not(.app-store-badge):not(.product-hunt-badge):not(.doc-link):not(.logo):not(.nav-links a):not(.soft-btn):not(.contributor-avatar):not(.sponsor-link) {
   position: relative;
   text-decoration: none;
   color: inherit;
@@ -143,7 +143,7 @@ main a:not(.primary-btn):not(.ghost-btn):not(.doc-link):not(.logo):not(.nav-link
   transition: background-size 220ms var(--ease-soft), color 220ms var(--ease-soft);
   padding-bottom: 1px;
 }
-main a:not(.primary-btn):not(.ghost-btn):not(.doc-link):not(.logo):not(.nav-links a):not(.soft-btn):not(.contributor-avatar):hover {
+main a:not(.primary-btn):not(.ghost-btn):not(.app-store-badge):not(.product-hunt-badge):not(.doc-link):not(.logo):not(.nav-links a):not(.soft-btn):not(.contributor-avatar):hover {
   background-size: 100% 1.5px;
 }
 
@@ -252,7 +252,21 @@ body.lang-switching-in [data-en] {
 
 .status-body { margin: 0; color: var(--muted); line-height: 1.6; }
 
-.cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+.cta-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+
+.app-store-badge {
+  display: inline-flex;
+  width: 220px;
+  height: 56px;
+  line-height: 0;
+  text-decoration: none;
+}
+
+.app-store-badge img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 
 .primary-btn, .ghost-btn {
   border-radius: 12px;
@@ -275,6 +289,45 @@ body.lang-switching-in [data-en] {
   color: #3a2a23;
   border-color: var(--border);
   box-shadow: none;
+}
+
+.hero-github-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 220px;
+  height: 56px;
+  padding: 0 18px;
+}
+
+.github-mark {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  fill: currentColor;
+}
+
+.top-download-badge {
+  display: flex;
+  justify-content: center;
+  max-width: 1180px;
+  margin: 10px auto -14px;
+  padding: 0 20px;
+}
+
+.product-hunt-badge {
+  display: inline-flex;
+  width: 250px;
+  height: 54px;
+  line-height: 0;
+  text-decoration: none;
+}
+
+.product-hunt-badge img {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .primary-btn:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(200, 110, 90, 0.28); filter: saturate(1.04); }
