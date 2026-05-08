@@ -39,7 +39,7 @@ Yes. Paid plans exist for subscription-gated features and hosted services.
 
 Older documents discussing **future Pro / Plus ideas** are legacy planning notes and may be outdated.
 
-Use the current app, App Store/TestFlight information, and official website for current plan behavior.
+Use the current app, App Store listing, and official website for current plan behavior.
 
 ---
 
@@ -206,12 +206,13 @@ Just write tasks naturally — the app handles the rest.
 
 ## Is Orchestrana available on the Mac App Store?
 
-Not yet.
+Yes.
 
-Current distribution is via **GitHub Releases**.  
-The app is unsigned, and macOS Gatekeeper may show a warning on first launch.
+The current signed Mac build is available on the App Store:
 
-A signed App Store or TestFlight release may happen in the future, but it is not a prerequisite for ongoing development.
+https://apps.apple.com/app/orchestrana/id6758972580
+
+GitHub Releases may still exist for source-code and historical development context, but the App Store build is the recommended public distribution.
 
 ---
 

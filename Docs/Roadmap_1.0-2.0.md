@@ -85,7 +85,7 @@ The goal is to enhance Flow, not to gate it.
 
 - Reflection, insight, and optional intelligence
 - Advisory AI (suggestions, not automation)
-- Readiness for App Store / TestFlight distribution  
+- Readiness for App Store distribution  
   (Apple is important, but not a blocking dependency)
 
 ---
@@ -294,7 +294,7 @@ v2.0 is considered ready when:
 - AI is optional and non-intrusive
 - Documentation is self-explanatory
 
-App Store / TestFlight preparation can happen around this point.
+App Store preparation can happen around this point.
 
 ---
 

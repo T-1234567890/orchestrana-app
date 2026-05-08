@@ -19,7 +19,7 @@ This document exists to:
 ## Status Summary
 
 - Current status: **legacy planning snapshot**
-- Distribution: GitHub Releases, TestFlight, and App Store channels may differ by version
+- Distribution: App Store is the current public channel; GitHub Releases may exist for source-code and historical development context
 - Business model: **open-source client with commercial hosted services**
 - Subscription plans: **paid plans now exist for hosted / managed features**
 

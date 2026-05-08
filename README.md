@@ -57,14 +57,12 @@ The reward and emails will be sent after confirmation. Additional details about 
 
 ## 🚀 Try it now
 
-### Early Access Preview Available
+### Available on the App Store
 
-Official Apple preview builds are now available via TestFlight.
+Orchestrana is now available on the Mac App Store.
 
-This is an **invite-only early access** — please join the waitlist to request an invite before getting access.
-
-👉 Join the waitlist:  
-https://forms.gle/hQ7ubqxt39sXca4e9
+👉 Download Orchestrana:  
+https://apps.apple.com/app/orchestrana/id6758972580
 
 ### Previous GitHub Release
 Download the latest release from GitHub and run the app.
@@ -72,7 +70,7 @@ Download the latest release from GitHub and run the app.
 - **Gatekeeper warning**: macOS may warn that the app is from an unidentified developer. This is expected while the project awaits Apple Developer Program approval.
 - **Bypass Gatekeeper safely**: follow the step‑by‑step guide in `docs/Gatekeeper.md` to open the downloaded app without compromising security.
 
-Signed app is provided on TestFlight currently.
+The App Store build is the recommended signed distribution.
 
 ## ✅ Features
 
@@ -151,15 +149,15 @@ The current version is fully native Swift; legacy Tauri/Svelte/Python versions a
 
 ## Version status/Release Notes
 
-For full details on updates, see the release notes on **TestFlight** or **App Store**.
+For full details on updates, see the release notes on the **App Store**.
 
-👉 TestFlight & App Store release notes are the new source for version changes and updates.
+👉 App Store release notes are the source for current version changes and updates.
 
 ### 📌 Update Policy
 - Will receive more updates
 - Changes may occur without notice
 - Feedback, PR, and issue reports are welcome
-- Will be on TestFlight or App Store
+- Current public distribution is through the App Store
 
 ## 🤖 AI Features (Developer Preview)
 
@@ -183,15 +181,14 @@ The goal of upcoming versions is to transition toward a softer, macOS-inspired l
 
 >**🚧 Distribution Status**
 >
->Orchestrana is currently under active development and available on TestFlight
+>Orchestrana is currently under active development and available on the App Store.
 >
->**🚀 Preview Access Available**
+>**🚀 App Store Download Available**
 >
->Official Apple preview builds of Orchestrana are now available via TestFlight. <br>
->This is an **invite-only early access program** — access is managed through a waitlist to prevent spam and ensure quality feedback.
+>The current signed Mac build is available through Apple's App Store.
 >
->👉 Join the TestFlight waitlist:  
->https://forms.gle/hQ7ubqxt39sXca4e9
+>👉 Download Orchestrana:  
+>https://apps.apple.com/app/orchestrana/id6758972580
 >
 >Thank you for your interest and support ❤️
 
@@ -308,7 +305,7 @@ The **Orchestrana client is open source** under the repository license.
 
 Orchestrana is also a commercial product with existing paid plans for hosted services and higher-cost features such as managed AI, subscription-gated capabilities, and backend-supported functionality. The open-source client does not mean every hosted service or production feature is free.
 
-Details: `Docs/Future_Pro_Plan.md` is a legacy planning document and may be outdated compared with the current product and App Store/TestFlight configuration.
+Details: `Docs/Future_Pro_Plan.md` is a legacy planning document and may be outdated compared with the current product and App Store configuration.
 
 ## 🤝 Sponsors & Partners
 

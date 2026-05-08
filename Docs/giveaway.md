@@ -1,20 +1,19 @@
-## 🎉 Orchestrana™ TestFlight Early Access & Giveaway Rules
+## 🎉 Orchestrana™ Early Access & Giveaway Rules
 
 > [!IMPORTANT]
 > The giveaway has ended, please check your email
 
-Welcome to the Orchestrana TestFlight Early Access and Giveaway event.  
-This section outlines how to participate, the official rules, and key dates.
+Welcome to the Orchestrana Early Access and Giveaway event archive.  
+This section is kept for historical context and outlines the original participation rules and key dates.
+
+Orchestrana is now available on the App Store:
+https://apps.apple.com/app/orchestrana/id6758972580
 
 ### 📍 How to Participate
 
-To enter the giveaway, submit your email through the official TestFlight waitlist form.  
-Each valid email equals one entry in the giveaway. All participants have equal chance — no extra weighting, no additional conditions.
+The giveaway has ended. During the original event, each valid waitlist email counted as one entry in the giveaway. All participants had equal chance — no extra weighting, no additional conditions.
 
-Your email is strictly used for TestFlight invitations and giveaway contact only. It will not be shared or used for marketing.
-
-👉 Join the waitlist:  
-https://orchestrana.app or https://forms.gle/hQ7ubqxt39sXca4e9
+The waitlist form is no longer the current download path. Use the App Store listing above for the public release.
 
 ### 🎯 Giveaway Rules
 
@@ -43,7 +42,7 @@ Sponsored by VPS Town — servers for early access usage.
 
 ### 🔐 Privacy
 
-Your email will only be used for TestFlight invitations and giveaway contact; it will not be shared or used for other purposes.
+Emails collected during the event were used only for giveaway contact and early-access coordination; they were not shared or used for other purposes.
 
 Thank you for your interest and participation!
 
