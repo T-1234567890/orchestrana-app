@@ -140,51 +140,10 @@ window.addEventListener('popstate', () => {
 const stored = localStorage.getItem('pomodoro-lang');
 applyLanguage(stored === 'zh' ? 'zh' : 'en');
 
-// Hero phrase switcher (headline)
-const phrasePool = [
-  { en: '🧠 Quiet tools for deep work', zh: '🧠 为深度工作准备的安静工具' },
-  { en: '🌿 Focus without pressure', zh: '🌿 无压力的专注' },
-  { en: '🎯 Rhythm over speed', zh: '🎯 节律胜过速度' },
-  { en: '✨ Attention is a resource', zh: '✨ 注意力是一种资源' },
-  { en: '🫧 Work gently', zh: '🫧 温和地工作' },
-  { en: '🌊 Depth over noise', zh: '🌊 深度胜过噪声' },
-  { en: '🧩 Calm is productive', zh: '🧩 平静本身就是效率' },
-  { en: '🕊 Slow focus wins', zh: '🕊 慢节奏的专注更持久' },
-  { en: '🔕 Silence helps thinking', zh: '🔕 安静帮助思考' },
-  { en: '📖 Work like turning pages', zh: '📖 像翻书一样工作' }
-];
-
-const heroArea = document.querySelector('.hero');
-const heroArt = document.querySelector('.hero-illustration');
-const heroTitle = document.querySelector('.hero .switchable-head');
-let phraseAnimating = false;
-
-function pickNewPhrase() {
-  const current = currentLang === 'zh' ? heroTitle?.dataset.zh : heroTitle?.dataset.en;
-  const pool = phrasePool.filter((p) => p.en !== current && p.zh !== current);
-  return pool[Math.floor(Math.random() * pool.length)] || phrasePool[0];
-}
-
-function switchHeroPhrase() {
-  if (!heroTitle || phraseAnimating) return;
-  phraseAnimating = true;
-  heroTitle.classList.add('phrase-out');
-  setTimeout(() => {
-    const next = pickNewPhrase();
-    heroTitle.dataset.en = next.en;
-    heroTitle.dataset.zh = next.zh;
-    applyLanguage(currentLang);
-    heroTitle.classList.remove('phrase-out');
-    phraseAnimating = false;
-  }, 200);
-}
-
-[heroArea, heroArt].forEach((el) => {
-  if (el) el.addEventListener('click', switchHeroPhrase);
-});
-
 const REPO_OWNER = 'T-1234567890';
 const REPO_NAME = 'pomodoro-app';
+const LIVE_GITHUB_ENABLED = /^https?:$/.test(window.location.protocol)
+  && !['127.0.0.1', 'localhost'].includes(window.location.hostname);
 const RIBBON_INVITE_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}`;
 const RIBBON_CACHE_KEY = 'pomodoro-ribbon-users-v1';
 const RIBBON_MAX_USERS = 30;
@@ -197,12 +156,12 @@ const RIBBON_INVITE_PLACEHOLDER = {
   kind: 'invite'
 };
 const RIBBON_PLACEHOLDERS = [
-  { login: '__placeholder_1__', avatar_url: 'screenshots/pic1.webp', html_url: '', placeholder: true },
-  { login: '__placeholder_2__', avatar_url: 'screenshots/pic1.webp', html_url: '', placeholder: true },
-  { login: '__placeholder_3__', avatar_url: 'screenshots/pic1.webp', html_url: '', placeholder: true },
-  { login: '__placeholder_4__', avatar_url: 'screenshots/pic1.webp', html_url: '', placeholder: true },
-  { login: '__placeholder_5__', avatar_url: 'screenshots/pic1.webp', html_url: '', placeholder: true },
-  { login: '__placeholder_6__', avatar_url: 'screenshots/pic1.webp', html_url: '', placeholder: true }
+  { login: '__placeholder_1__', avatar_url: 'screenshots/Orchestrana%20icon%201.png', html_url: '', placeholder: true },
+  { login: '__placeholder_2__', avatar_url: 'screenshots/Orchestrana%20icon%201.png', html_url: '', placeholder: true },
+  { login: '__placeholder_3__', avatar_url: 'screenshots/Orchestrana%20icon%201.png', html_url: '', placeholder: true },
+  { login: '__placeholder_4__', avatar_url: 'screenshots/Orchestrana%20icon%201.png', html_url: '', placeholder: true },
+  { login: '__placeholder_5__', avatar_url: 'screenshots/Orchestrana%20icon%201.png', html_url: '', placeholder: true },
+  { login: '__placeholder_6__', avatar_url: 'screenshots/Orchestrana%20icon%201.png', html_url: '', placeholder: true }
 ];
 
 const ribbonState = {
@@ -493,6 +452,13 @@ function startContributorRibbon() {
     ensureRibbonCoverage(buildLoopSeed(cachedUsers), 1);
   }
 
+  if (!LIVE_GITHUB_ENABLED) {
+    if (!ribbonHasRenderedAvatars()) {
+      ensureRibbonCoverage(buildLoopSeed([]), 1);
+    }
+    return;
+  }
+
   refreshContributorRibbon();
   window.setInterval(refreshContributorRibbon, RIBBON_REFRESH_MS);
   window.addEventListener('resize', () => {
@@ -536,6 +502,7 @@ async function loadFooterHeartbeat() {
   const commitsEl = document.getElementById('footer-commits');
   const issuesEl = document.getElementById('footer-issues');
   if (!starsEl || !commitsEl || !issuesEl) return;
+  if (!LIVE_GITHUB_ENABLED) return;
 
   const repoApi = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`;
 
@@ -627,19 +594,19 @@ function setProjectStatusState(dom, { tone = 'live', labelEn, labelZh }) {
 
 function setProjectStatusStreakState(dom, state, days = 0, lastCommitTextEn = '--', lastCommitTextZh = '--') {
   if (state === 'unavailable') {
-    setLocalizedCopy(dom.streak, '🔥 Streak unavailable', '🔥 连续记录加载中');
+    setLocalizedCopy(dom.streak, 'Streak unavailable', '连续记录加载中');
     setLocalizedCopy(dom.sub, 'Waiting for streak data', '正在获取连续数据');
     return;
   }
 
   if (state === 'starting') {
-    setLocalizedCopy(dom.streak, '🔥 Starting streak', '🔥 连续记录开始');
+    setLocalizedCopy(dom.streak, 'Starting streak', '连续记录开始');
     setLocalizedCopy(dom.sub, 'Streak begins today', '今天开始连续记录');
     return;
   }
 
   const normalizedDays = Number.isFinite(days) && days > 0 ? days : 1;
-  setLocalizedCopy(dom.streak, `🔥 ${normalizedDays} day streak`, `🔥 连续 ${normalizedDays} 天`);
+  setLocalizedCopy(dom.streak, `${normalizedDays} day streak`, `连续 ${normalizedDays} 天`);
   setLocalizedCopy(dom.sub, `Last commit: ${lastCommitTextEn}`, `最近提交：${lastCommitTextZh}`);
 }
 
@@ -836,13 +803,20 @@ function startProjectStatus() {
   if (!dom) return;
   resetProjectStatusToLive(dom);
   renderProjectStatusSkeleton(dom);
+  if (!LIVE_GITHUB_ENABLED) {
+    dom.commits.textContent = '';
+    setLocalizedCopy(dom.sub, 'Live preview mode', '本地预览模式');
+    return;
+  }
   loadProjectStatus();
   window.setInterval(() => loadProjectStatus(), PROJECT_STATUS_REFRESH_MS);
 }
 
 startContributorRibbon();
 loadFooterHeartbeat();
-window.setInterval(loadFooterHeartbeat, FOOTER_REFRESH_MS);
+if (LIVE_GITHUB_ENABLED) {
+  window.setInterval(loadFooterHeartbeat, FOOTER_REFRESH_MS);
+}
 startProjectStatus();
 
 const sponsorImg = document.querySelector('.sponsor-link img');

@@ -3,57 +3,57 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Plan Comparison · Orchestrana™</title>
+  <title>Plan Comparison · Orchestrana&trade;</title>
+  <meta name="description" content="Compare Orchestrana Free, Plus, and Pro plans." />
   <link rel="icon" type="image/png" href="screenshots/Orchestrana%20icon%201.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Afacad:wght@400;500;600;700&amp;family=Marcellus&amp;display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
-  <style>
-    body.legal-document main {
-      padding-top: 24px;
-    }
-
-    .comparison-page {
-      padding-top: 0;
-    }
-
-    @media (max-width: 760px) {
-      body.legal-document main {
-        padding-top: 40px;
-      }
-    }
-  </style>
 </head>
-<body class="legal-document">
-  <div class="webgl-shell" aria-hidden="true">
-    <canvas id="glass-canvas" class="glass-canvas"></canvas>
-  </div>
-  <header class="topbar glass" data-glass-panel>
-    <a class="logo logo-link" href="index.html#overview">
-      <img class="logo-icon" src="screenshots/Orchestrana%20icon%201.png" alt="Orchestrana icon" />
-      <span data-en="Orchestrana™" data-zh="Orchestrana™">Orchestrana™</span>
+<body class="legal-document comparison-body">
+  <header class="site-header legal-header">
+    <a class="brand" href="index.html#overview">
+      <img class="brand-icon" src="screenshots/Orchestrana%20icon%201.png" alt="Orchestrana icon" />
+      <span data-en="Orchestrana&trade;" data-zh="Orchestrana&trade;">Orchestrana&trade;</span>
     </a>
-    <nav class="nav-links">
-      <a href="index.html#overview" data-en="Overview" data-zh="概览">Overview</a>
-      <a href="index.html#features" data-en="Features" data-zh="功能">Features</a>
-      <a href="index.html#screenshots" data-en="Focus Cycle" data-zh="专注循环">Focus Cycle</a>
-      <a href="comparison.html" data-en="Comparison" data-zh="对比">Comparison</a>
-      <a href="index.html#docs" data-en="Docs" data-zh="文档">Docs</a>
-      <a href="index.html#download" data-en="Download" data-zh="下载">Download</a>
-      <a href="https://github.com/T-1234567890/orchestrana-app" target="_blank" rel="noreferrer" data-en="GitHub" data-zh="GitHub">GitHub</a>
-      <button id="lang-toggle" aria-label="Switch language" data-en="EN / 中文" data-zh="中文 / EN">EN / 中文</button>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a href="index.html#product" data-en="Product" data-zh="产品">Product</a>
+      <a href="index.html#rhythm" data-en="Rhythm" data-zh="节奏">Rhythm</a>
+      <a href="index.html#ai" data-en="AI" data-zh="AI">AI</a>
+      <a href="index.html#pricing" data-en="Pricing" data-zh="价格">Pricing</a>
+      <a href="index.html#open-source" data-en="Open source" data-zh="开源">Open source</a>
     </nav>
+    <div class="header-actions">
+      <button id="lang-toggle" class="language-toggle" aria-label="Switch language" data-en="EN / 中文" data-zh="中文 / EN">EN / 中文</button>
+      <a class="header-cta" href="https://apps.apple.com/app/orchestrana/id6758972580" target="_blank" rel="noreferrer" data-en="App Store" data-zh="App Store">App Store</a>
+    </div>
   </header>
 
   <main>
-    <section class="privacy-shell comparison-page" id="comparison-top">
-      <div class="privacy-header reveal">
-        <p class="eyebrow" data-en="Plans" data-zh="套餐">Plans</p>
-        <h1 data-en="Compare Orchestrana plans" data-zh="对比 Orchestrana 套餐">Compare Orchestrana plans</h1>
-        <p class="muted" data-en="A complete feature comparison for Free, Plus, and Pro." data-zh="Free、Plus 与 Pro 的完整功能对比。">A complete feature comparison for Free, Plus, and Pro.</p>
-        <div class="legal-nav">
-          <a class="soft-btn primary-ish" href="index.html#overview" data-en="Back to Home" data-zh="返回首页">Back to Home</a>
+    <section class="comparison-page" id="comparison-top">
+      <div class="comparison-hero reveal">
+        <div>
+          <p class="section-label" data-en="Plans" data-zh="套餐">Plans</p>
+          <h1 data-en="Compare Orchestrana plans" data-zh="对比 Orchestrana 套餐">Compare Orchestrana plans</h1>
+          <p class="muted" data-en="A complete feature comparison for Free, Plus, and Pro." data-zh="Free、Plus 与 Pro 的完整功能对比。">A complete feature comparison for Free, Plus, and Pro.</p>
+          <div class="legal-nav align-left">
+            <a class="soft-btn primary-ish" href="index.html#overview" data-en="Back to Home" data-zh="返回首页">Back to Home</a>
+          </div>
+        </div>
+        <div class="comparison-summary" aria-label="Plan summary">
+          <article class="comparison-summary-card">
+            <strong data-en="Free" data-zh="Free">Free</strong>
+            <span data-en="Core local focus workflow." data-zh="核心本地专注工作流。">Core local focus workflow.</span>
+          </article>
+          <article class="comparison-summary-card">
+            <strong data-en="Plus" data-zh="Plus">Plus</strong>
+            <span data-en="Standard Models and advanced task structure." data-zh="Standard Models 与高级任务结构。">Standard Models and advanced task structure.</span>
+          </article>
+          <article class="comparison-summary-card">
+            <strong data-en="Pro" data-zh="Pro">Pro</strong>
+            <span data-en="Frontier Models, scheduling, and deep analysis." data-zh="Frontier Models、排程与深度分析。">Frontier Models, scheduling, and deep analysis.</span>
+          </article>
         </div>
       </div>
 
@@ -63,17 +63,17 @@
           <p data-en="Subscriptions are billed through the Apple App Store. They automatically renew unless canceled at least 24 hours before the end of the current period. Renewal is charged within 24 hours before the end of the period. Manage or cancel your subscription in your App Store account settings." data-zh="订阅通过 Apple App Store 计费。除非在当前周期结束前至少 24 小时取消，否则订阅会自动续订。续订费用会在周期结束前 24 小时内扣取。你可以在 App Store 账户设置中管理或取消订阅。">Subscriptions are billed through the Apple App Store. They automatically renew unless canceled at least 24 hours before the end of the current period. Renewal is charged within 24 hours before the end of the period. Manage or cancel your subscription in your App Store account settings.</p>
         </div>
 
-        <section class="pricing-panel glass reveal" aria-labelledby="comparison-pricing-title">
+        <section class="pricing-panel" aria-labelledby="comparison-pricing-title">
           <div class="pricing-panel-head">
             <div>
-              <p class="eyebrow" data-en="Pricing" data-zh="价格">Pricing</p>
+              <p class="section-label" data-en="Pricing" data-zh="价格">Pricing</p>
               <h2 id="comparison-pricing-title" data-en="Plan pricing" data-zh="套餐价格">Plan pricing</h2>
             </div>
             <p class="muted" data-en="Prices are shown in USD. App Store regional pricing, taxes, offers, and availability may vary." data-zh="价格以美元显示。App Store 地区价格、税费、优惠与可用性可能不同。">Prices are shown in USD. App Store regional pricing, taxes, offers, and availability may vary.</p>
           </div>
 
-          <input class="pricing-radio" type="radio" name="comparison-billing" id="pricing-monthly" checked>
-          <input class="pricing-radio" type="radio" name="comparison-billing" id="pricing-annual">
+          <input class="pricing-radio" type="radio" name="comparison-billing" id="pricing-monthly" checked />
+          <input class="pricing-radio" type="radio" name="comparison-billing" id="pricing-annual" />
           <div class="pricing-billing-control" aria-label="Billing period">
             <span data-en="Billing" data-zh="计费">Billing</span>
             <label for="pricing-monthly" data-en="Monthly" data-zh="月付">Monthly</label>
@@ -86,9 +86,7 @@
               <p class="pricing-price" data-en="Included" data-zh="已包含">Included</p>
             </article>
             <article class="pricing-card is-featured">
-              <div class="pricing-card-title-row">
-                <h3 data-en="Plus" data-zh="Plus">Plus</h3>
-              </div>
+              <h3 data-en="Plus" data-zh="Plus">Plus</h3>
               <p class="pricing-price"><span class="price-monthly">$4.99</span><span class="price-annual">$39.99</span></p>
             </article>
             <article class="pricing-card">
@@ -115,6 +113,7 @@
               <tr><td data-en="Local-first task list" data-zh="本地优先任务列表">Local-first task list</td><td data-en="Create, edit, complete, restore, delete, tag, and date tasks locally." data-zh="本地创建、编辑、完成、恢复、删除、标记和安排任务日期。">Create, edit, complete, restore, delete, tag, and date tasks locally.</td><td>✓</td><td>✓</td><td>✓</td></tr>
               <tr><td data-en="Calendar view" data-zh="日历视图">Calendar view</td><td data-en="Read local calendar events, show time blocks, and work with writable calendars when permission is granted." data-zh="读取本地日历事件、显示时间块，并在授权后使用可写日历。">Read local calendar events, show time blocks, and work with writable calendars when permission is granted.</td><td>✓</td><td>✓</td><td>✓</td></tr>
               <tr><td data-en="Reminders integration" data-zh="提醒事项集成">Reminders integration</td><td data-en="Sync supported tasks with Apple Reminders when permission is granted." data-zh="在授权后将支持的任务同步到 Apple 提醒事项。">Sync supported tasks with Apple Reminders when permission is granted.</td><td>✓</td><td>✓</td><td>✓</td></tr>
+              <tr><td data-en="Workspace goals" data-zh="Workspace 目标">Workspace goals</td><td data-en="Create execution-focused goals and keep related tasks, events, and focus sessions connected." data-zh="创建面向执行的目标，并关联相关任务、事件和专注记录。">Create execution-focused goals and keep related tasks, events, and focus sessions connected.</td><td>3 active goals</td><td>✓</td><td>✓</td></tr>
 
               <tr class="feature-category"><td colspan="5" data-en="Task management" data-zh="任务管理">Task management</td></tr>
               <tr><td data-en="Priority and Pomodoro estimates" data-zh="优先级与番茄钟估算">Priority and Pomodoro estimates</td><td data-en="Advanced task fields are saved only for Plus and Pro users." data-zh="高级任务字段仅为 Plus 和 Pro 用户保存。">Advanced task fields are saved only for Plus and Pro users.</td><td>—</td><td>✓</td><td>✓</td></tr>
@@ -128,6 +127,9 @@
               <tr><td data-en="Draft From Idea" data-zh="从想法生成草稿">Draft From Idea</td><td data-en="Turn a rough idea into a clearer task draft from the task editor or AI assistant." data-zh="在任务编辑器或 AI 助手中将粗略想法变成更清晰的任务草稿。">Turn a rough idea into a clearer task draft from the task editor or AI assistant.</td><td>—</td><td>✓</td><td>✓</td></tr>
               <tr><td data-en="Plan My Tasks" data-zh="规划我的任务">Plan My Tasks</td><td data-en="Create a structured Pomodoro task plan from selected tasks." data-zh="根据选中的任务创建结构化番茄钟任务计划。">Create a structured Pomodoro task plan from selected tasks.</td><td>—</td><td>✓</td><td>✓</td></tr>
               <tr><td data-en="Generate task descriptions" data-zh="生成任务描述">Generate task descriptions</td><td data-en="Draft or improve task details from the task editor." data-zh="在任务编辑器中起草或改进任务详情。">Draft or improve task details from the task editor.</td><td>—</td><td>✓</td><td>✓</td></tr>
+              <tr><td data-en="AI Create Goal" data-zh="AI 创建目标">AI Create Goal</td><td data-en="Turn rough intent plus existing tasks, events, sessions, and notes into a structured goal." data-zh="结合粗略意图和已有任务、事件、专注记录与备注，生成结构化目标。">Turn rough intent plus existing tasks, events, sessions, and notes into a structured goal.</td><td>—</td><td>Standard Models</td><td>Standard Models</td></tr>
+              <tr><td data-en="Smart Link Related Work" data-zh="智能关联相关工作">Smart Link Related Work</td><td data-en="Suggest existing tasks, events, and focus sessions for a selected goal before you confirm them." data-zh="为选中的目标建议已有任务、事件和专注记录，并由你确认后关联。">Suggest existing tasks, events, and focus sessions for a selected goal before you confirm them.</td><td>—</td><td>Standard Models</td><td>Standard Models</td></tr>
+              <tr><td data-en="Dynamic Goal Adapt" data-zh="动态目标调整">Dynamic Goal Adapt</td><td data-en="Opt-in goal adjustment that reviews recent activity and related work every 12 hours or on a custom interval." data-zh="可选择开启的目标调整，会按每 12 小时或自定义间隔分析近期活动与相关工作。">Opt-in goal adjustment that reviews recent activity and related work every 12 hours or on a custom interval.</td><td>—</td><td>—</td><td>Frontier Models</td></tr>
 
               <tr class="feature-category"><td colspan="5" data-en="Insights and analytics" data-zh="洞察与分析">Insights and analytics</td></tr>
               <tr><td data-en="Basic analysis charts" data-zh="基础分析图表">Basic analysis charts</td><td data-en="Free users can view basic local insight charts and dashboard context without cloud AI." data-zh="Free 用户无需云端 AI 即可查看基础本地洞察图表和仪表盘概览。">Free users can view basic local insight charts and dashboard context without cloud AI.</td><td>✓</td><td>✓</td><td>✓</td></tr>
