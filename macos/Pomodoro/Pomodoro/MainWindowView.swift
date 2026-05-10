@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import CoreLocation
 import EventKit
 import SwiftUI
 import UserNotifications
@@ -81,8 +82,12 @@ struct MainWindowView: View {
     @StateObject private var permissionsManager = PermissionsManager.shared
     @StateObject private var todoStore = TodoStore()
     @StateObject private var planningStore = PlanningStore()
+    @StateObject private var goalStore = GoalStore()
+    @StateObject private var locationStore = LocationStore()
     @StateObject private var remindersSync = RemindersSync(permissionsManager: PermissionsManager.shared)
     @StateObject private var calendarManager = CalendarManager(permissionsManager: PermissionsManager.shared)
+    @StateObject private var calendarAutoSync = CalendarAutoSync(permissionsManager: PermissionsManager.shared)
+    @ObservedObject private var sessionRecordStore = SessionRecordStore.shared
 
     private enum YourPlansMode: String, Identifiable {
         case plannedTasks
@@ -480,6 +485,7 @@ struct MainWindowView: View {
             syncDashboardPomodoroSessionDefaults()
             todoStore.attachPlanningStore(planningStore)
             remindersSync.setTodoStore(todoStore)
+            calendarAutoSync.setTodoStore(todoStore)
             flowWindowManager.setTodoStore(todoStore)
         }
         .onChange(of: appState.durationConfig) { _, _ in
@@ -548,6 +554,15 @@ struct MainWindowView: View {
             withAnimation {
                 splitViewVisibility = .all
                 sidebarSelection = .calendar
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToWorkspaceMap)) { _ in
+            withAnimation {
+                splitViewVisibility = .all
+                sidebarSelection = .workspace
+            }
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .workspaceShowMap, object: nil)
             }
         }
     }
@@ -647,6 +662,8 @@ struct MainWindowView: View {
         TodoListView(
             todoStore: todoStore,
             planningStore: planningStore,
+            goalStore: goalStore,
+            locationStore: locationStore,
             remindersSync: remindersSync,
             permissionsManager: permissionsManager
         )
@@ -657,7 +674,10 @@ struct MainWindowView: View {
             calendarManager: calendarManager,
             permissionsManager: permissionsManager,
             todoStore: todoStore,
-            planningStore: planningStore
+            planningStore: planningStore,
+            goalStore: goalStore,
+            locationStore: locationStore,
+            calendarAutoSync: calendarAutoSync
         )
     }
 
@@ -732,17 +752,16 @@ struct MainWindowView: View {
     }
 
     private var workspaceView: some View {
-        VStack(spacing: 14) {
-            Text("Workspace Coming soon")
-                .font(.system(size: 34, weight: .semibold, design: .rounded))
-                .multilineTextAlignment(.center)
-            Text("Your future thinking workspace is coming.")
-                .font(.system(size: 18, weight: .regular, design: .rounded))
-                .foregroundStyle(currentAppearanceMode.secondaryTextColor(for: colorScheme))
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(24)
+        GoalWorkspaceView(
+            goalStore: goalStore,
+            todoStore: todoStore,
+            planningStore: planningStore,
+            locationStore: locationStore,
+            calendarManager: calendarManager,
+            sessionRecordStore: sessionRecordStore,
+            featureGate: featureGate,
+            appState: appState
+        )
     }
 
     private var aiWorkspaceSection: some View {
@@ -969,6 +988,11 @@ struct MainWindowView: View {
 
     private func openRemindersSettings() {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Reminders") else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    private func openLocationSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices") else { return }
         NSWorkspace.shared.open(url)
     }
 
@@ -1319,6 +1343,16 @@ struct MainWindowView: View {
                     statusColor: eventStatusColor(remindersStatus),
                     buttonTitle: eventStatusColor(remindersStatus) == .green ? "Open Settings" : "Enable",
                     action: handleRemindersAccessRequest
+                )
+
+                Divider()
+
+                settingsPermissionRow(
+                    title: languageManager.text("permissions.location"),
+                    status: permissionsManager.locationStatusText,
+                    statusColor: locationStatusColor(permissionsManager.locationStatus),
+                    buttonTitle: permissionsManager.isLocationAuthorized ? "Open Settings" : "Enable",
+                    action: handleLocationAccessRequest
                 )
             }
         }
@@ -2262,6 +2296,16 @@ struct MainWindowView: View {
         openRemindersSettings()
     }
 
+    private func handleLocationAccessRequest() {
+        if permissionsManager.locationStatus == .notDetermined {
+            Task {
+                await permissionsManager.requestLocationPermission()
+            }
+        } else {
+            openLocationSettings()
+        }
+    }
+
     private func refreshPermissionStatuses() {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             DispatchQueue.main.async {
@@ -2270,6 +2314,7 @@ struct MainWindowView: View {
         }
         calendarStatus = EKEventStore.authorizationStatus(for: .event)
         remindersStatus = EKEventStore.authorizationStatus(for: .reminder)
+        permissionsManager.refreshAllStatuses()
     }
 
     private func permissionStatusRow(title: String, statusText: String, statusColor: Color) -> some View {
@@ -2345,6 +2390,19 @@ struct MainWindowView: View {
         }
     }
 
+    private func locationStatusColor(_ status: CLAuthorizationStatus) -> Color {
+        switch status {
+        case .authorizedAlways:
+            return .green
+        case .denied, .restricted:
+            return .red
+        case .notDetermined:
+            return .orange
+        @unknown default:
+            return .gray
+        }
+    }
+
     private enum DurationField: Hashable {
         case work
         case shortBreak
@@ -2369,7 +2427,7 @@ struct MainWindowView: View {
 
         var id: String { rawValue }
 
-        static let workspaceEnabled = false
+        static let workspaceEnabled = true
 
         static var visibleItems: [SidebarItem] {
             workspaceEnabled
@@ -2439,7 +2497,7 @@ struct MainWindowView: View {
             case .dashboard:
                 return "Focus, timers, and today at a glance"
             case .workspace:
-                return "Planning, scheduling, and AI assistance"
+                return "Outcome goals linked to tasks, events, and focus sessions"
             case .tasks:
                 return "Capture, organize, and plan work"
             case .calendar:
@@ -4453,6 +4511,8 @@ extension Notification.Name {
     static let navigateToCountdown = Notification.Name("navigateToCountdown")
     static let navigateToTasks = Notification.Name("navigateToTasks")
     static let navigateToCalendar = Notification.Name("navigateToCalendar")
+    static let navigateToWorkspaceMap = Notification.Name("navigateToWorkspaceMap")
+    static let workspaceShowMap = Notification.Name("workspaceShowMap")
     static let openNewTaskComposer = Notification.Name("openNewTaskComposer")
     static let calendarGoToToday = Notification.Name("calendarGoToToday")
     static let taskToggleSelectedCompletion = Notification.Name("taskToggleSelectedCompletion")

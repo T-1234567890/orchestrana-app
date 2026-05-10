@@ -56,6 +56,7 @@ struct PlanningItem: Identifiable, Codable, Equatable {
     var linkedCalendarEventId: String?
     var hasTaskMode: Bool
     var eventTasks: [EventTask]
+    var locationID: UUID?
     
     init(
         id: UUID = UUID(),
@@ -73,7 +74,8 @@ struct PlanningItem: Identifiable, Codable, Equatable {
         calendarEventIdentifier: String? = nil,
         linkedCalendarEventId: String? = nil,
         hasTaskMode: Bool = false,
-        eventTasks: [EventTask] = []
+        eventTasks: [EventTask] = [],
+        locationID: UUID? = nil
     ) {
         self.id = id
         self.title = title
@@ -91,6 +93,7 @@ struct PlanningItem: Identifiable, Codable, Equatable {
         self.linkedCalendarEventId = linkedCalendarEventId
         self.hasTaskMode = hasTaskMode
         self.eventTasks = eventTasks
+        self.locationID = locationID
     }
 
     enum CodingKeys: String, CodingKey {
@@ -110,6 +113,7 @@ struct PlanningItem: Identifiable, Codable, Equatable {
         case linkedCalendarEventId
         case hasTaskMode
         case eventTasks
+        case locationID
     }
 
     init(from decoder: Decoder) throws {
@@ -130,6 +134,7 @@ struct PlanningItem: Identifiable, Codable, Equatable {
         linkedCalendarEventId = try container.decodeIfPresent(String.self, forKey: .linkedCalendarEventId)
         hasTaskMode = try container.decodeIfPresent(Bool.self, forKey: .hasTaskMode) ?? false
         eventTasks = try container.decodeIfPresent([EventTask].self, forKey: .eventTasks) ?? []
+        locationID = try container.decodeIfPresent(UUID.self, forKey: .locationID)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -152,5 +157,6 @@ struct PlanningItem: Identifiable, Codable, Equatable {
         if !eventTasks.isEmpty {
             try container.encode(eventTasks, forKey: .eventTasks)
         }
+        try container.encodeIfPresent(locationID, forKey: .locationID)
     }
 }

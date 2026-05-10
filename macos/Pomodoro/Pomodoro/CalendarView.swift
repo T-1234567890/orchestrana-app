@@ -11,6 +11,9 @@ struct CalendarView: View {
     @ObservedObject var permissionsManager: PermissionsManager
     @ObservedObject var todoStore: TodoStore
     @ObservedObject var planningStore: PlanningStore
+    @ObservedObject var goalStore: GoalStore
+    @ObservedObject var locationStore: LocationStore
+    @ObservedObject var calendarAutoSync: CalendarAutoSync
     @ObservedObject private var featureGate = FeatureGate.shared
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var localizationManager: LocalizationManager
@@ -30,6 +33,7 @@ struct CalendarView: View {
     @State private var newEventStart: Date = Date()
     @State private var newEventDurationMinutes: Int = 60
     @State private var newEventNotes: String = ""
+    @State private var newEventLocationID: UUID?
     @State private var addEventError: String?
     @State private var showAIAssistant = false
     @State private var isRunningAIAssistant = false
@@ -38,7 +42,12 @@ struct CalendarView: View {
     @State private var rescheduleError: String?
     @State private var showAILoginSheet = false
     @State private var upgradePaywallContext: SubscriptionPaywallContext?
+    @State private var locationPickerContext: CalendarLocationPickerContext?
     @State private var selectedLocalEventID: UUID?
+    @State private var selectedTaskDetailID: UUID?
+    @State private var pendingMoveAction: PendingCalendarMove?
+    @State private var moveTargetDate: Date = Date()
+    @State private var pendingDeleteAction: PendingCalendarDelete?
 
     // MARK: - Reschedule state
     /// Snapshot of tasks/events as they existed before the last reschedule — used for Undo.
@@ -69,6 +78,42 @@ struct CalendarView: View {
     private struct AppliedRescheduleResult {
         let changedEventIDs: Set<String>
         let undoSnapshot: RescheduleUndoSnapshot
+    }
+
+    private struct PendingCalendarMove: Identifiable {
+        enum Kind {
+            case systemEvent(String)
+            case localEvent(UUID)
+            case task(UUID)
+        }
+
+        let id = UUID()
+        let title: String
+        let kind: Kind
+    }
+
+    private struct PendingCalendarDelete: Identifiable {
+        enum Kind {
+            case systemEvent(String)
+            case localEvent(UUID)
+        }
+
+        let id = UUID()
+        let title: String
+        let kind: Kind
+    }
+
+    private struct CalendarLocationPickerContext: Identifiable {
+        enum Kind {
+            case systemEvent(String)
+            case localEvent(UUID)
+            case task(UUID)
+        }
+
+        let id = UUID()
+        let kind: Kind
+        let currentLocationID: UUID?
+        let title: String
     }
 
     private static let eventTimeFormatter: DateFormatter = {
@@ -114,6 +159,9 @@ struct CalendarView: View {
         .frame(minWidth: 520, idealWidth: 680, maxWidth: 900, minHeight: 520, alignment: .top)
         .onAppear {
             permissionsManager.refreshCalendarStatus()
+            calendarAutoSync.setVisibleRefreshHandler {
+                await loadEvents()
+            }
             Task {
                 await loadEvents()
             }
@@ -121,16 +169,17 @@ struct CalendarView: View {
         .onReceive(NotificationCenter.default.publisher(for: .calendarGoToToday)) { _ in
             selectedView = .day
             anchorDate = Date()
-            Task {
-                await loadEvents()
-            }
+            calendarAutoSync.visibleRangeDidChange()
         }
         .sheet(isPresented: $showingAddEvent) {
             AddEventSheet(
+                locationStore: locationStore,
                 title: $newEventTitle,
                 startDate: $newEventStart,
                 durationMinutes: $newEventDurationMinutes,
                 notes: $newEventNotes,
+                locationID: $newEventLocationID,
+                canUseLocationNotifications: canUseLocationTagsAndNotifications,
                 errorMessage: addEventError,
                 onCancel: {
                     showingAddEvent = false
@@ -152,6 +201,26 @@ struct CalendarView: View {
                 subscriptionStore: SubscriptionStore.shared
             )
         }
+        .sheet(item: $locationPickerContext) { context in
+            WorkLocationPickerSheet(
+                locationStore: locationStore,
+                title: context.title,
+                canCreateNewLocation: canCreateLocation(for: context),
+                canUseLocationNotifications: canUseLocationTagsAndNotifications,
+                notificationTaskCount: locationNotificationCount(for: context.currentLocationID),
+                onCreateLimitReached: {
+                    locationPickerContext = nil
+                    presentCalendarTaskLocationLimitPaywall()
+                },
+                onCancel: {
+                    locationPickerContext = nil
+                },
+                onSelect: { locationID in
+                    assignPickedLocation(locationID, for: context)
+                    locationPickerContext = nil
+                }
+            )
+        }
         .sheet(isPresented: Binding(
             get: { selectedLocalEventID != nil },
             set: { isPresented in
@@ -170,6 +239,43 @@ struct CalendarView: View {
                 .environmentObject(authViewModel)
                 .environmentObject(localizationManager)
             }
+        }
+        .sheet(isPresented: Binding(
+            get: { selectedTaskDetailID != nil },
+            set: { isPresented in
+                if !isPresented {
+                    selectedTaskDetailID = nil
+                }
+            }
+        )) {
+            if let selectedTaskDetailID,
+               let task = todoStore.items.first(where: { $0.id == selectedTaskDetailID }) {
+                CalendarTaskDetailSheet(task: task) {
+                    self.selectedTaskDetailID = nil
+                }
+                .environmentObject(localizationManager)
+            }
+        }
+        .sheet(item: $pendingMoveAction) { action in
+            CalendarMoveSheet(
+                title: action.title,
+                targetDate: $moveTargetDate,
+                onCancel: { pendingMoveAction = nil },
+                onMove: {
+                    Task { await confirmPendingMove(action) }
+                }
+            )
+            .environmentObject(localizationManager)
+        }
+        .alert(item: $pendingDeleteAction) { action in
+            Alert(
+                title: Text("Delete \(action.title)?"),
+                message: Text("This cannot be undone."),
+                primaryButton: .destructive(Text(localizationManager.text("common.delete"))) {
+                    Task { await confirmPendingDelete(action) }
+                },
+                secondaryButton: .cancel()
+            )
         }
         .sheet(isPresented: $showAIAssistant) {
             AIAssistantView(
@@ -241,7 +347,7 @@ struct CalendarView: View {
                         .pickerStyle(.segmented)
                         .frame(maxWidth: 260)
                         .onChange(of: selectedView) { _, _ in
-                            Task { await loadEvents() }
+                            calendarAutoSync.visibleRangeDidChange()
                         }
 
                         DatePicker(
@@ -252,7 +358,7 @@ struct CalendarView: View {
                         .labelsHidden()
                         .datePickerStyle(.field)
                         .onChange(of: anchorDate) { _, _ in
-                            Task { await loadEvents() }
+                            calendarAutoSync.visibleRangeDidChange()
                         }
 
                         if !permissionsManager.isCalendarAuthorized {
@@ -300,7 +406,10 @@ struct CalendarView: View {
                             Label(localizationManager.text("common.refresh"), systemImage: "arrow.clockwise")
                         }
                         .buttonStyle(.bordered)
+
                     }
+
+                    calendarSyncPanel
 
                     if selectedEventIDs.count > 1 {
                         batchEventActionsBar
@@ -313,7 +422,7 @@ struct CalendarView: View {
 
                 // Events list constrained to the available detail height
                 GeometryReader { proxy in
-                    ScrollView {
+                    ScrollView(.vertical, showsIndicators: false) {
                         eventsContent(maxWidth: proxy.size.width)
                     }
                     .frame(height: max(proxy.size.height, 280))
@@ -390,6 +499,56 @@ struct CalendarView: View {
             return localizationManager.text("calendar.permission_off.denied_body")
         }
         return localizationManager.text("calendar.permission_off.body")
+    }
+
+    private var calendarSyncPanel: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if calendarAutoSync.isSyncing {
+                Label("Calendar sync in progress", systemImage: "arrow.triangle.2.circlepath")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if let error = calendarAutoSync.lastSyncError, !error.isEmpty {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            } else if let lastSyncDate = calendarAutoSync.lastSyncDate {
+                Label("Last synced \(lastSyncDate.formatted(date: .omitted, time: .shortened))", systemImage: "checkmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Auto-sync")
+                        .font(.subheadline.weight(.medium))
+                    Text("Keep app-linked Calendar tasks synchronized automatically.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button {
+                    Task { await calendarAutoSync.syncNow(refreshVisibleEvents: true) }
+                } label: {
+                    if calendarAutoSync.isSyncing {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Label("Sync Now", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(calendarAutoSync.isSyncing || !permissionsManager.isCalendarAuthorized)
+
+                Toggle("Auto-sync", isOn: $calendarAutoSync.isAutoSyncEnabled)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .accessibilityLabel("Calendar auto-sync")
+                    .accessibilityHint("Keep app-linked Calendar tasks synchronized automatically.")
+                    .disabled(!permissionsManager.isCalendarAuthorized)
+            }
+        }
     }
 
     @ViewBuilder
@@ -1040,7 +1199,7 @@ struct CalendarView: View {
         let todayLocalEvents = localEvents(for: anchorDate)
         let todayTasks = tasks(for: anchorDate)
 
-        return ScrollView {
+        return ScrollView(.vertical, showsIndicators: false) {
             if todayEvents.isEmpty && todayLocalEvents.isEmpty && todayTasks.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "calendar.badge.clock")
@@ -1089,14 +1248,18 @@ struct CalendarView: View {
         let isSelected = event.eventIdentifier.map { selectedEventIDs.contains($0) } ?? false
         let isRescheduled = event.eventIdentifier.map { recentlyRescheduledEventIDs.contains($0) } ?? false
         return VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Text(event.title ?? localizationManager.text("common.untitled"))
-                    .font(.headline)
-                if isRescheduled {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.caption)
-                        .foregroundStyle(.green)
+            HStack(alignment: .top, spacing: 8) {
+                HStack(spacing: 6) {
+                    Text(event.title ?? localizationManager.text("common.untitled"))
+                        .font(.headline)
+                    if isRescheduled {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    }
                 }
+                Spacer()
+                systemEventMenu(for: event)
             }
             Text(formatEventTime(event))
                 .font(.subheadline)
@@ -1132,20 +1295,32 @@ struct CalendarView: View {
         })
     }
 
+    private func planningEvent(for event: EKEvent) -> PlanningItem? {
+        guard let identifier = event.eventIdentifier else { return nil }
+        return planningStore.items.first {
+            $0.isCalendarEvent && $0.calendarEventIdentifier == identifier
+        }
+    }
+
     private func taskCard(_ item: TodoItem) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(item.title)
-                .font(.headline)
-            if let notes = item.notes, !notes.isEmpty {
-                Text(notes)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title)
+                    .font(.headline)
+                if let notes = item.notes, !notes.isEmpty {
+                    Text(notes)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let due = item.dueDate {
+                    Text(formattedTaskDue(item: item, due: due))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
-            if let due = item.dueDate {
-                Text(formattedTaskDue(item: item, due: due))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            calendarTaskMenu(for: item)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1164,38 +1339,535 @@ struct CalendarView: View {
     }
 
     private func localEventCard(_ item: PlanningItem) -> some View {
-        Button {
-            selectedLocalEventID = item.id
-        } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Text(item.title)
-                        .font(.headline)
-                    if item.hasTaskMode && !item.eventTasks.isEmpty {
-                        Text("\(item.eventTasks.count)")
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.accentColor.opacity(0.12))
-                            .clipShape(Capsule())
+        HStack(alignment: .top, spacing: 10) {
+            Button {
+                selectedLocalEventID = item.id
+            } label: {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Text(item.title)
+                            .font(.headline)
+                        if item.hasTaskMode && !item.eventTasks.isEmpty {
+                            Text("\(item.eventTasks.count)")
+                                .font(.caption2.weight(.semibold))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.accentColor.opacity(0.12))
+                                .clipShape(Capsule())
+                        }
+                    }
+                    Text(formattedLocalEventTime(item))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    if let notes = item.notes, !notes.isEmpty {
+                        Text(notes)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
                     }
                 }
-                Text(formattedLocalEventTime(item))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                if let notes = item.notes, !notes.isEmpty {
-                    Text(notes)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.accentColor.opacity(0.06))
-            .cornerRadius(8)
+            .buttonStyle(.plain)
+
+            localEventMenu(for: item)
         }
-        .buttonStyle(.plain)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.accentColor.opacity(0.06))
+        .cornerRadius(8)
+    }
+
+    private func systemEventMenu(for event: EKEvent) -> some View {
+        Menu {
+            Button {
+                openSystemEventDetails(event)
+            } label: {
+                Label("Open Details", systemImage: "info.circle")
+            }
+
+            Button {
+                createTask(from: event)
+            } label: {
+                Label("Create Task from Event", systemImage: "checklist")
+            }
+
+            systemGoalLinkMenu(for: event)
+            systemEventLocationMenu(for: event)
+
+            Button {
+                if let item = calendarSnapshot(for: event) {
+                    enableEventTasks(for: item)
+                }
+            } label: {
+                Label("Enable Event Tasks", systemImage: "checklist.checked")
+            }
+
+            Button {
+                beginMoveSystemEvent(event)
+            } label: {
+                Label("Move", systemImage: "calendar.badge.clock")
+            }
+            .disabled(!canModify(event))
+
+            Button(role: .destructive) {
+                beginDeleteSystemEvent(event)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            .disabled(!canModify(event))
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .foregroundStyle(.secondary)
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+    }
+
+    private func localEventMenu(for item: PlanningItem) -> some View {
+        Menu {
+            Button {
+                selectedLocalEventID = item.id
+            } label: {
+                Label("Open Details", systemImage: "info.circle")
+            }
+
+            Button {
+                createTask(from: item)
+            } label: {
+                Label("Create Task from Event", systemImage: "checklist")
+            }
+
+            goalLinkMenu(for: item)
+            eventLocationMenu(for: item)
+
+            Button {
+                enableEventTasks(for: item)
+            } label: {
+                Label("Enable Event Tasks", systemImage: "checklist.checked")
+            }
+
+            Button {
+                beginMoveLocalEvent(item)
+            } label: {
+                Label("Move", systemImage: "calendar.badge.clock")
+            }
+
+            Button {
+                duplicateLocalEvent(item)
+            } label: {
+                Label("Duplicate", systemImage: "plus.square.on.square")
+            }
+            .disabled(item.source != .local)
+
+            Button(role: .destructive) {
+                beginDeleteLocalEvent(item)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .foregroundStyle(.secondary)
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+    }
+
+    private func calendarTaskMenu(for item: TodoItem) -> some View {
+        Menu {
+            Button {
+                selectedTaskDetailID = item.id
+            } label: {
+                Label("Open Details", systemImage: "info.circle")
+            }
+
+            taskGoalLinkMenu(for: item)
+            calendarTaskLocationMenu(for: item)
+
+            Button {
+                beginMoveTask(item)
+            } label: {
+                Label("Move", systemImage: "calendar.badge.clock")
+            }
+
+            Button {
+                createLocalEvent(from: item)
+            } label: {
+                Label("Create Event from Task", systemImage: "calendar.badge.plus")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .foregroundStyle(.secondary)
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+    }
+
+    @ViewBuilder
+    private func goalLinkMenu(for item: PlanningItem?) -> some View {
+        if let item, !goalStore.goals.isEmpty {
+            Menu {
+                ForEach(goalStore.goals) { goal in
+                    Button(goal.outcome) {
+                        _ = goalStore.addLink(goalID: goal.id, kind: .event, targetID: item.id.uuidString)
+                    }
+                    .disabled(goalStore.hasLink(goalID: goal.id, kind: .event, targetID: item.id.uuidString))
+                }
+            } label: {
+                Label("Link to Goal", systemImage: "target")
+            }
+        } else {
+            Button {
+            } label: {
+                Label("Link to Goal", systemImage: "target")
+            }
+            .disabled(true)
+        }
+    }
+
+    @ViewBuilder
+    private func systemGoalLinkMenu(for event: EKEvent) -> some View {
+        if !goalStore.goals.isEmpty {
+            Menu {
+                ForEach(goalStore.goals) { goal in
+                    Button(goal.outcome) {
+                        guard let item = calendarSnapshot(for: event) else { return }
+                        _ = goalStore.addLink(goalID: goal.id, kind: .event, targetID: item.id.uuidString)
+                    }
+                    .disabled(isSystemEventLinked(event, to: goal))
+                }
+            } label: {
+                Label("Link to Goal", systemImage: "target")
+            }
+        } else {
+            Button {
+            } label: {
+                Label("Link to Goal", systemImage: "target")
+            }
+            .disabled(true)
+        }
+    }
+
+    @ViewBuilder
+    private func taskGoalLinkMenu(for item: TodoItem) -> some View {
+        if !goalStore.goals.isEmpty {
+            Menu {
+                ForEach(goalStore.goals) { goal in
+                    Button(goal.outcome) {
+                        _ = goalStore.addLink(goalID: goal.id, kind: .task, targetID: item.id.uuidString)
+                    }
+                    .disabled(goalStore.hasLink(goalID: goal.id, kind: .task, targetID: item.id.uuidString))
+                }
+            } label: {
+                Label("Link to Goal", systemImage: "target")
+            }
+        } else {
+            Button {
+            } label: {
+                Label("Link to Goal", systemImage: "target")
+            }
+            .disabled(true)
+        }
+    }
+
+    @ViewBuilder
+    private func systemEventLocationMenu(for event: EKEvent) -> some View {
+        let snapshot = event.eventIdentifier.flatMap { identifier in
+            planningStore.items.first { $0.calendarEventIdentifier == identifier }
+        }
+        locationMenu(
+            currentLocationID: snapshot?.locationID,
+            assignTitle: snapshot?.locationID == nil ? "Pin to Location" : "Change Location",
+            onPickLocation: {
+                guard let identifier = event.eventIdentifier else { return }
+                locationPickerContext = CalendarLocationPickerContext(
+                    kind: .systemEvent(identifier),
+                    currentLocationID: snapshot?.locationID,
+                    title: snapshot?.locationID == nil ? "Pin to Location" : "Change Location"
+                )
+            },
+            onClear: {
+                guard let item = calendarSnapshot(for: event) else { return }
+                planningStore.setLocation(itemID: item.id, locationID: nil)
+            }
+        )
+    }
+
+    @ViewBuilder
+    private func eventLocationMenu(for item: PlanningItem) -> some View {
+        locationMenu(
+            currentLocationID: item.locationID,
+            assignTitle: item.locationID == nil ? "Pin to Location" : "Change Location",
+            onPickLocation: {
+                locationPickerContext = CalendarLocationPickerContext(
+                    kind: .localEvent(item.id),
+                    currentLocationID: item.locationID,
+                    title: item.locationID == nil ? "Pin to Location" : "Change Location"
+                )
+            },
+            onClear: {
+                planningStore.setLocation(itemID: item.id, locationID: nil)
+            }
+        )
+    }
+
+    @ViewBuilder
+    private func calendarTaskLocationMenu(for item: TodoItem) -> some View {
+        locationMenu(
+            currentLocationID: item.locationID,
+            assignTitle: item.locationID == nil ? "Pin to Location" : "Change Location",
+            onPickLocation: {
+                locationPickerContext = CalendarLocationPickerContext(
+                    kind: .task(item.id),
+                    currentLocationID: item.locationID,
+                    title: item.locationID == nil ? "Pin to Location" : "Change Location"
+                )
+            },
+            onClear: {
+                todoStore.setLocation(itemID: item.id, locationID: nil)
+            }
+        )
+    }
+
+    @ViewBuilder
+    private func locationMenu(
+        currentLocationID: UUID?,
+        assignTitle: String,
+        onPickLocation: @escaping () -> Void,
+        onClear: @escaping () -> Void
+    ) -> some View {
+        Menu {
+            Button {
+                onPickLocation()
+            } label: {
+                Label(assignTitle, systemImage: "mappin.and.ellipse")
+            }
+
+            Button {
+                onClear()
+            } label: {
+                Label("Clear Location", systemImage: "mappin.slash")
+            }
+            .disabled(currentLocationID == nil)
+
+            Button {
+                NotificationCenter.default.post(name: .navigateToWorkspaceMap, object: currentLocationID)
+            } label: {
+                Label("Show on Map", systemImage: "map")
+            }
+            .disabled(currentLocationID == nil)
+        } label: {
+            Label("Location", systemImage: "location")
+        }
+    }
+
+    private func assignTaskLocation(_ locationID: UUID, to item: TodoItem) {
+        if item.locationID == nil,
+           !canUseUnlimitedTaskLocations,
+           todoStore.items.filter({ $0.locationID != nil }).count >= LocationStore.freeTaskLocationLimit {
+            presentCalendarTaskLocationLimitPaywall()
+            return
+        }
+        todoStore.setLocation(itemID: item.id, locationID: locationID)
+    }
+
+    private func assignPickedLocation(_ locationID: UUID, for context: CalendarLocationPickerContext) {
+        switch context.kind {
+        case .systemEvent(let identifier):
+            guard let event = calendarManager.events.first(where: { $0.eventIdentifier == identifier }),
+                  let item = calendarSnapshot(for: event) else { return }
+            planningStore.setLocation(itemID: item.id, locationID: locationID)
+        case .localEvent(let id):
+            planningStore.setLocation(itemID: id, locationID: locationID)
+        case .task(let id):
+            guard let item = todoStore.items.first(where: { $0.id == id }) else { return }
+            assignTaskLocation(locationID, to: item)
+        }
+    }
+
+    private func canCreateLocation(for context: CalendarLocationPickerContext) -> Bool {
+        switch context.kind {
+        case .task(let id):
+            guard let item = todoStore.items.first(where: { $0.id == id }) else { return false }
+            return item.locationID != nil
+                || canUseUnlimitedTaskLocations
+                || todoStore.items.filter({ $0.locationID != nil }).count < LocationStore.freeTaskLocationLimit
+        case .systemEvent, .localEvent:
+            return true
+        }
+    }
+
+    private func presentCalendarTaskLocationLimitPaywall() {
+        presentUpgradePaywall(
+            requiredTier: .plus,
+            title: "Unlimited task locations require Plus",
+            message: "Free supports up to \(LocationStore.freeTaskLocationLimit) saved task locations. Upgrade to Plus for unlimited locations, tags, and location notifications."
+        )
+    }
+
+    private func locationNotificationCount(for locationID: UUID?) -> Int {
+        guard let locationID else { return 1 }
+        return max(1, todoStore.items.filter { $0.locationID == locationID && !$0.isCompleted }.count)
+    }
+
+    private var canUseUnlimitedTaskLocations: Bool {
+        switch featureGate.tier {
+        case .plus, .pro, .developer:
+            return true
+        case .free, .beta, .expired:
+            return false
+        }
+    }
+
+    private var canUseLocationTagsAndNotifications: Bool {
+        switch featureGate.tier {
+        case .plus, .pro, .developer:
+            return true
+        case .free, .beta, .expired:
+            return false
+        }
+    }
+
+    private func calendarSnapshot(for event: EKEvent) -> PlanningItem? {
+        planningStore.upsertCalendarEventSnapshot(event)
+    }
+
+    private func isSystemEventLinked(_ event: EKEvent, to goal: GoalRecord) -> Bool {
+        guard let item = planningEvent(for: event) else { return false }
+        return goalStore.hasLink(goalID: goal.id, kind: .event, targetID: item.id.uuidString)
+    }
+
+    private func canModify(_ event: EKEvent) -> Bool {
+        event.calendar?.allowsContentModifications == true
+    }
+
+    private func openSystemEventDetails(_ event: EKEvent) {
+        guard let item = calendarSnapshot(for: event) else { return }
+        selectedLocalEventID = item.id
+    }
+
+    private func createTask(from event: EKEvent) {
+        let duration = max(15, Int(event.endDate.timeIntervalSince(event.startDate) / 60))
+        let task = TodoItem(
+            title: event.title ?? localizationManager.text("common.untitled"),
+            descriptionMarkdown: event.notes,
+            dueDate: event.startDate,
+            hasDueTime: !event.isAllDay,
+            durationMinutes: duration,
+            syncToCalendar: false
+        )
+        todoStore.addItem(task)
+    }
+
+    private func createTask(from item: PlanningItem) {
+        let start = item.startDate
+        let duration = max(15, Int((item.endDate ?? start ?? Date()).timeIntervalSince(start ?? Date()) / 60))
+        let task = TodoItem(
+            title: item.title,
+            descriptionMarkdown: item.notes,
+            dueDate: start,
+            hasDueTime: start != nil,
+            durationMinutes: duration,
+            syncToCalendar: false
+        )
+        todoStore.addItem(task)
+    }
+
+    private func createLocalEvent(from task: TodoItem) {
+        guard let start = task.dueDate else { return }
+        let duration = task.durationMinutes ?? 30
+        _ = planningStore.addLocalEvent(
+            title: task.title,
+            notes: task.notes,
+            startDate: start,
+            endDate: start.addingTimeInterval(Double(duration * 60))
+        )
+    }
+
+    private func enableEventTasks(for item: PlanningItem) {
+        guard featureGate.canUseEventTasks else {
+            presentLockedFeatureInfo(
+                featureName: localizationManager.text("calendar.event_tasks.section_title"),
+                description: localizationManager.text("calendar.event_tasks.plus_required"),
+                requiredTier: .plus
+            )
+            return
+        }
+        planningStore.setEventTaskMode(for: item.id, enabled: true)
+        selectedLocalEventID = item.id
+    }
+
+    private func duplicateLocalEvent(_ item: PlanningItem) {
+        _ = planningStore.duplicateLocalEvent(item)
+    }
+
+    private func beginMoveSystemEvent(_ event: EKEvent) {
+        guard let identifier = event.eventIdentifier else { return }
+        moveTargetDate = event.startDate
+        pendingMoveAction = PendingCalendarMove(
+            title: event.title ?? localizationManager.text("common.untitled"),
+            kind: .systemEvent(identifier)
+        )
+    }
+
+    private func beginMoveLocalEvent(_ item: PlanningItem) {
+        moveTargetDate = item.startDate ?? Date()
+        pendingMoveAction = PendingCalendarMove(title: item.title, kind: .localEvent(item.id))
+    }
+
+    private func beginMoveTask(_ item: TodoItem) {
+        moveTargetDate = item.dueDate ?? Date()
+        pendingMoveAction = PendingCalendarMove(title: item.title, kind: .task(item.id))
+    }
+
+    private func beginDeleteSystemEvent(_ event: EKEvent) {
+        guard let identifier = event.eventIdentifier else { return }
+        pendingDeleteAction = PendingCalendarDelete(
+            title: event.title ?? localizationManager.text("common.untitled"),
+            kind: .systemEvent(identifier)
+        )
+    }
+
+    private func beginDeleteLocalEvent(_ item: PlanningItem) {
+        pendingDeleteAction = PendingCalendarDelete(title: item.title, kind: .localEvent(item.id))
+    }
+
+    private func confirmPendingMove(_ action: PendingCalendarMove) async {
+        defer { pendingMoveAction = nil }
+        switch action.kind {
+        case .systemEvent(let identifier):
+            do {
+                try await calendarManager.moveEvents(with: [identifier], to: moveTargetDate)
+                await loadEvents()
+            } catch {
+                batchEventWarning = localizationManager.format("calendar.error.move_all_failed", error.localizedDescription)
+            }
+        case .localEvent(let id):
+            guard let item = planningStore.items.first(where: { $0.id == id }) else { return }
+            planningStore.moveEvent(item, to: moveTargetDate)
+        case .task(let id):
+            guard let item = todoStore.items.first(where: { $0.id == id }) else { return }
+            var updated = item
+            updated.dueDate = moveTargetDate
+            updated.hasDueTime = true
+            updated.modifiedAt = Date()
+            todoStore.updateItem(updated)
+        }
+    }
+
+    private func confirmPendingDelete(_ action: PendingCalendarDelete) async {
+        switch action.kind {
+        case .systemEvent(let identifier):
+            do {
+                try await calendarManager.deleteEvents(with: [identifier])
+                await loadEvents()
+            } catch {
+                batchEventWarning = localizationManager.format("calendar.error.delete_all_failed", error.localizedDescription)
+            }
+        case .localEvent(let id):
+            guard let item = planningStore.items.first(where: { $0.id == id }) else { return }
+            planningStore.deleteTask(item)
+        }
     }
 
     // MARK: - Selection helpers
@@ -1589,6 +2261,7 @@ struct CalendarView: View {
         newEventTitle = ""
         newEventNotes = ""
         newEventDurationMinutes = 60
+        newEventLocationID = nil
         
         // Align start time to the selected date, keeping the current hour.
         let calendar = Calendar.current
@@ -1616,7 +2289,8 @@ struct CalendarView: View {
             title: trimmedTitle,
             notes: newEventNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : newEventNotes,
             startDate: newEventStart,
-            endDate: endDate
+            endDate: endDate,
+            locationID: newEventLocationID
         )
         addEventError = nil
         showingAddEvent = false
@@ -1655,14 +2329,19 @@ struct CalendarView: View {
 
 private struct AddEventSheet: View {
     @EnvironmentObject private var localizationManager: LocalizationManager
+    @ObservedObject var locationStore: LocationStore
     @Binding var title: String
     @Binding var startDate: Date
     @Binding var durationMinutes: Int
     @Binding var notes: String
-    
+    @Binding var locationID: UUID?
+
+    let canUseLocationNotifications: Bool
     let errorMessage: String?
     let onCancel: () -> Void
     let onSave: () -> Void
+
+    @State private var showingLocationPicker = false
     
     var body: some View {
         VStack(spacing: 16) {
@@ -1684,6 +2363,8 @@ private struct AddEventSheet: View {
                 
                 TextField(localizationManager.text("common.notes_optional"), text: $notes, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
+
+                locationPickerRow
             }
             
             if let errorMessage {
@@ -1708,6 +2389,133 @@ private struct AddEventSheet: View {
         }
         .padding(24)
         .frame(width: 420)
+        .sheet(isPresented: $showingLocationPicker) {
+            WorkLocationPickerSheet(
+                locationStore: locationStore,
+                title: locationID == nil ? "Choose Location" : "Change Location",
+                canCreateNewLocation: true,
+                canUseLocationNotifications: canUseLocationNotifications,
+                notificationTaskCount: 1,
+                onCreateLimitReached: {
+                    showingLocationPicker = false
+                },
+                onCancel: {
+                    showingLocationPicker = false
+                },
+                onSelect: { selectedLocationID in
+                    locationID = selectedLocationID
+                    showingLocationPicker = false
+                }
+            )
+        }
+    }
+
+    private var locationPickerRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Location")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 10) {
+                Label(selectedLocationName, systemImage: locationID == nil ? "mappin" : "mappin.circle.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(locationID == nil ? .secondary : .primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Button(locationID == nil ? "Choose" : "Change") {
+                    showingLocationPicker = true
+                }
+                .buttonStyle(.bordered)
+
+                Button("Clear") {
+                    locationID = nil
+                }
+                .buttonStyle(.bordered)
+                .disabled(locationID == nil)
+            }
+        }
+    }
+
+    private var selectedLocationName: String {
+        locationStore.location(id: locationID)?.name ?? "No location"
+    }
+}
+
+private struct CalendarMoveSheet: View {
+    @EnvironmentObject private var localizationManager: LocalizationManager
+    let title: String
+    @Binding var targetDate: Date
+    let onCancel: () -> Void
+    let onMove: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Move")
+                    .font(.title3.weight(.semibold))
+                Text(title)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            DatePicker(localizationManager.text("common.move_to"), selection: $targetDate, displayedComponents: [.date])
+
+            HStack {
+                Button(localizationManager.text("common.cancel"), action: onCancel)
+                    .buttonStyle(.bordered)
+                Spacer()
+                Button(localizationManager.text("common.move"), action: onMove)
+                    .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(24)
+        .frame(width: 420)
+    }
+}
+
+private struct CalendarTaskDetailSheet: View {
+    let task: TodoItem
+    let onClose: () -> Void
+
+    @EnvironmentObject private var localizationManager: LocalizationManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(task.title)
+                        .font(.title3.weight(.semibold))
+                    if let dueDate = task.dueDate {
+                        Text(dueDate.formatted(date: .abbreviated, time: task.hasDueTime ? .shortened : .omitted))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                Button(localizationManager.text("common.close"), action: onClose)
+                    .buttonStyle(.bordered)
+            }
+
+            if let notes = task.notes, !notes.isEmpty {
+                Text(notes)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text(localizationManager.text("common.notes_optional"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let durationMinutes = task.durationMinutes {
+                Label("\(durationMinutes)m", systemImage: "timer")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(24)
+        .frame(width: 460)
     }
 }
 
@@ -1730,7 +2538,10 @@ private struct RescheduleMatchedGeometry: ViewModifier {
             calendarManager: CalendarManager(permissionsManager: .shared),
             permissionsManager: .shared,
             todoStore: TodoStore(),
-            planningStore: PlanningStore()
+            planningStore: PlanningStore(),
+            goalStore: GoalStore(),
+            locationStore: LocationStore(),
+            calendarAutoSync: CalendarAutoSync(permissionsManager: .shared)
         )
         .frame(width: 700, height: 600)
     }
@@ -1767,13 +2578,13 @@ private struct EventTaskDetailSheet: View {
     }
 
     private var eventBinding: Binding<PlanningItem>? {
-        guard planningStore.localEvents.contains(where: { $0.id == eventID }) else {
+        guard planningStore.items.contains(where: { $0.id == eventID && $0.isCalendarEvent && !$0.isTask }) else {
             return nil
         }
 
         return Binding(
             get: {
-                planningStore.localEvents.first(where: { $0.id == eventID })
+                planningStore.items.first(where: { $0.id == eventID && $0.isCalendarEvent && !$0.isTask })
                 ?? PlanningItem(
                     id: eventID,
                     title: "",

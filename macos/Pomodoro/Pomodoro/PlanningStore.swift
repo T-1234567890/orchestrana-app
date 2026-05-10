@@ -35,7 +35,7 @@ final class PlanningStore: ObservableObject {
     }
 
     @discardableResult
-    func addLocalEvent(title: String, notes: String?, startDate: Date, endDate: Date) -> PlanningItem {
+    func addLocalEvent(title: String, notes: String?, startDate: Date, endDate: Date, locationID: UUID? = nil) -> PlanningItem {
         let item = PlanningItem(
             title: title,
             notes: notes,
@@ -44,11 +44,87 @@ final class PlanningStore: ObservableObject {
             isTask: false,
             isCalendarEvent: true,
             completed: false,
-            source: .local
+            source: .local,
+            locationID: locationID
         )
         items.append(item)
         save()
         return item
+    }
+
+    @discardableResult
+    func duplicateLocalEvent(_ item: PlanningItem) -> PlanningItem? {
+        guard item.source == .local,
+              item.isCalendarEvent,
+              !item.isTask,
+              let startDate = item.startDate else {
+            return nil
+        }
+        let endDate = item.endDate ?? startDate.addingTimeInterval(60 * 60)
+        let duplicate = PlanningItem(
+            title: "\(item.title) Copy",
+            notes: item.notes,
+            startDate: startDate,
+            endDate: endDate,
+            isTask: false,
+            isCalendarEvent: true,
+            completed: item.completed,
+            source: .local,
+            hasTaskMode: item.hasTaskMode,
+            eventTasks: item.eventTasks,
+            locationID: item.locationID
+        )
+        items.append(duplicate)
+        save()
+        return duplicate
+    }
+
+    func moveEvent(_ item: PlanningItem, to targetDate: Date) {
+        guard let index = items.firstIndex(where: { $0.id == item.id }),
+              let startDate = items[index].startDate else {
+            return
+        }
+        let duration = (items[index].endDate ?? startDate).timeIntervalSince(startDate)
+        let components = Calendar.current.dateComponents([.hour, .minute, .second], from: startDate)
+        var newStart = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month, .day], from: targetDate)) ?? targetDate
+        if let hour = components.hour, let minute = components.minute, let second = components.second {
+            newStart = Calendar.current.date(bySettingHour: hour, minute: minute, second: second, of: newStart) ?? newStart
+        }
+        items[index].startDate = newStart
+        items[index].endDate = newStart.addingTimeInterval(duration)
+        save()
+    }
+
+    @discardableResult
+    func upsertCalendarEventSnapshot(_ event: EKEvent) -> PlanningItem? {
+        guard let identifier = event.eventIdentifier else { return nil }
+        if let index = items.firstIndex(where: { $0.calendarEventIdentifier == identifier }) {
+            items[index].title = event.title ?? "Untitled"
+            items[index].notes = event.notes
+            items[index].startDate = event.startDate
+            items[index].endDate = event.endDate
+            items[index].isCalendarEvent = true
+            items[index].isTask = false
+            items[index].source = .calendar
+            items[index].calendarEventIdentifier = identifier
+            save()
+            return items[index]
+        }
+
+        let snapshot = PlanningItem(
+            title: event.title ?? "Untitled",
+            notes: event.notes,
+            startDate: event.startDate,
+            endDate: event.endDate,
+            isTask: false,
+            isCalendarEvent: true,
+            completed: false,
+            source: .calendar,
+            calendarEventIdentifier: identifier
+        )
+        items.append(snapshot)
+        save()
+        return snapshot
     }
 
     func upsertFromTask(_ task: TodoItem) {
@@ -72,6 +148,7 @@ final class PlanningStore: ObservableObject {
             items[idx].sourceType = .task
             items[idx].sourceID = task.id.uuidString
             items[idx].linkedCalendarEventId = task.linkedCalendarEventId ?? task.calendarEventIdentifier
+            items[idx].locationID = task.locationID
         } else {
             let newItem = PlanningItem(
                 title: task.title,
@@ -84,11 +161,18 @@ final class PlanningStore: ObservableObject {
                 source: .local,
                 sourceType: .task,
                 sourceID: task.id.uuidString,
-                linkedCalendarEventId: task.linkedCalendarEventId ?? task.calendarEventIdentifier
+                linkedCalendarEventId: task.linkedCalendarEventId ?? task.calendarEventIdentifier,
+                locationID: task.locationID
             )
             items.append(newItem)
         }
         ClientLog.debug("[PlanningStore] upsertFromTask -> total items: \(items.count)")
+        save()
+    }
+
+    func setLocation(itemID: UUID, locationID: UUID?) {
+        guard let index = items.firstIndex(where: { $0.id == itemID }) else { return }
+        items[index].locationID = locationID
         save()
     }
 

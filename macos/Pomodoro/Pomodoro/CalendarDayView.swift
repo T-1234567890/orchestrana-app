@@ -31,7 +31,7 @@ struct CalendarDayView: View {
     }
     
     private var timelineContent: some View {
-        ScrollView {
+        ScrollView(.vertical, showsIndicators: false) {
             LazyVStack(spacing: 0) {
                 ForEach(0..<24, id: \.self) { hour in
                     HStack(alignment: .top, spacing: 8) {

@@ -17,7 +17,7 @@ struct WeekCalendarView: View {
     
     var body: some View {
         // Outer vertical scroll prevents bottom clipping when content grows tall.
-        ScrollView {
+        ScrollView(.vertical, showsIndicators: false) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: columnSpacing) {
                     ForEach(days, id: \.self) { day in

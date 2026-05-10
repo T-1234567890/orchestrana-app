@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import Combine
 import CryptoKit
 import FirebaseAppCheck
@@ -983,6 +984,7 @@ final class SubscriptionStore: ObservableObject {
     @Published private(set) var products: [Product] = []
     @Published private(set) var isLoadingProducts = false
     @Published private(set) var isRestoring = false
+    @Published private(set) var isRedeemingOfferCode = false
     @Published private(set) var isSyncingEntitlements = false
     @Published private(set) var activePurchaseProductID: String?
     @Published private(set) var lastEntitlement: SubscriptionEntitlement?
@@ -1150,6 +1152,38 @@ final class SubscriptionStore: ObservableObject {
         await syncCurrentEntitlements(reason: "restore")
     }
 
+    func redeemOfferCode(from presentingController: NSViewController? = nil) async {
+        guard !isRedeemingOfferCode else { return }
+        isRedeemingOfferCode = true
+        errorMessage = nil
+        defer { isRedeemingOfferCode = false }
+
+        do {
+            _ = try await AuthViewModel.shared.prepareForPurchase()
+        } catch {
+            errorMessage = error.localizedDescription
+            return
+        }
+
+        guard #available(macOS 15.0, *) else {
+            errorMessage = "Offer code redemption requires macOS 15 or later."
+            return
+        }
+
+        guard let controller = presentingController ?? Self.offerCodePresentationController() else {
+            errorMessage = "Could not open the offer code sheet because no app window is active."
+            return
+        }
+
+        do {
+            try await AppStore.presentOfferCodeRedeemSheet(from: controller)
+            await syncCurrentEntitlements(reason: "offer_code")
+        } catch {
+            ClientLog.debugError("[StoreKit] Offer code redemption failed", error)
+            errorMessage = "Could not open the offer code sheet: \(error.localizedDescription)"
+        }
+    }
+
     func syncCurrentEntitlements(reason: String = "current_entitlements") async {
         guard !isSyncingEntitlements else { return }
         isSyncingEntitlements = true
@@ -1235,6 +1269,23 @@ final class SubscriptionStore: ObservableObject {
         case .unverified(_, let error):
             throw error
         }
+    }
+
+    private static func offerCodePresentationController() -> NSViewController? {
+        let preferredWindows = [
+            NSApplication.shared.keyWindow,
+            NSApplication.shared.mainWindow
+        ].compactMap { $0 }
+
+        let fallbackWindows = NSApplication.shared.windows.filter { window in
+            !preferredWindows.contains(where: { $0 === window })
+        }
+
+        return (preferredWindows + fallbackWindows)
+            .first { window in
+                window.isVisible && !window.isMiniaturized && window.contentViewController != nil
+            }?
+            .contentViewController
     }
 
     private func activeSubscriptionContext(preferredProduct: Product? = nil) async throws -> ActiveSubscriptionContext? {

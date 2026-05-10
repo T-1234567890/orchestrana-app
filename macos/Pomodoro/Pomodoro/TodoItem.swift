@@ -50,6 +50,7 @@ struct TodoItem: Identifiable, Codable, Equatable {
     var aiOrder: Int?
     var pomodoroPresetID: String?
     var plannedPomodoroCount: Int?
+    var locationID: UUID?
     
     enum SyncStatus: String, Codable {
         case local
@@ -60,7 +61,7 @@ struct TodoItem: Identifiable, Codable, Equatable {
     var syncStatus: SyncStatus
     
     enum CodingKeys: String, CodingKey {
-        case id, externalId, title, notes, descriptionMarkdown, isCompleted, dueDate, hasDueTime, durationMinutes, priority, subtasks, createdAt, modifiedAt, tags, syncToCalendar, linkedCalendarEventId, reminderIdentifier, calendarEventIdentifier, lastSyncedAt, syncStatus, aiOrigin, aiOrder, pomodoroPresetID, plannedPomodoroCount
+        case id, externalId, title, notes, descriptionMarkdown, isCompleted, dueDate, hasDueTime, durationMinutes, priority, subtasks, createdAt, modifiedAt, tags, syncToCalendar, linkedCalendarEventId, reminderIdentifier, calendarEventIdentifier, lastSyncedAt, syncStatus, aiOrigin, aiOrder, pomodoroPresetID, plannedPomodoroCount, locationID
     }
     
     enum Priority: Int, Codable, CaseIterable {
@@ -103,6 +104,7 @@ struct TodoItem: Identifiable, Codable, Equatable {
         aiOrder: Int? = nil,
         pomodoroPresetID: String? = nil,
         plannedPomodoroCount: Int? = nil,
+        locationID: UUID? = nil,
         syncStatus: SyncStatus = .local
     ) {
         self.id = id
@@ -127,6 +129,7 @@ struct TodoItem: Identifiable, Codable, Equatable {
         self.aiOrder = aiOrder
         self.pomodoroPresetID = pomodoroPresetID
         self.plannedPomodoroCount = plannedPomodoroCount
+        self.locationID = locationID
         self.syncStatus = syncStatus
     }
     
@@ -160,6 +163,7 @@ struct TodoItem: Identifiable, Codable, Equatable {
         aiOrder = try container.decodeIfPresent(Int.self, forKey: .aiOrder)
         pomodoroPresetID = try container.decodeIfPresent(String.self, forKey: .pomodoroPresetID)
         plannedPomodoroCount = try container.decodeIfPresent(Int.self, forKey: .plannedPomodoroCount)
+        locationID = try container.decodeIfPresent(UUID.self, forKey: .locationID)
         syncStatus = try container.decodeIfPresent(SyncStatus.self, forKey: .syncStatus) ?? .local
     }
     
@@ -192,6 +196,7 @@ struct TodoItem: Identifiable, Codable, Equatable {
         try container.encodeIfPresent(aiOrder, forKey: .aiOrder)
         try container.encodeIfPresent(pomodoroPresetID, forKey: .pomodoroPresetID)
         try container.encodeIfPresent(plannedPomodoroCount, forKey: .plannedPomodoroCount)
+        try container.encodeIfPresent(locationID, forKey: .locationID)
         try container.encode(syncStatus, forKey: .syncStatus)
     }
     

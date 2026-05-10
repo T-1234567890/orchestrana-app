@@ -68,6 +68,21 @@ struct SettingsPermissionsView: View {
                         }
                     }
                 )
+
+                Divider()
+
+                permissionRow(
+                    icon: "location.fill",
+                    title: localizationManager.text("permissions.location"),
+                    status: permissionsManager.locationStatusText,
+                    isAuthorized: permissionsManager.isLocationAuthorized,
+                    isDenied: permissionsManager.locationStatus == .denied || permissionsManager.locationStatus == .restricted,
+                    action: {
+                        Task {
+                            await permissionsManager.requestLocationPermission()
+                        }
+                    }
+                )
             }
             .padding(16)
             .background(Color.primary.opacity(0.05))
@@ -103,6 +118,14 @@ struct SettingsPermissionsView: View {
             Button(localizationManager.text("common.cancel"), role: .cancel) { }
         } message: {
             Text(localizationManager.text("permissions.reminders.denied_message"))
+        }
+        .alert(localizationManager.text("permissions.location.denied_title"), isPresented: $permissionsManager.showLocationDeniedAlert) {
+            Button(localizationManager.text("common.open_settings")) {
+                permissionsManager.openSystemSettings()
+            }
+            Button(localizationManager.text("common.cancel"), role: .cancel) { }
+        } message: {
+            Text(localizationManager.text("permissions.location.denied_message"))
         }
         .sheet(item: $upgradePaywallContext) { context in
             SubscriptionUpgradeSheetView(
@@ -650,6 +673,26 @@ enum PlanFeatureSection: String, CaseIterable, Identifiable {
 }
 
 @MainActor
+private struct StoreKitPresentationControllerReader: NSViewControllerRepresentable {
+    @Binding var controller: NSViewController?
+
+    func makeNSViewController(context: Context) -> NSViewController {
+        let viewController = NSViewController()
+        DispatchQueue.main.async {
+            controller = viewController
+        }
+        return viewController
+    }
+
+    func updateNSViewController(_ nsViewController: NSViewController, context: Context) {
+        guard controller !== nsViewController else { return }
+        DispatchQueue.main.async {
+            controller = nsViewController
+        }
+    }
+}
+
+@MainActor
 struct PlansComparisonView: View {
     @ObservedObject var featureGate: FeatureGate
     @ObservedObject var subscriptionStore: SubscriptionStore
@@ -661,6 +704,7 @@ struct PlansComparisonView: View {
     @State private var expandedSections: Set<PlanFeatureSection> = []
     @State private var pendingPurchaseProduct: Product?
     @State private var isAccountRecommendationPresented = false
+    @State private var offerCodePresentationController: NSViewController?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -715,6 +759,21 @@ struct PlansComparisonView: View {
                 .buttonStyle(.bordered)
                 .disabled(subscriptionStore.isRestoring)
 
+                Button {
+                    Task {
+                        await subscriptionStore.redeemOfferCode(from: offerCodePresentationController)
+                    }
+                } label: {
+                    if subscriptionStore.isRedeemingOfferCode {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text("Have an offer code?")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(subscriptionStore.isRedeemingOfferCode)
+
                 Button("View Full Comparison") {
                     guard let url = URL(string: "https://orchestrana.app/comparison.html") else { return }
                     openURL(url)
@@ -722,6 +781,7 @@ struct PlansComparisonView: View {
                 .buttonStyle(.bordered)
             }
         }
+        .background(StoreKitPresentationControllerReader(controller: $offerCodePresentationController))
         .task(id: authViewModel.currentUser?.uid) {
             await subscriptionStore.ensureProductsLoaded()
             await authViewModel.preparePurchaseReadiness()

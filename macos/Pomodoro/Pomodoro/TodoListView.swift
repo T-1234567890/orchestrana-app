@@ -7,6 +7,8 @@ import AppKit
 struct TodoListView: View {
     @ObservedObject var todoStore: TodoStore
     @ObservedObject var planningStore: PlanningStore
+    @ObservedObject var goalStore: GoalStore
+    @ObservedObject var locationStore: LocationStore
     @ObservedObject var remindersSync: RemindersSync
     @ObservedObject var permissionsManager: PermissionsManager
     @ObservedObject private var featureGate = FeatureGate.shared
@@ -19,7 +21,8 @@ struct TodoListView: View {
     @State private var titleField = ""
     @State private var descriptionField = ""
     @State private var tagsField = ""
-    @State private var dueDateEnabled = false
+    @State private var locationIDField: UUID?
+    @State private var dueDateEnabled = true
     @State private var dueDateField = Date()
     /// Time is opt-in; we default to date-only for quick entry.
     @State private var includeDueTime = false
@@ -48,6 +51,8 @@ struct TodoListView: View {
     @State private var aiTaskDraftPrompt = ""
     @State private var showAILoginSheet = false
     @State private var upgradePaywallContext: SubscriptionPaywallContext?
+    @State private var locationPickerTask: TodoItem?
+    @State private var showingEditorLocationPicker = false
     @State private var showAIAssistant = false
     @State private var isRunningAIAssistant = false
     @State private var aiAssistantErrorMessage: String?
@@ -359,6 +364,26 @@ struct TodoListView: View {
                 context: context,
                 featureGate: featureGate,
                 subscriptionStore: SubscriptionStore.shared
+            )
+        }
+        .sheet(item: $locationPickerTask) { item in
+            WorkLocationPickerSheet(
+                locationStore: locationStore,
+                title: item.locationID == nil ? "Pin to Location" : "Change Location",
+                canCreateNewLocation: canCreateLocationForTask(item),
+                canUseLocationNotifications: canUseLocationTagsAndNotifications,
+                notificationTaskCount: taskNotificationCount(for: item.locationID),
+                onCreateLimitReached: {
+                    locationPickerTask = nil
+                    presentTaskLocationLimitPaywall()
+                },
+                onCancel: {
+                    locationPickerTask = nil
+                },
+                onSelect: { locationID in
+                    assignLocation(locationID, to: item)
+                    locationPickerTask = nil
+                }
             )
         }
         .sheet(isPresented: $showAIAssistant) {
@@ -692,6 +717,9 @@ struct TodoListView: View {
                     Label(localizationManager.text("common.edit"), systemImage: "pencil")
                 }
 
+                linkToGoalMenu(for: item)
+                taskLocationMenu(for: item)
+
                 if item.dueDate == nil {
                     Button {
                         planTaskForToday(item)
@@ -747,6 +775,100 @@ struct TodoListView: View {
         .onTapGesture {
             handleTaskSelection(item)
         }
+    }
+
+    @ViewBuilder
+    private func linkToGoalMenu(for item: TodoItem) -> some View {
+        if goalStore.goals.isEmpty {
+            Button {
+            } label: {
+                Label("Link to Goal", systemImage: "target")
+            }
+            .disabled(true)
+        } else {
+            Menu {
+                ForEach(goalStore.goals) { goal in
+                    Button(goal.outcome) {
+                        _ = goalStore.addLink(goalID: goal.id, kind: .task, targetID: item.id.uuidString)
+                    }
+                    .disabled(goalStore.hasLink(goalID: goal.id, kind: .task, targetID: item.id.uuidString))
+                }
+            } label: {
+                Label("Link to Goal", systemImage: "target")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func taskLocationMenu(for item: TodoItem) -> some View {
+        Menu {
+            Button {
+                locationPickerTask = item
+            } label: {
+                Label(item.locationID == nil ? "Pin to Location" : "Change Location", systemImage: "mappin.and.ellipse")
+            }
+
+            Button {
+                todoStore.setLocation(itemID: item.id, locationID: nil)
+            } label: {
+                Label("Clear Location", systemImage: "mappin.slash")
+            }
+            .disabled(item.locationID == nil)
+
+            Button {
+                NotificationCenter.default.post(name: .navigateToWorkspaceMap, object: item.locationID)
+            } label: {
+                Label("Show on Map", systemImage: "map")
+            }
+            .disabled(item.locationID == nil)
+        } label: {
+            Label("Location", systemImage: "location")
+        }
+    }
+
+    private func assignLocation(_ locationID: UUID, to item: TodoItem) {
+        guard canCreateLocationForTask(item) else {
+            presentTaskLocationLimitPaywall()
+            return
+        }
+        todoStore.setLocation(itemID: item.id, locationID: locationID)
+    }
+
+    private func canCreateLocationForTask(_ item: TodoItem) -> Bool {
+        item.locationID != nil
+            || canUseUnlimitedTaskLocations
+            || todoStore.items.filter({ $0.locationID != nil }).count < LocationStore.freeTaskLocationLimit
+    }
+
+    private func presentTaskLocationLimitPaywall() {
+        presentUpgradePaywall(
+            requiredTier: .plus,
+            title: "Unlimited task locations require Plus",
+            message: "Free supports up to \(LocationStore.freeTaskLocationLimit) saved task locations. Upgrade to Plus for unlimited locations, tags, and location notifications."
+        )
+    }
+
+    private var canUseUnlimitedTaskLocations: Bool {
+        switch featureGate.tier {
+        case .plus, .pro, .developer:
+            return true
+        case .free, .beta, .expired:
+            return false
+        }
+    }
+
+    private var canUseLocationTagsAndNotifications: Bool {
+        switch featureGate.tier {
+        case .plus, .pro, .developer:
+            return true
+        case .free, .beta, .expired:
+            return false
+        }
+    }
+
+    private func taskNotificationCount(for locationID: UUID?) -> Int {
+        guard let locationID else { return 1 }
+        return max(1, todoStore.items.filter { $0.locationID == locationID && !$0.isCompleted }.count)
     }
     
     @ViewBuilder
@@ -1496,6 +1618,8 @@ struct TodoListView: View {
                         .foregroundStyle(.secondary)
                     TextField(localizationManager.text("tasks.editor.tags_placeholder"), text: $tagsField)
                         .textFieldStyle(.roundedBorder)
+
+                    editorLocationPickerRow
                     
                     Toggle(localizationManager.text("tasks.editor.sync_to_calendar"), isOn: $syncToCalendarField)
                         .toggleStyle(.switch)
@@ -1577,6 +1701,68 @@ struct TodoListView: View {
             Text(localizationManager.text("tasks.ai_description.replace_message"))
         }
         .animation(reduceMotion ? .easeOut(duration: 0.15) : .easeInOut(duration: 0.18), value: showAITaskDraftSheet)
+        .sheet(isPresented: $showingEditorLocationPicker) {
+            WorkLocationPickerSheet(
+                locationStore: locationStore,
+                title: locationIDField == nil ? "Choose Location" : "Change Location",
+                canCreateNewLocation: canAssignEditorLocation,
+                canUseLocationNotifications: canUseLocationTagsAndNotifications,
+                notificationTaskCount: taskNotificationCount(for: locationIDField),
+                onCreateLimitReached: {
+                    showingEditorLocationPicker = false
+                    presentTaskLocationLimitPaywall()
+                },
+                onCancel: {
+                    showingEditorLocationPicker = false
+                },
+                onSelect: { locationID in
+                    guard canAssignEditorLocation else {
+                        showingEditorLocationPicker = false
+                        presentTaskLocationLimitPaywall()
+                        return
+                    }
+                    locationIDField = locationID
+                    showingEditorLocationPicker = false
+                }
+            )
+        }
+    }
+
+    private var editorLocationPickerRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Location")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 10) {
+                Label(selectedEditorLocationName, systemImage: locationIDField == nil ? "mappin" : "mappin.circle.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(locationIDField == nil ? .secondary : .primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Button(locationIDField == nil ? "Choose" : "Change") {
+                    showingEditorLocationPicker = true
+                }
+                .buttonStyle(.bordered)
+
+                Button("Clear") {
+                    locationIDField = nil
+                }
+                .buttonStyle(.bordered)
+                .disabled(locationIDField == nil)
+            }
+        }
+    }
+
+    private var selectedEditorLocationName: String {
+        locationStore.location(id: locationIDField)?.name ?? "No location"
+    }
+
+    private var canAssignEditorLocation: Bool {
+        editingItem?.locationID != nil
+            || locationIDField != nil
+            || canUseUnlimitedTaskLocations
+            || todoStore.items.filter({ $0.locationID != nil }).count < LocationStore.freeTaskLocationLimit
     }
 
     private var taskDraftPromptSheet: some View {
@@ -1636,8 +1822,9 @@ struct TodoListView: View {
         titleField = ""
         descriptionField = ""
         tagsField = ""
+        locationIDField = nil
         editorSubtasks = []
-        dueDateEnabled = false
+        dueDateEnabled = true
         dueDateField = Date()
         includeDueTime = false
         syncToCalendarField = false
@@ -1660,6 +1847,7 @@ struct TodoListView: View {
         titleField = item.title
         descriptionField = item.descriptionMarkdown ?? ""
         tagsField = item.tags.joined(separator: ", ")
+        locationIDField = item.locationID
         editorSubtasks = item.subtasks
         if let due = item.dueDate {
             dueDateEnabled = true
@@ -1690,8 +1878,9 @@ struct TodoListView: View {
         titleField = ""
         descriptionField = ""
         tagsField = ""
+        locationIDField = nil
         editorSubtasks = []
-        dueDateEnabled = false
+        dueDateEnabled = true
         dueDateField = Date()
         includeDueTime = false
         syncToCalendarField = false
@@ -1718,6 +1907,18 @@ struct TodoListView: View {
         let dueDate = dueDateEnabled ? normalizedDueDate(from: dueDateField, includeTime: includeDueTime) : nil
         let trimmedDescription = descriptionField.trimmingCharacters(in: .whitespacesAndNewlines)
         let tags = parsedTagsField()
+
+        if editingItem?.locationID == nil,
+           locationIDField != nil,
+           !canUseUnlimitedTaskLocations,
+           todoStore.items.filter({ $0.locationID != nil }).count >= LocationStore.freeTaskLocationLimit {
+            presentUpgradePaywall(
+                requiredTier: .plus,
+                title: "Unlimited task locations require Plus",
+                message: "Free supports up to \(LocationStore.freeTaskLocationLimit) saved task locations. Upgrade to Plus for unlimited locations, tags, and location notifications."
+            )
+            return
+        }
         
         if var editing = editingItem {
             editing.title = trimmedTitle
@@ -1725,6 +1926,7 @@ struct TodoListView: View {
             editing.dueDate = dueDate
             editing.hasDueTime = hasDueTime
             editing.tags = tags
+            editing.locationID = locationIDField
             editing.subtasks = editorSubtasks
             editing.syncToCalendar = syncToCalendarField
             editing.priority = featureGate.canUseAdvancedTasks ? priorityField : .none
@@ -1745,7 +1947,8 @@ struct TodoListView: View {
                 durationMinutes: featureGate.canUseAdvancedTasks ? pomodoroEstimateField * 25 : nil,
                 priority: featureGate.canUseAdvancedTasks ? priorityField : .none,
                 subtasks: editorSubtasks,
-                syncToCalendar: syncToCalendarField
+                syncToCalendar: syncToCalendarField,
+                locationID: locationIDField
             )
             todoStore.addItem(newItem)
             syncToCalendarIfEnabled(newItem)
@@ -2475,6 +2678,8 @@ extension TodoListView {
         return TodoListView(
             todoStore: store,
             planningStore: planningStore,
+            goalStore: GoalStore(),
+            locationStore: LocationStore(),
             remindersSync: sync,
             permissionsManager: .shared
         )

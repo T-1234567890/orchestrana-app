@@ -81,6 +81,15 @@ final class TodoStore: ObservableObject {
         planningStore?.upsertFromTask(updatedItem)
     }
 
+    func setLocation(itemID: UUID, locationID: UUID?) {
+        guard let index = items.firstIndex(where: { $0.id == itemID }) else { return }
+        items[index].locationID = locationID
+        items[index].modifiedAt = Date()
+        saveItems()
+        rebuildDerivedState()
+        planningStore?.upsertFromTask(items[index])
+    }
+
     func addSubtask(to itemID: UUID, title: String) {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty,

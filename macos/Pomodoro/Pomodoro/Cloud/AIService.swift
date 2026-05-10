@@ -60,6 +60,44 @@ final class AIService {
         let tasks: [String]
     }
 
+    struct GoalDraftResponse: Decodable, Equatable {
+        let outcome: String
+        let successCriteria: String
+        let nextAction: String
+        let targetDate: String?
+        let notes: String
+    }
+
+    struct GoalRelatedWorkSuggestionResponse: Decodable, Equatable {
+        struct Suggestion: Decodable, Equatable {
+            let kind: String
+            let targetID: String
+            let title: String
+            let subtitle: String
+            let reason: String
+            let confidence: Double?
+        }
+
+        let suggestions: [Suggestion]
+    }
+
+    struct GoalAdjustmentResponse: Decodable, Equatable {
+        struct SuggestedLink: Decodable, Equatable {
+            let kind: String
+            let targetID: String
+            let reason: String?
+            let confidence: Double?
+        }
+
+        let shouldUpdate: Bool
+        let successCriteria: String?
+        let nextAction: String?
+        let notes: String?
+        let status: String?
+        let summary: String?
+        let suggestedLinks: [SuggestedLink]?
+    }
+
     struct FreeSlot: Codable, Equatable {
         let start: Date
         let end: Date
@@ -363,6 +401,55 @@ final class AIService {
         return try decodeTaskDescriptionResponse(from: result.data)
     }
 
+    func generateGoalDraft(prompt: String, context: [String: Any] = [:]) async throws -> GoalDraftResponse {
+        let callable = functions.httpsCallable("generateGoalDraft")
+        let payload: [String: Any] = [
+            "prompt": prompt.trimmingCharacters(in: .whitespacesAndNewlines),
+            "context": context
+        ]
+
+        ClientLog.debug("[AIService] Calling callable generateGoalDraft")
+        let result = try await callable.call(payload)
+        ClientLog.debug("[AIService] generateGoalDraft response received")
+        return try decodeGoalDraftResponse(from: result.data)
+    }
+
+    func suggestGoalRelatedWork(
+        goal: [String: Any],
+        candidates: [String: Any]
+    ) async throws -> GoalRelatedWorkSuggestionResponse {
+        let callable = functions.httpsCallable("suggestGoalRelatedWork")
+        let payload: [String: Any] = [
+            "goal": goal,
+            "candidates": candidates
+        ]
+
+        ClientLog.debug("[AIService] Calling callable suggestGoalRelatedWork")
+        let result = try await callable.call(payload)
+        ClientLog.debug("[AIService] suggestGoalRelatedWork response received")
+        return try decodeGoalRelatedWorkSuggestionResponse(from: result.data)
+    }
+
+    func adjustGoalProgress(
+        goal: [String: Any],
+        activity: [String: Any],
+        relatedWork: [String: Any],
+        candidates: [String: Any]
+    ) async throws -> GoalAdjustmentResponse {
+        let callable = functions.httpsCallable("adjustGoalProgress")
+        let payload: [String: Any] = [
+            "goal": goal,
+            "activity": activity,
+            "relatedWork": relatedWork,
+            "candidates": candidates
+        ]
+
+        ClientLog.debug("[AIService] Calling callable adjustGoalProgress")
+        let result = try await callable.call(payload)
+        ClientLog.debug("[AIService] adjustGoalProgress response received")
+        return try decodeGoalAdjustmentResponse(from: result.data)
+    }
+
     func draftTask(
         idea: String,
         existingTitle: String? = nil,
@@ -594,6 +681,57 @@ final class AIService {
 
         let responseData = try JSONSerialization.data(withJSONObject: rawObject)
         return try JSONDecoder().decode(TaskDescriptionResponse.self, from: responseData)
+    }
+
+    private func decodeGoalDraftResponse(from data: Any) throws -> GoalDraftResponse {
+        let rawObject: Any
+        if let dictionary = data as? [String: Any],
+           let nested = dictionary["data"] {
+            rawObject = nested
+        } else {
+            rawObject = data
+        }
+
+        guard JSONSerialization.isValidJSONObject(rawObject) else {
+            throw AIServiceError.invalidResponse
+        }
+
+        let responseData = try JSONSerialization.data(withJSONObject: rawObject)
+        return try JSONDecoder().decode(GoalDraftResponse.self, from: responseData)
+    }
+
+    private func decodeGoalRelatedWorkSuggestionResponse(from data: Any) throws -> GoalRelatedWorkSuggestionResponse {
+        let rawObject: Any
+        if let dictionary = data as? [String: Any],
+           let nested = dictionary["data"] {
+            rawObject = nested
+        } else {
+            rawObject = data
+        }
+
+        guard JSONSerialization.isValidJSONObject(rawObject) else {
+            throw AIServiceError.invalidResponse
+        }
+
+        let responseData = try JSONSerialization.data(withJSONObject: rawObject)
+        return try JSONDecoder().decode(GoalRelatedWorkSuggestionResponse.self, from: responseData)
+    }
+
+    private func decodeGoalAdjustmentResponse(from data: Any) throws -> GoalAdjustmentResponse {
+        let rawObject: Any
+        if let dictionary = data as? [String: Any],
+           let nested = dictionary["data"] {
+            rawObject = nested
+        } else {
+            rawObject = data
+        }
+
+        guard JSONSerialization.isValidJSONObject(rawObject) else {
+            throw AIServiceError.invalidResponse
+        }
+
+        let responseData = try JSONSerialization.data(withJSONObject: rawObject)
+        return try JSONDecoder().decode(GoalAdjustmentResponse.self, from: responseData)
     }
 
     private func decodeTaskDraftResponse(from value: String?) throws -> TaskDraftResponse {

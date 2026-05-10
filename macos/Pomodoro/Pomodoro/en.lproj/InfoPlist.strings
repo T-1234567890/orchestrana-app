@@ -1,5 +1,8 @@
 "CFBundleDisplayName" = "Orchestrana";
 "CFBundleName" = "Orchestrana";
 "NSCalendarsUsageDescription" = "Allow access to read your calendars for scheduling.";
+"NSLocationWhenInUseUsageDescription" = "Allow location access to show nearby work and enable opt-in location notifications.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Allow location access to show nearby work and enable opt-in location notifications.";
+"NSLocationUsageDescription" = "Allow location access to show nearby work and enable opt-in location notifications.";
 "NSRemindersUsageDescription" = "Allow access to sync your reminders and tasks.";
 "NSUserNotificationUsageDescription" = "Allow notifications so we can alert you about timers and reminders.";

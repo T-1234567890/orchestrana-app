@@ -156,12 +156,13 @@ final class SyncEngine {
         let rangeStart = Calendar.current.startOfDay(for: Date())
         let rangeEnd = Calendar.current.date(byAdding: .day, value: 7, to: rangeStart) ?? rangeStart
         let events = fetchEvents(from: rangeStart, end: rangeEnd)
-        var stats = SyncStats(read: events.count, written: 0, skipped: 0)
+        let syncEvents = events.filter(shouldIncludeInCalendarSync)
+        var stats = SyncStats(read: events.count, written: 0, skipped: events.count - syncEvents.count)
 
-        try reverseSyncCalendarEvents(events, store: store)
+        try reverseSyncCalendarEvents(syncEvents, store: store)
         try handleDeletedCalendarEvents(events, store: store)
 
-        let busyBlocks = calendarBlocks(from: events)
+        let busyBlocks = calendarBlocks(from: events.filter(shouldBlockCalendarScheduling))
         let tasksToSchedule = store.items.filter {
             $0.syncToCalendar && $0.calendarEventIdentifier == nil && ($0.durationMinutes ?? 25) >= 25
         }
@@ -169,9 +170,11 @@ final class SyncEngine {
         applySchedulePlan(schedulePlan, store: store)
 
         let refreshedEvents = fetchEvents(from: rangeStart, end: rangeEnd)
+        let refreshedSyncEvents = refreshedEvents.filter(shouldIncludeInCalendarSync)
+        let refreshedEventIDs = Set(refreshedEvents.compactMap(\.eventIdentifier))
         var eventMapByIdentifier: [String: EKEvent] = [:]
         var eventMapByExternalId: [String: EKEvent] = [:]
-        for event in refreshedEvents {
+        for event in refreshedSyncEvents {
             if let identifier = event.eventIdentifier {
                 eventMapByIdentifier[identifier] = event
             }
@@ -193,6 +196,13 @@ final class SyncEngine {
             }
 
             let existing = task.calendarEventIdentifier.flatMap { eventMapByIdentifier[$0] } ?? eventMapByExternalId[task.externalId]
+            if existing == nil,
+               let identifier = task.calendarEventIdentifier,
+               refreshedEventIDs.contains(identifier) {
+                stats.skipped += 1
+                ClientLog.debug("[SyncEngine][Calendar] Skipped filtered linked event")
+                continue
+            }
             if let existing {
                 let remoteModified = existing.lastModifiedDate ?? existing.creationDate ?? .distantPast
                 if remoteModified > task.lastModified {
@@ -427,6 +437,31 @@ final class SyncEngine {
     private func fetchEvents(from start: Date, end: Date) -> [EKEvent] {
         let predicate = eventStore.predicateForEvents(withStart: start, end: end, calendars: nil)
         return eventStore.events(matching: predicate).sorted { $0.startDate < $1.startDate }
+    }
+
+    private func shouldIncludeInCalendarSync(_ event: EKEvent) -> Bool {
+        guard event.calendar?.allowsContentModifications == true,
+              event.calendar?.type != .subscription,
+              let parsed = ExternalID.parse(from: event.notes),
+              parsed.externalId.hasPrefix(ExternalID.taskPrefix) else {
+            return false
+        }
+        return true
+    }
+
+    private func shouldBlockCalendarScheduling(_ event: EKEvent) -> Bool {
+        if event.isAllDay && event.calendar?.type == .subscription {
+            return false
+        }
+
+        let calendarTitle = event.calendar?.title.lowercased() ?? ""
+        let eventTitle = (event.title ?? "").lowercased()
+        let holidayHints = ["holiday", "holidays", "national", "public holiday"]
+        if event.isAllDay && holidayHints.contains(where: { calendarTitle.contains($0) || eventTitle.contains($0) }) {
+            return false
+        }
+
+        return true
     }
 
     private func calendarBlocks(from events: [EKEvent]) -> [CalendarBlock] {

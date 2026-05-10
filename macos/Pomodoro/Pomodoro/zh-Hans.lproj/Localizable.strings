@@ -227,6 +227,8 @@
 "onboarding.notifications.unavailable" = "不可用";
 "onboarding.permissions.body" = "日历和提醒事项权限可让 Orchestrana 同步你的日程与任务。";
 "onboarding.permissions.enable_access" = "启用权限";
+"onboarding.permissions.always_location" = "始终定位，用于附近工作提醒";
+"onboarding.permissions.location_title" = "位置";
 "onboarding.permissions.title" = "权限";
 "onboarding.requesting" = "请求中…";
 "onboarding.welcome.body" = "欢迎使用 Orchestrana。先完成通知和权限设置以开始使用。";
@@ -245,6 +247,9 @@
 "permissions.calendar.denied_message" = "日历权限只用于 Apple 日历同步。本地事件、任务和 AI 排程无需此权限也可使用。";
 "permissions.calendar.denied_title" = "日历权限被拒绝";
 "permissions.enable" = "启用";
+"permissions.location" = "位置";
+"permissions.location.denied_message" = "附近工作与位置提醒需要位置权限。可在 系统设置 -> 隐私与安全性 -> 定位服务 中开启。";
+"permissions.location.denied_title" = "位置权限被拒绝";
 "permissions.note.reminders_optional" = "提醒事项同步是可选功能。没有提醒事项权限任务也可正常使用。";
 "permissions.notifications" = "通知";
 "permissions.reminders" = "提醒事项";
@@ -253,7 +258,10 @@
 "permissions.request_again" = "再次请求";
 "permissions.status.access_not_granted" = "尚未授予权限。你可以稍后开启。";
 "permissions.status.calendar_and_reminders_enabled" = "日历和提醒事项均已启用。";
+"permissions.status.calendar_and_reminders_enabled_location_optional" = "日历和提醒事项已启用。位置权限仅用于地图提醒。";
+"permissions.status.calendar_reminders_location_enabled" = "日历、提醒事项和位置均已启用。";
 "permissions.status.calendar_enabled_reminders_optional" = "日历已启用。提醒事项为可选。";
+"permissions.status.location_enabled_schedule_optional" = "位置已启用。日历和提醒事项为可选。";
 "permissions.status.reminders_enabled_calendar_optional" = "提醒事项已启用。日历为可选。";
 "permissions.subtitle" = "授予权限以启用完整功能。";
 "permissions.title" = "权限";

@@ -20,6 +20,7 @@ struct OnboardingFlowView: View {
 
     @ObservedObject private var featureGate = FeatureGate.shared
     @ObservedObject private var subscriptionStore = SubscriptionStore.shared
+    @ObservedObject private var permissionsManager = PermissionsManager.shared
 
     @State private var flow: [OnboardingStep] = []
     @State private var index = 0
@@ -478,6 +479,12 @@ struct OnboardingFlowView: View {
                     title: localizationManager.text("onboarding.permissions.reminders_title"),
                     detail: localizationManager.text("onboarding.permissions.read_write")
                 )
+
+                permissionRow(
+                    symbol: "location.fill",
+                    title: localizationManager.text("onboarding.permissions.location_title"),
+                    detail: localizationManager.text("onboarding.permissions.always_location")
+                )
             }
             .padding(22)
             .background(
@@ -489,7 +496,7 @@ struct OnboardingFlowView: View {
                     .stroke(Color.white.opacity(0.14), lineWidth: 1)
             )
 
-            Text(appState.calendarReminderPermissionStatusText)
+            Text(permissionsManager.calendarReminderLocationPermissionStatusText)
                 .font(.system(.callout, design: .rounded))
                 .foregroundStyle(.secondary)
         }
@@ -935,7 +942,9 @@ struct OnboardingFlowView: View {
         guard !isRequestingAuthorization else { return }
         isRequestingAuthorization = true
         Task { @MainActor in
-            await appState.requestCalendarAndReminderAccessIfNeeded()
+            await permissionsManager.requestCalendarPermission()
+            await permissionsManager.requestRemindersPermission()
+            await permissionsManager.requestLocationPermission()
             isRequestingAuthorization = false
             onboardingState.markPermissionsPrompted()
             onboardingState.markEventKitRequestCalled()

@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import Combine
+import CoreLocation
 import EventKit
 import UserNotifications
 
@@ -23,13 +24,16 @@ final class PermissionsManager: ObservableObject {
     @Published var notificationStatus: UNAuthorizationStatus = .notDetermined
     @Published var calendarStatus: EKAuthorizationStatus = .notDetermined
     @Published var remindersStatus: EKAuthorizationStatus = .notDetermined
+    @Published var locationStatus: CLAuthorizationStatus = .notDetermined
     
     // Alert state for denied permissions
     @Published var showCalendarDeniedAlert = false
     @Published var showRemindersDeniedAlert = false
+    @Published var showLocationDeniedAlert = false
     
     private let eventStore = SharedEventStore.shared.eventStore
     private let notificationCenter = UNUserNotificationCenter.current()
+    private let locationManager = CLLocationManager()
     
     private init() {
         Task { @MainActor [weak self] in
@@ -46,6 +50,7 @@ final class PermissionsManager: ObservableObject {
             await refreshNotificationStatus()
             refreshCalendarStatus()
             refreshRemindersStatus()
+            refreshLocationStatus()
         }
     }
     
@@ -60,6 +65,10 @@ final class PermissionsManager: ObservableObject {
     
     func refreshRemindersStatus() {
         updateRemindersStatus(EKEventStore.authorizationStatus(for: .reminder))
+    }
+
+    func refreshLocationStatus() {
+        updateLocationStatus(locationManager.authorizationStatus)
     }
     
     // MARK: - Permission Requests
@@ -170,6 +179,29 @@ final class PermissionsManager: ObservableObject {
             }
         }
     }
+
+    /// Request Always location permission for Map location reminders and nearby-work context.
+    func requestLocationPermission() async {
+        refreshLocationStatus()
+
+        switch locationStatus {
+        case .notDetermined:
+            do {
+                try await LocationAuthorizationRequester.shared.requestWhenInUse()
+                refreshLocationStatus()
+            } catch {
+                refreshLocationStatus()
+                showLocationDeniedAlert = true
+                ClientLog.debugError("[PermissionsManager] Location request failed", error)
+            }
+        case .denied, .restricted:
+            showLocationDeniedAlert = true
+        case .authorizedAlways:
+            break
+        @unknown default:
+            break
+        }
+    }
     
     // MARK: - Legacy Methods (Deprecated)
     
@@ -264,6 +296,15 @@ final class PermissionsManager: ObservableObject {
             self.remindersStatus = status
         }
     }
+
+    private func updateLocationStatus(_ status: CLAuthorizationStatus) {
+        guard locationStatus != status else { return }
+        Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self, self.locationStatus != status else { return }
+            self.locationStatus = status
+        }
+    }
     
     // MARK: - Status Helpers
     
@@ -285,6 +326,10 @@ final class PermissionsManager: ObservableObject {
         } else {
             return remindersStatus == .authorized
         }
+    }
+
+    var isLocationAuthorized: Bool {
+        locationStatus == .authorizedAlways
     }
     
     var notificationStatusText: String {
@@ -342,5 +387,34 @@ final class PermissionsManager: ObservableObject {
             default: return LocalizationManager.shared.text("permission.unknown")
             }
         }
+    }
+
+    var locationStatusText: String {
+        switch locationStatus {
+        case .notDetermined:
+            return LocalizationManager.shared.text("permission.not_determined")
+        case .restricted:
+            return LocalizationManager.shared.text("permission.restricted")
+        case .denied:
+            return LocalizationManager.shared.text("permission.denied")
+        case .authorizedAlways:
+            return LocalizationManager.shared.text("permission.authorized")
+        @unknown default:
+            return LocalizationManager.shared.text("permission.unknown")
+        }
+    }
+
+    var calendarReminderLocationPermissionStatusText: String {
+        let l10n = LocalizationManager.shared
+        if isCalendarAuthorized && isRemindersAuthorized && isLocationAuthorized {
+            return l10n.text("permissions.status.calendar_reminders_location_enabled")
+        }
+        if isCalendarAuthorized && isRemindersAuthorized {
+            return l10n.text("permissions.status.calendar_and_reminders_enabled_location_optional")
+        }
+        if isLocationAuthorized {
+            return l10n.text("permissions.status.location_enabled_schedule_optional")
+        }
+        return l10n.text("permissions.status.access_not_granted")
     }
 }
