@@ -87,6 +87,7 @@ struct GoalWorkspaceView: View {
     @State private var selectedSmartLinkSuggestionIDs: Set<UUID> = []
     @State private var isGeneratingSmartLinks = false
     @State private var smartLinkErrorMessage: String?
+    @State private var smartLinkStatusMessage: String?
     @State private var limitMessage: String?
     @State private var showingCreateGoalSheet = false
     @State private var showingAICreateGoalSheet = false
@@ -520,15 +521,29 @@ struct GoalWorkspaceView: View {
 
             if smartLinkSuggestions.isEmpty {
                 if isGeneratingSmartLinks {
-                    HStack(spacing: 8) {
+                    VStack(spacing: 12) {
                         ProgressView()
-                            .controlSize(.small)
-                        Text("Finding related work")
-                            .foregroundStyle(.secondary)
+                            .controlSize(.regular)
+                        VStack(spacing: 4) {
+                            Text("Finding related work with AI")
+                                .font(.headline)
+                            Text(smartLinkStatusMessage ?? "Checking tasks, events, and focus sessions.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
                     }
+                    .frame(maxWidth: .infinity, minHeight: 140)
                 } else {
-                    Text("No strong suggestions found for this goal.")
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("No strong suggestions found for this goal.")
+                            .foregroundStyle(.secondary)
+                        if let smartLinkStatusMessage {
+                            Text(smartLinkStatusMessage)
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
                 }
             } else {
                 ScrollView {
@@ -558,6 +573,10 @@ struct GoalWorkspaceView: View {
                     Text(smartLinkErrorMessage)
                         .font(.caption)
                         .foregroundStyle(.red)
+                } else if let smartLinkStatusMessage {
+                    Text(smartLinkStatusMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button("Cancel") {
@@ -636,9 +655,10 @@ struct GoalWorkspaceView: View {
                     }
 
                     goalActionButton(
-                        title: "Smart Link",
+                        title: isGeneratingSmartLinks ? "Finding Related Work" : "Smart Link",
                         systemImage: "wand.and.stars",
-                        isEnabled: true
+                        isEnabled: !isGeneratingSmartLinks,
+                        isLoading: isGeneratingSmartLinks
                     ) {
                         guard canUseGoalAI else {
                             presentGoalAIPaywall(
@@ -708,17 +728,18 @@ struct GoalWorkspaceView: View {
         systemImage: String,
         isProminent: Bool = false,
         isEnabled: Bool = true,
+        isLoading: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Group {
             if isProminent {
                 Button(action: action) {
-                    goalActionButtonLabel(title: title, systemImage: systemImage)
+                    goalActionButtonLabel(title: title, systemImage: systemImage, isLoading: isLoading)
                 }
                 .buttonStyle(.borderedProminent)
             } else {
                 Button(action: action) {
-                    goalActionButtonLabel(title: title, systemImage: systemImage)
+                    goalActionButtonLabel(title: title, systemImage: systemImage, isLoading: isLoading)
                 }
                 .buttonStyle(.bordered)
             }
@@ -727,8 +748,16 @@ struct GoalWorkspaceView: View {
         .disabled(!isEnabled)
     }
 
-    private func goalActionButtonLabel(title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
+    private func goalActionButtonLabel(title: String, systemImage: String, isLoading: Bool = false) -> some View {
+        HStack(spacing: 6) {
+            if isLoading {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Image(systemName: systemImage)
+            }
+            Text(title)
+        }
             .font(.subheadline.weight(.semibold))
             .frame(maxWidth: .infinity, minHeight: 34)
     }
@@ -1196,25 +1225,51 @@ struct GoalWorkspaceView: View {
             return
         }
 
+        let candidates = smartLinkCandidatesPayload(for: goal)
+        let candidateCount = smartLinkCandidateCount(in: candidates)
+
         isGeneratingSmartLinks = true
         smartLinkErrorMessage = nil
+        smartLinkStatusMessage = "Checking \(candidateCount.tasks) tasks, \(candidateCount.events) events, and \(candidateCount.sessions) sessions with AI."
         smartLinkSuggestions = []
         selectedSmartLinkSuggestionIDs = []
         showingSmartLinkSheet = true
         defer { isGeneratingSmartLinks = false }
 
         do {
+            ClientLog.debug("[Goals] Smart Link AI request started. tasks: \(candidateCount.tasks), events: \(candidateCount.events), sessions: \(candidateCount.sessions)")
             let response = try await AIService.shared.suggestGoalRelatedWork(
                 goal: goalSmartLinkPayload(for: goal),
-                candidates: smartLinkCandidatesPayload(for: goal)
+                candidates: candidates
             )
+            ClientLog.debug("[Goals] Smart Link AI response suggestions: \(response.suggestions.count)")
             smartLinkSuggestions = response.suggestions.compactMap(goalSmartLinkSuggestion(from:))
+            if smartLinkSuggestions.isEmpty {
+                smartLinkSuggestions = makeSmartLinkSuggestions(for: goal)
+                smartLinkStatusMessage = smartLinkSuggestions.isEmpty
+                    ? "AI checked \(candidateCount.tasks) tasks, \(candidateCount.events) events, and \(candidateCount.sessions) sessions but did not find a strong match."
+                    : "AI found no strong matches. Showing local matches instead."
+            } else {
+                smartLinkStatusMessage = "AI suggested \(smartLinkSuggestions.count) related item\(smartLinkSuggestions.count == 1 ? "" : "s")."
+            }
         } catch {
-            smartLinkSuggestions = []
+            ClientLog.debugError("[Goals] Smart Link AI request failed", error)
+            smartLinkSuggestions = makeSmartLinkSuggestions(for: goal)
             smartLinkErrorMessage = AIService.userFacingErrorMessage(error)
+            smartLinkStatusMessage = smartLinkSuggestions.isEmpty
+                ? "AI request failed and no local matches were found."
+                : "AI request failed. Showing local matches instead."
         }
 
         selectedSmartLinkSuggestionIDs = Set(smartLinkSuggestions.prefix(3).map(\.id))
+    }
+
+    private func smartLinkCandidateCount(in payload: [String: Any]) -> (tasks: Int, events: Int, sessions: Int) {
+        return (
+            tasks: (payload["tasks"] as? [Any])?.count ?? 0,
+            events: (payload["events"] as? [Any])?.count ?? 0,
+            sessions: (payload["sessions"] as? [Any])?.count ?? 0
+        )
     }
 
     private func goalSmartLinkPayload(for goal: GoalRecord) -> [String: Any] {
@@ -1228,7 +1283,7 @@ struct GoalWorkspaceView: View {
 
     private func smartLinkCandidatesPayload(for goal: GoalRecord) -> [String: Any] {
         let tasks = todoStore.items
-            .filter { !goalStore.hasLink(goalID: goal.id, kind: .task, targetID: $0.id.uuidString) }
+            .filter { isSmartLinkEligibleTask($0, for: goal) }
             .prefix(40)
             .map { task in
                 [
@@ -1240,7 +1295,7 @@ struct GoalWorkspaceView: View {
             }
 
         let events = planningStore.items
-            .filter { $0.isCalendarEvent && !goalStore.hasLink(goalID: goal.id, kind: .event, targetID: $0.id.uuidString) }
+            .filter { isSmartLinkEligibleEvent($0, for: goal) }
             .prefix(40)
             .map { event in
                 [
@@ -1269,6 +1324,29 @@ struct GoalWorkspaceView: View {
             "events": Array(events),
             "sessions": Array(sessions)
         ]
+    }
+
+    private func isSmartLinkEligibleTask(_ task: TodoItem, for goal: GoalRecord) -> Bool {
+        !task.isCompleted
+            && !goalStore.hasLink(goalID: goal.id, kind: .task, targetID: task.id.uuidString)
+    }
+
+    private func isSmartLinkEligibleEvent(_ event: PlanningItem, for goal: GoalRecord, now: Date = Date()) -> Bool {
+        guard event.isCalendarEvent,
+              !event.completed,
+              !goalStore.hasLink(goalID: goal.id, kind: .event, targetID: event.id.uuidString) else {
+            return false
+        }
+
+        if let endDate = event.endDate {
+            return endDate >= now
+        }
+
+        if let startDate = event.startDate {
+            return startDate >= now
+        }
+
+        return false
     }
 
     private func goalSmartLinkSuggestion(from suggestion: AIService.GoalRelatedWorkSuggestionResponse.Suggestion) -> GoalSmartLinkSuggestion? {
@@ -1482,7 +1560,7 @@ struct GoalWorkspaceView: View {
 
         var scored: [(suggestion: GoalSmartLinkSuggestion, score: Int)] = []
 
-        for task in todoStore.items where !goalStore.hasLink(goalID: goal.id, kind: .task, targetID: task.id.uuidString) {
+        for task in todoStore.items where isSmartLinkEligibleTask(task, for: goal) {
             let score = overlapScore(goalWords, searchWords([task.title, task.descriptionMarkdown ?? "", task.tags.joined(separator: " ")].joined(separator: " ")))
             if score > 0 {
                 scored.append((
@@ -1498,7 +1576,7 @@ struct GoalWorkspaceView: View {
             }
         }
 
-        for event in planningStore.items where event.isCalendarEvent && !goalStore.hasLink(goalID: goal.id, kind: .event, targetID: event.id.uuidString) {
+        for event in planningStore.items where isSmartLinkEligibleEvent(event, for: goal) {
             let score = overlapScore(goalWords, searchWords([event.title, event.notes ?? ""].joined(separator: " ")))
             if score > 0 {
                 scored.append((

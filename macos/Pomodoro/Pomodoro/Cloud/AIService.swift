@@ -286,6 +286,10 @@ final class AIService {
             return "Your subscription is not active for this AI feature."
         }
 
+        if lowercased.contains("openrouter request timed out") || lowercased.contains("deadline exceeded") {
+            return "AI provider request timed out. Please try again."
+        }
+
         if looksLikeRawBackendEnvelope(rawMessage), cleanedMessage == rawMessage {
             return "AI request failed. Please try again."
         }
