@@ -36,25 +36,6 @@ Explore the project website for design philosophies, documentation, and download
   <img width="2880" height="1800" alt="App Store Screenshot" src="https://github.com/user-attachments/assets/0aee6a3a-ed9f-45f3-82e9-65dc76f7a6de" />
 </a>
 
-## 🎁 Giveaway Event
-
-The giveaway has ended. Please check your email if you participated. <br>
-Thank you to everyone who participated!
-
-Winners:
-
-- `2*6@qq.com` 
-- `c*e@hotmail.com`  
-- `m*e@gmail.com`
-
-Winners will receive an email with instructions on how to claim their prize.  
-Please reply to the email to confirm and complete the claiming process.
-
-The reward and emails will be sent after confirmation. Additional details about the claiming process will be included in the email.
-
-👉 Full rules & participation details:  
-[View Giveaway Rules](Docs/giveaway.md)
-
 ## 🚀 Try it now
 
 ### Available on the App Store
