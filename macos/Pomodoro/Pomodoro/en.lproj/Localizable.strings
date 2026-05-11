@@ -135,7 +135,6 @@
 "feature_gate.error.http_status" = "Allowance request failed with status %d.";
 "feature_gate.error.invalid_allowance_response" = "Invalid allowance response.";
 "feature_gate.session_expired_sign_in_again" = "Session expired. Please sign in again.";
-"feature_gate.tier.beta" = "Beta";
 "feature_gate.tier.developer" = "Developer";
 "feature_gate.tier.expired" = "Expired";
 "feature_gate.tier.free" = "Free";

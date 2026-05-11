@@ -1631,7 +1631,7 @@ struct MainWindowView: View {
         case .developer:
             return "Developer"
         case .beta:
-            return "Beta"
+            return "Free"
         case .expired:
             return "Expired"
         }
@@ -3232,14 +3232,14 @@ struct MainWindowView: View {
 
     private func ensureInsightAIUnlocked(requiredTier: PlanTier = .plus) -> Bool {
         switch featureGate.tier {
-        case .free, .expired:
+        case .free, .beta, .expired:
             plansPaywallContext = SubscriptionPaywallContext(
                 requiredTier: requiredTier,
                 title: "Unlock AI Workspace",
                 message: "Upgrade to Plus or Pro to use task, schedule, and insight AI from the new workspace."
             )
             return false
-        case .plus, .beta:
+        case .plus:
             if requiredTier == .pro {
                 plansPaywallContext = SubscriptionPaywallContext(
                     requiredTier: .pro,

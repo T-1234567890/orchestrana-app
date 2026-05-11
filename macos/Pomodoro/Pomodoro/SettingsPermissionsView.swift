@@ -397,11 +397,11 @@ struct SettingsPermissionsView: View {
 
     private var aiPlanningDisplayMode: AIPlanningDisplayMode {
         switch featureGate.tier {
-        case .plus, .beta:
+        case .plus:
             return .deepSeek
         case .pro, .developer:
             return .deepSeekAndFrontier
-        case .free, .expired:
+        case .free, .beta, .expired:
             return .upgrade
         }
     }
@@ -428,7 +428,7 @@ struct SettingsPermissionsView: View {
         case .developer:
             return localizationManager.text("settings.ai_subscription.plan.developer")
         case .beta:
-            return localizationManager.text("settings.ai_subscription.plan.beta")
+            return localizationManager.text("settings.ai_subscription.plan.free")
         case .expired:
             return localizationManager.text("settings.ai_subscription.plan.expired")
         }
@@ -576,9 +576,9 @@ extension PlanTier {
         switch featureTier {
         case .pro, .developer:
             return .pro
-        case .plus, .beta:
+        case .plus:
             return .plus
-        case .free, .expired:
+        case .free, .beta, .expired:
             return .free
         }
     }

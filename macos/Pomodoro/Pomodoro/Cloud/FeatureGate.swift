@@ -155,9 +155,9 @@ final class FeatureGate: ObservableObject {
 
     var canUseSharePrivateSocial: Bool {
         switch tier {
-        case .plus, .pro, .beta, .developer:
+        case .plus, .pro, .developer:
             return true
-        default:
+        case .free, .beta, .expired:
             return false
         }
     }
@@ -213,9 +213,9 @@ final class FeatureGate: ObservableObject {
 
     var canUseCustomAudioPacks: Bool {
         switch tier {
-        case .plus, .pro, .beta, .developer:
+        case .plus, .pro, .developer:
             return true
-        case .free, .expired:
+        case .free, .beta, .expired:
             return false
         }
     }
@@ -523,24 +523,33 @@ final class FeatureGate: ObservableObject {
     @MainActor
     private func apply(payload: AllowancePayload) {
         let backendTier = Self.normalizeClientTier(payload.tier ?? .free)
+        let exposesManagedAI = Self.exposesManagedAI(for: backendTier)
 
         tier = backendTier
-        deepSeekRemainingTokens = payload.deepSeekRemainingTokens
-        deepSeekMonthlyLimit = payload.deepSeekMonthlyLimit
-        frontierRemainingTokens = payload.frontierRemainingTokens
-        frontierMonthlyLimit = payload.frontierMonthlyLimit
-        allowanceResetAt = payload.resetAt
-        dailyAllowanceResetAt = payload.dailyResetAt ?? payload.dailyAIUsage?.resetAt
-        subscriptionEndAt = payload.subscriptionEndAt
-        analyticsLevel = payload.analyticsLevel ?? Self.defaultAnalyticsLevel(for: backendTier)
-        aiLevel = payload.aiLevel ?? Self.defaultAILevel(for: backendTier)
-        featureFlags = payload.featureFlags ?? Self.defaultFeatures(for: backendTier)
-        dailyAIUsage = payload.dailyAIUsage ?? DailyAIUsageWindow(
-            used: nil,
-            limit: nil,
-            remaining: nil,
-            resetAt: dailyAllowanceResetAt
-        )
+        deepSeekRemainingTokens = exposesManagedAI ? payload.deepSeekRemainingTokens : nil
+        deepSeekMonthlyLimit = exposesManagedAI ? payload.deepSeekMonthlyLimit : nil
+        frontierRemainingTokens = exposesManagedAI ? payload.frontierRemainingTokens : nil
+        frontierMonthlyLimit = exposesManagedAI ? payload.frontierMonthlyLimit : nil
+        allowanceResetAt = exposesManagedAI ? payload.resetAt : nil
+        dailyAllowanceResetAt = exposesManagedAI ? (payload.dailyResetAt ?? payload.dailyAIUsage?.resetAt) : nil
+        subscriptionEndAt = exposesManagedAI ? payload.subscriptionEndAt : nil
+        analyticsLevel = exposesManagedAI
+            ? (payload.analyticsLevel ?? Self.defaultAnalyticsLevel(for: backendTier))
+            : Self.defaultAnalyticsLevel(for: .free)
+        aiLevel = exposesManagedAI
+            ? (payload.aiLevel ?? Self.defaultAILevel(for: backendTier))
+            : Self.defaultAILevel(for: .free)
+        featureFlags = exposesManagedAI
+            ? (payload.featureFlags ?? Self.defaultFeatures(for: backendTier))
+            : Self.defaultFeatures(for: .free)
+        dailyAIUsage = exposesManagedAI
+            ? (payload.dailyAIUsage ?? DailyAIUsageWindow(
+                used: nil,
+                limit: nil,
+                remaining: nil,
+                resetAt: dailyAllowanceResetAt
+            ))
+            : DailyAIUsageWindow(used: nil, limit: nil, remaining: nil, resetAt: nil)
         if FirebaseApp.app() != nil, let uid = Auth.auth().currentUser?.uid {
             persistCachedEntitlement(uid: uid, tier: tier, subscriptionEndAt: subscriptionEndAt)
         }
@@ -560,7 +569,12 @@ final class FeatureGate: ObservableObject {
     }
 
     private static func normalizeClientTier(_ tier: Tier) -> Tier {
-        tier == .expired ? .free : tier
+        switch tier {
+        case .beta, .expired:
+            return .free
+        case .free, .plus, .pro, .developer:
+            return tier
+        }
     }
 
     private func decodeAllowancePayload(from data: Any) throws -> AllowancePayload {
@@ -872,9 +886,9 @@ final class FeatureGate: ObservableObject {
         switch tier {
         case .pro, .developer:
             return .pro
-        case .plus, .beta:
+        case .plus:
             return .plus
-        case .free, .expired:
+        case .free, .beta, .expired:
             return .basic
         }
     }
@@ -883,9 +897,9 @@ final class FeatureGate: ObservableObject {
         switch tier {
         case .pro, .developer:
             return .deep
-        case .plus, .beta:
+        case .plus:
             return .weekly
-        case .free, .expired:
+        case .free, .beta, .expired:
             return .none
         }
     }
@@ -899,20 +913,29 @@ final class FeatureGate: ObservableObject {
                 .proLayout: true,
                 .fullscreenMode: true,
             ]
-        case .plus, .beta:
+        case .plus:
             return [
                 .aiEnabled: true,
                 .advancedCharts: true,
                 .proLayout: false,
                 .fullscreenMode: true,
             ]
-        case .free, .expired:
+        case .free, .beta, .expired:
             return [
                 .aiEnabled: false,
                 .advancedCharts: false,
                 .proLayout: false,
                 .fullscreenMode: false,
             ]
+        }
+    }
+
+    nonisolated private static func exposesManagedAI(for tier: Tier) -> Bool {
+        switch tier {
+        case .plus, .pro, .developer:
+            return true
+        case .free, .beta, .expired:
+            return false
         }
     }
 
@@ -950,7 +973,7 @@ final class FeatureGate: ObservableObject {
     static func tierDisplayName(_ tier: Tier) -> String {
         switch tier {
         case .free: return LocalizationManager.shared.text("feature_gate.tier.free")
-        case .beta: return LocalizationManager.shared.text("feature_gate.tier.beta")
+        case .beta: return LocalizationManager.shared.text("feature_gate.tier.free")
         case .plus: return LocalizationManager.shared.text("feature_gate.tier.plus")
         case .pro: return LocalizationManager.shared.text("feature_gate.tier.pro")
         case .expired: return LocalizationManager.shared.text("feature_gate.tier.expired")

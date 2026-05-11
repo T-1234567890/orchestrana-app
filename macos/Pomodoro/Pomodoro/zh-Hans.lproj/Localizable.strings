@@ -135,7 +135,6 @@
 "feature_gate.error.http_status" = "获取配额失败，状态码 %d。";
 "feature_gate.error.invalid_allowance_response" = "配额响应无效。";
 "feature_gate.session_expired_sign_in_again" = "会话已过期，请重新登录。";
-"feature_gate.tier.beta" = "Beta";
 "feature_gate.tier.developer" = "开发者";
 "feature_gate.tier.expired" = "已过期";
 "feature_gate.tier.free" = "免费";

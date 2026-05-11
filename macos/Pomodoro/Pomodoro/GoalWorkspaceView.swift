@@ -105,9 +105,9 @@ struct GoalWorkspaceView: View {
 
     private var isPaidGoalTier: Bool {
         switch featureGate.tier {
-        case .plus, .pro, .developer, .beta:
+        case .plus, .pro, .developer:
             return true
-        case .free, .expired:
+        case .free, .beta, .expired:
             return false
         }
     }
