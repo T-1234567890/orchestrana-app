@@ -140,14 +140,11 @@ For full details on updates, see the release notes on the **App Store**.
 - Feedback, PR, and issue reports are welcome
 - Current public distribution is through the App Store
 
-## 🤖 AI Features (Developer Preview)
+## 🤖 AI Features
 
-AI-powered features are currently being deployed and are in **private developer preview**.
+AI-powered features are now available in Orchestrana.
 
-At the moment, these features are only available to **authorized developer accounts** for internal testing.  
-A small number of additional testers may be invited during this stage.
-
-The full AI feature set is planned to be **officially released in version 2.0.0**.
+Availability depends on the current app version, account state, subscription tier, regional availability, and usage limits. Some AI features require Plus or Pro because they use managed backend services and external AI providers.
 
 ## Current UI Direction
 
