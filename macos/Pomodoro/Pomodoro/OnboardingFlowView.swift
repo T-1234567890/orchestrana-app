@@ -744,6 +744,19 @@ struct OnboardingFlowView: View {
                 .controlSize(.large)
             }
 
+            if let footerSkipTitle {
+                Button {
+                    performFooterSkipAction()
+                } label: {
+                    Text(footerSkipTitle)
+                        .font(onboardingPrimaryLabelFont)
+                        .frame(minWidth: 88)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .disabled(isRequestingAuthorization)
+            }
+
             if let footerActionTitle {
                 Button {
                     performFooterAction()
@@ -776,9 +789,16 @@ struct OnboardingFlowView: View {
         switch step {
         case .welcome:
             return localizationManager.text("onboarding.skip")
+        case .features, .notifications, .permissions, .menuBar, .login, .upgrade:
+            return nil
+        }
+    }
+
+    private var footerSkipTitle: String? {
+        switch step {
         case .notifications, .permissions:
             return localizationManager.text("onboarding.not_now")
-        case .features, .menuBar, .login, .upgrade:
+        case .welcome, .features, .menuBar, .login, .upgrade:
             return nil
         }
     }
@@ -790,9 +810,9 @@ struct OnboardingFlowView: View {
         case .features:
             return localizationManager.text("onboarding.continue")
         case .notifications:
-            return localizationManager.text("onboarding.enable_notifications")
+            return localizationManager.text("onboarding.continue")
         case .permissions:
-            return localizationManager.text("onboarding.permissions.allow_access")
+            return localizationManager.text("onboarding.continue")
         case .menuBar:
             return localizationManager.text("onboarding.got_it")
         case .login:
@@ -904,17 +924,24 @@ struct OnboardingFlowView: View {
         }
     }
 
-    private func handleTopAction() {
+    private func performFooterSkipAction() {
         switch step {
-        case .welcome:
-            onboardingState.markCompleted()
         case .notifications:
             advance()
         case .permissions:
             onboardingState.markPermissionsPrompted()
             onboardingState.markEventKitRequestCalled()
             advance()
-        case .features, .menuBar, .login, .upgrade:
+        case .welcome, .features, .menuBar, .login, .upgrade:
+            break
+        }
+    }
+
+    private func handleTopAction() {
+        switch step {
+        case .welcome:
+            onboardingState.markCompleted()
+        case .features, .notifications, .permissions, .menuBar, .login, .upgrade:
             break
         }
     }

@@ -206,7 +206,7 @@
 "notification.time_is_up" = "Time is up.";
 "onboarding.back" = "Back";
 "onboarding.continue" = "Continue";
-"onboarding.enable_notifications" = "Enable Notifications";
+"onboarding.enable_notifications" = "Continue";
 "onboarding.finish" = "Finish";
 "onboarding.got_it" = "Got it";
 "onboarding.media.body_primary" = "Orchestrana can play ambient sounds and detect external media for your focus sessions.";

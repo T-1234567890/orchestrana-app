@@ -206,7 +206,7 @@
 "notification.time_is_up" = "时间到。";
 "onboarding.back" = "返回";
 "onboarding.continue" = "继续";
-"onboarding.enable_notifications" = "启用通知";
+"onboarding.enable_notifications" = "继续";
 "onboarding.finish" = "完成";
 "onboarding.got_it" = "知道了";
 "onboarding.media.body_primary" = "Orchestrana 可播放环境音并检测外部媒体，帮助你专注。";
