@@ -991,11 +991,6 @@ struct MainWindowView: View {
         NSWorkspace.shared.open(url)
     }
 
-    private func openLocationSettings() {
-        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices") else { return }
-        NSWorkspace.shared.open(url)
-    }
-
     private func handleNotificationAccessRequest() {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             if settings.authorizationStatus == .notDetermined {
@@ -2297,12 +2292,8 @@ struct MainWindowView: View {
     }
 
     private func handleLocationAccessRequest() {
-        if permissionsManager.locationStatus == .notDetermined {
-            Task {
-                await permissionsManager.requestLocationPermission()
-            }
-        } else {
-            openLocationSettings()
+        Task {
+            await permissionsManager.requestLocationPermission()
         }
     }
 
@@ -2394,6 +2385,10 @@ struct MainWindowView: View {
         switch status {
         case .authorizedAlways:
             return .green
+        #if !os(macOS)
+        case .authorizedWhenInUse:
+            return .green
+        #endif
         case .denied, .restricted:
             return .red
         case .notDetermined:

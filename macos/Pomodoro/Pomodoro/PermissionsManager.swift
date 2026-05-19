@@ -180,11 +180,12 @@ final class PermissionsManager: ObservableObject {
         }
     }
 
-    /// Request Always location permission for Map location reminders and nearby-work context.
+    /// Request baseline location permission for nearby-work context.
     func requestLocationPermission() async {
-        refreshLocationStatus()
+        let status = locationManager.authorizationStatus
+        updateLocationStatus(status)
 
-        switch locationStatus {
+        switch status {
         case .notDetermined:
             do {
                 try await LocationAuthorizationRequester.shared.requestWhenInUse()
@@ -198,6 +199,10 @@ final class PermissionsManager: ObservableObject {
             showLocationDeniedAlert = true
         case .authorizedAlways:
             break
+        #if !os(macOS)
+        case .authorizedWhenInUse:
+            break
+        #endif
         @unknown default:
             break
         }
@@ -329,7 +334,11 @@ final class PermissionsManager: ObservableObject {
     }
 
     var isLocationAuthorized: Bool {
+        #if os(macOS)
         locationStatus == .authorizedAlways
+        #else
+        locationStatus == .authorizedAlways || locationStatus == .authorizedWhenInUse
+        #endif
     }
     
     var notificationStatusText: String {
@@ -399,6 +408,10 @@ final class PermissionsManager: ObservableObject {
             return LocalizationManager.shared.text("permission.denied")
         case .authorizedAlways:
             return LocalizationManager.shared.text("permission.authorized")
+        #if !os(macOS)
+        case .authorizedWhenInUse:
+            return LocalizationManager.shared.text("permission.authorized")
+        #endif
         @unknown default:
             return LocalizationManager.shared.text("permission.unknown")
         }

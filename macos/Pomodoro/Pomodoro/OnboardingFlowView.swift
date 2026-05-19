@@ -6,12 +6,16 @@
 //
 
 import AppKit
+import CoreLocation
+import EventKit
 import FirebaseAuth
 import SwiftUI
 import UserNotifications
 
 @MainActor
 struct OnboardingFlowView: View {
+    var onFinish: () -> Void = {}
+
     @EnvironmentObject private var appState: AppState
     @EnvironmentObject private var onboardingState: OnboardingState
     @EnvironmentObject private var authViewModel: AuthViewModel
@@ -30,6 +34,7 @@ struct OnboardingFlowView: View {
     @State private var showEmailLogin = false
     @State private var activeProvider: AuthProvider?
     @State private var upgradePaywallContext: SubscriptionPaywallContext?
+    @State private var isCompletingOnboarding = false
 
     private enum NavigationDirection {
         case forward
@@ -84,18 +89,22 @@ struct OnboardingFlowView: View {
         .onAppear {
             rebuildFlow(resetIndex: true)
             refreshAuthorizationStatusIfNeeded()
+            refreshPermissionStatusesIfNeeded()
         }
         .onChange(of: step) { _, _ in
             refreshAuthorizationStatusIfNeeded()
+            refreshPermissionStatusesIfNeeded()
         }
         .onChange(of: shouldShowUpgradeAwareness) { _, isVisible in
+            guard !isCompletingOnboarding else { return }
             if !isVisible && step == .upgrade {
-                onboardingState.markCompleted()
+                completeOnboarding()
             } else {
                 rebuildFlow(resetIndex: false)
             }
         }
         .onChange(of: authViewModel.isAuthenticated) { _, isAuthenticated in
+            guard !isCompletingOnboarding else { return }
             guard isAuthenticated, step == .login else { return }
             advance()
         }
@@ -413,6 +422,7 @@ struct OnboardingFlowView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
+                .disabled(isCompletingOnboarding)
             }
         }
     }
@@ -471,19 +481,34 @@ struct OnboardingFlowView: View {
                 permissionRow(
                     symbol: "calendar",
                     title: localizationManager.text("onboarding.permissions.calendar_title"),
-                    detail: localizationManager.text("onboarding.permissions.read_write")
+                    detail: localizationManager.text("onboarding.permissions.read_write"),
+                    status: permissionsManager.calendarStatusText,
+                    statusColor: permissionStatusColor(
+                        isAuthorized: permissionsManager.isCalendarAuthorized,
+                        isDenied: isCalendarDeniedOrRestricted
+                    )
                 )
 
                 permissionRow(
                     symbol: "checklist",
                     title: localizationManager.text("onboarding.permissions.reminders_title"),
-                    detail: localizationManager.text("onboarding.permissions.read_write")
+                    detail: localizationManager.text("onboarding.permissions.read_write"),
+                    status: permissionsManager.remindersStatusText,
+                    statusColor: permissionStatusColor(
+                        isAuthorized: permissionsManager.isRemindersAuthorized,
+                        isDenied: isRemindersDeniedOrRestricted
+                    )
                 )
 
                 permissionRow(
                     symbol: "location.fill",
                     title: localizationManager.text("onboarding.permissions.location_title"),
-                    detail: localizationManager.text("onboarding.permissions.always_location")
+                    detail: localizationManager.text("onboarding.permissions.always_location"),
+                    status: permissionsManager.locationStatusText,
+                    statusColor: permissionStatusColor(
+                        isAuthorized: permissionsManager.isLocationAuthorized,
+                        isDenied: isLocationDeniedOrRestricted
+                    )
                 )
             }
             .padding(22)
@@ -502,7 +527,7 @@ struct OnboardingFlowView: View {
         }
     }
 
-    private func permissionRow(symbol: String, title: String, detail: String) -> some View {
+    private func permissionRow(symbol: String, title: String, detail: String, status: String, statusColor: Color) -> some View {
         HStack(spacing: 14) {
             Image(systemName: symbol)
                 .font(.system(size: 16, weight: .medium))
@@ -520,10 +545,9 @@ struct OnboardingFlowView: View {
 
             Spacer()
 
-            Text(localizationManager.text("permissions.authorized"))
+            Text(status)
                 .font(.system(.caption, design: .rounded).weight(.medium))
-                .foregroundStyle(.secondary)
-                .opacity(0.7)
+                .foregroundStyle(statusColor)
         }
     }
 
@@ -754,7 +778,7 @@ struct OnboardingFlowView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
-                .disabled(isRequestingAuthorization)
+                .disabled(isRequestingAuthorization || isCompletingOnboarding)
             }
 
             if let footerActionTitle {
@@ -823,6 +847,10 @@ struct OnboardingFlowView: View {
     }
 
     private var isFooterActionDisabled: Bool {
+        if isCompletingOnboarding {
+            return true
+        }
+
         switch step {
         case .notifications:
             return isRequestingAuthorization
@@ -872,6 +900,43 @@ struct OnboardingFlowView: View {
         }
     }
 
+    private var isCalendarDeniedOrRestricted: Bool {
+        switch permissionsManager.calendarStatus {
+        case .denied, .restricted:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private var isRemindersDeniedOrRestricted: Bool {
+        switch permissionsManager.remindersStatus {
+        case .denied, .restricted:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private var isLocationDeniedOrRestricted: Bool {
+        switch permissionsManager.locationStatus {
+        case .denied, .restricted:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func permissionStatusColor(isAuthorized: Bool, isDenied: Bool) -> Color {
+        if isAuthorized {
+            return .green
+        }
+        if isDenied {
+            return .red
+        }
+        return .orange
+    }
+
     private var panelWidth: CGFloat {
         switch step {
         case .welcome:
@@ -909,6 +974,13 @@ struct OnboardingFlowView: View {
     }
 
     private func performFooterAction() {
+        guard !isCompletingOnboarding else { return }
+
+        if isLastStep {
+            completeOnboarding()
+            return
+        }
+
         switch step {
         case .welcome, .features:
             advance()
@@ -940,7 +1012,7 @@ struct OnboardingFlowView: View {
     private func handleTopAction() {
         switch step {
         case .welcome:
-            onboardingState.markCompleted()
+            completeOnboarding()
         case .features, .notifications, .permissions, .menuBar, .login, .upgrade:
             break
         }
@@ -953,6 +1025,11 @@ struct OnboardingFlowView: View {
                 authorizationStatus = settings.authorizationStatus
             }
         }
+    }
+
+    private func refreshPermissionStatusesIfNeeded() {
+        guard step == .permissions else { return }
+        permissionsManager.refreshAllStatuses()
     }
 
     private func requestAuthorizationAndAdvance() {
@@ -969,13 +1046,15 @@ struct OnboardingFlowView: View {
         guard !isRequestingAuthorization else { return }
         isRequestingAuthorization = true
         Task { @MainActor in
+            defer {
+                isRequestingAuthorization = false
+                onboardingState.markPermissionsPrompted()
+                onboardingState.markEventKitRequestCalled()
+                advance()
+            }
             await permissionsManager.requestCalendarPermission()
             await permissionsManager.requestRemindersPermission()
             await permissionsManager.requestLocationPermission()
-            isRequestingAuthorization = false
-            onboardingState.markPermissionsPrompted()
-            onboardingState.markEventKitRequestCalled()
-            advance()
         }
     }
 
@@ -986,7 +1065,7 @@ struct OnboardingFlowView: View {
 
     private func advance() {
         guard !flow.isEmpty else {
-            onboardingState.markCompleted()
+            completeOnboarding()
             return
         }
 
@@ -994,7 +1073,20 @@ struct OnboardingFlowView: View {
         if index + 1 < flow.count {
             index += 1
         } else {
-            onboardingState.markCompleted()
+            completeOnboarding()
+        }
+    }
+
+    private func completeOnboarding() {
+        guard !isCompletingOnboarding else { return }
+        isCompletingOnboarding = true
+
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            flow = []
+            index = 0
+            onFinish()
         }
     }
 

@@ -226,7 +226,7 @@
 "onboarding.notifications.unavailable" = "不可用";
 "onboarding.permissions.body" = "日历和提醒事项权限可让 Orchestrana 同步你的日程与任务。";
 "onboarding.permissions.enable_access" = "启用权限";
-"onboarding.permissions.always_location" = "始终定位，用于附近工作提醒";
+"onboarding.permissions.always_location" = "位置权限用于附近工作情境";
 "onboarding.permissions.location_title" = "位置";
 "onboarding.permissions.title" = "权限";
 "onboarding.requesting" = "请求中…";

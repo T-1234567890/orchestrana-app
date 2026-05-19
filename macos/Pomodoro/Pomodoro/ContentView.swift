@@ -11,18 +11,41 @@ import Foundation
 @MainActor
 struct ContentView: View {
     @EnvironmentObject private var onboardingState: OnboardingState
+    @State private var localOnboardingPresentation: Bool?
+
+    private var isShowingOnboarding: Bool {
+        localOnboardingPresentation ?? onboardingState.isPresented
+    }
 
     var body: some View {
         ZStack {
-            if onboardingState.isPresented {
-                OnboardingFlowView()
+            if isShowingOnboarding {
+                OnboardingFlowView {
+                    dismissOnboarding()
+                }
                     .transition(.opacity)
             } else {
                 MainWindowView()
                     .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.22), value: onboardingState.isPresented)
+        .animation(.easeInOut(duration: 0.22), value: isShowingOnboarding)
+        .onAppear {
+            localOnboardingPresentation = onboardingState.isPresented
+        }
+        .onChange(of: onboardingState.isPresented) { _, isPresented in
+            guard isShowingOnboarding != isPresented else { return }
+            localOnboardingPresentation = isPresented
+        }
+    }
+
+    private func dismissOnboarding() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            localOnboardingPresentation = false
+            onboardingState.markCompleted()
+        }
     }
 }
 

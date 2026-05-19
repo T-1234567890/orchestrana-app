@@ -336,7 +336,7 @@
   "onboarding.permissions.calendar_title": "Calendar",
   "onboarding.permissions.description": "Allow access to your calendar and reminders to plan your day more intelligently.",
   "onboarding.permissions.enable_access": "Enable Access",
-  "onboarding.permissions.always_location": "Always location for nearby work reminders",
+  "onboarding.permissions.always_location": "Location for nearby work context",
   "onboarding.permissions.location_title": "Location",
   "onboarding.permissions.read_write": "Read & Write",
   "onboarding.permissions.reminders_title": "Reminders",

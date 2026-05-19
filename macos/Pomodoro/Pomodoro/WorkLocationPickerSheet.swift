@@ -22,6 +22,7 @@ struct WorkLocationPickerSheet: View {
     @State private var radiusMeters = 150.0
     @State private var tagField = ""
     @State private var notifyWhenClose = false
+    @State private var isRequestingAlwaysLocation = false
     @State private var errorMessage: String?
     @State private var mapPosition: MapCameraPosition = .region(
         MKCoordinateRegion(
@@ -70,10 +71,10 @@ struct WorkLocationPickerSheet: View {
             HStack {
                 Spacer()
                 Button("Save and Pin") {
-                    saveAndPin()
+                    Task { await saveAndPin() }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(selectedCandidate == nil || placeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(selectedCandidate == nil || placeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isRequestingAlwaysLocation)
             }
         }
         .padding(20)
@@ -201,7 +202,18 @@ struct WorkLocationPickerSheet: View {
             }
 
             if canUseLocationNotifications {
-                Toggle("Notify when close", isOn: $notifyWhenClose)
+                Toggle(isOn: notifyWhenCloseBinding) {
+                    if isRequestingAlwaysLocation {
+                        HStack(spacing: 6) {
+                            Text("Notify when close")
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                    } else {
+                        Text("Notify when close")
+                    }
+                }
+                .disabled(isRequestingAlwaysLocation)
             }
 
             if canUseLocationNotifications {
@@ -212,13 +224,26 @@ struct WorkLocationPickerSheet: View {
         .frame(width: 320)
     }
 
+    private var notifyWhenCloseBinding: Binding<Bool> {
+        Binding(
+            get: { notifyWhenClose },
+            set: { newValue in
+                if newValue {
+                    Task { await requestAlwaysLocationForNotifications() }
+                } else {
+                    notifyWhenClose = false
+                }
+            }
+        )
+    }
+
     private func useCurrentLocation() async {
         isResolvingCurrentLocation = true
         errorMessage = nil
         defer { isResolvingCurrentLocation = false }
 
         do {
-            let location = try await locationStore.currentLocation()
+            let location = try await locationStore.currentLocationAfterPermissionRequest()
             let candidate = LocationCandidate(
                 name: "Current Location",
                 address: formattedCoordinate(location.coordinate),
@@ -235,7 +260,7 @@ struct WorkLocationPickerSheet: View {
     private func centerPreviewOnCurrentLocation() async {
         guard selectedCandidate == nil else { return }
         do {
-            let location = try await locationStore.currentLocation()
+            let location = try await locationStore.currentLocationIfAuthorized()
             centerMap(on: location.coordinate)
         } catch {
             // Keep the neutral fallback until the user searches or grants Location permission.
@@ -270,11 +295,21 @@ struct WorkLocationPickerSheet: View {
         centerMap(on: candidate.coordinate)
     }
 
-    private func saveAndPin() {
+    private func saveAndPin() async {
         guard let selectedCandidate else { return }
         guard canCreateNewLocation else {
             onCreateLimitReached()
             return
+        }
+
+        if notifyWhenClose, canUseLocationNotifications {
+            do {
+                try await locationStore.requestAlwaysLocationPermission()
+            } catch {
+                notifyWhenClose = false
+                errorMessage = error.localizedDescription
+                return
+            }
         }
 
         let tags = canUseLocationNotifications
@@ -293,14 +328,32 @@ struct WorkLocationPickerSheet: View {
         }
 
         if notifyWhenClose, canUseLocationNotifications {
-            Task {
-                try? await locationStore.enableNotification(
+            do {
+                try await locationStore.enableNotification(
                     for: location,
                     taskCount: max(1, notificationTaskCount)
                 )
+            } catch {
+                errorMessage = error.localizedDescription
+                return
             }
         }
         onSelect(location.id)
+    }
+
+    private func requestAlwaysLocationForNotifications() async {
+        guard !isRequestingAlwaysLocation else { return }
+        isRequestingAlwaysLocation = true
+        errorMessage = nil
+        defer { isRequestingAlwaysLocation = false }
+
+        do {
+            try await locationStore.requestAlwaysLocationPermission()
+            notifyWhenClose = true
+        } catch {
+            notifyWhenClose = false
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func address(for placemark: MKPlacemark) -> String {

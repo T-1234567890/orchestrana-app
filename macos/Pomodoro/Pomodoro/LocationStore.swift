@@ -144,11 +144,24 @@ final class LocationStore: ObservableObject {
         try await LocationCurrentPositionProvider.shared.currentLocation()
     }
 
+    func currentLocationAfterPermissionRequest() async throws -> CLLocation {
+        try await requestAlwaysLocationPermission()
+        return try await LocationCurrentPositionProvider.shared.currentLocation(requestsPermission: false)
+    }
+
+    func currentLocationIfAuthorized() async throws -> CLLocation {
+        try await LocationCurrentPositionProvider.shared.currentLocation(requestsPermission: false)
+    }
+
+    func requestAlwaysLocationPermission() async throws {
+        try await LocationAuthorizationRequester.shared.requestAlways()
+    }
+
     func enableNotification(for location: WorkLocation, taskCount: Int) async throws {
+        try await requestAlwaysLocationPermission()
+
         let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
         guard granted else { throw LocationStoreError.notificationPermissionDenied }
-
-        try await LocationAuthorizationRequester.shared.requestWhenInUse()
 
         LocationRuntimeNotifier.shared.startMonitoring(location: location, taskCount: taskCount)
 
@@ -228,8 +241,14 @@ enum LocationStoreError: LocalizedError {
 final class LocationAuthorizationRequester: NSObject, CLLocationManagerDelegate {
     static let shared = LocationAuthorizationRequester()
 
+    private enum Requirement: Equatable {
+        case whenInUse
+        case always
+    }
+
     private let manager = CLLocationManager()
     private var continuation: CheckedContinuation<Void, Error>?
+    private var requirement: Requirement = .whenInUse
 
     private override init() {
         super.init()
@@ -237,8 +256,16 @@ final class LocationAuthorizationRequester: NSObject, CLLocationManagerDelegate 
     }
 
     func requestWhenInUse() async throws {
+        try await requestAuthorization(.whenInUse)
+    }
+
+    func requestAlways() async throws {
+        try await requestAuthorization(.always)
+    }
+
+    private func requestAuthorization(_ requirement: Requirement) async throws {
         let status = manager.authorizationStatus
-        if status == .authorizedAlways {
+        if isSatisfied(status, for: requirement) {
             return
         }
         if status == .denied || status == .restricted {
@@ -247,19 +274,48 @@ final class LocationAuthorizationRequester: NSObject, CLLocationManagerDelegate 
 
         try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
-            manager.requestAlwaysAuthorization()
+            self.requirement = requirement
+            switch requirement {
+            case .whenInUse:
+                manager.requestWhenInUseAuthorization()
+            case .always:
+                manager.requestAlwaysAuthorization()
+            }
         }
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         guard let continuation else { return }
-        self.continuation = nil
         let status = manager.authorizationStatus
-        if status == .authorizedAlways {
+        if isSatisfied(status, for: requirement) {
+            self.continuation = nil
             continuation.resume()
-        } else if status == .denied || status == .restricted {
+        } else if status == .denied || status == .restricted || isInsufficientForAlways(status) {
+            self.continuation = nil
             continuation.resume(throwing: LocationStoreError.locationPermissionDenied)
         }
+    }
+
+    private func isSatisfied(_ status: CLAuthorizationStatus, for requirement: Requirement) -> Bool {
+        switch requirement {
+        case .whenInUse:
+            #if os(macOS)
+            return status == .authorizedAlways
+            #else
+            return status == .authorizedAlways || status == .authorizedWhenInUse
+            #endif
+        case .always:
+            return status == .authorizedAlways
+        }
+    }
+
+    private func isInsufficientForAlways(_ status: CLAuthorizationStatus) -> Bool {
+        guard requirement == .always else { return false }
+        #if os(macOS)
+        return false
+        #else
+        return status == .authorizedWhenInUse
+        #endif
     }
 }
 
@@ -275,8 +331,13 @@ final class LocationCurrentPositionProvider: NSObject, CLLocationManagerDelegate
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
     }
 
-    func currentLocation() async throws -> CLLocation {
-        try await LocationAuthorizationRequester.shared.requestWhenInUse()
+    func currentLocation(requestsPermission: Bool = true) async throws -> CLLocation {
+        if requestsPermission {
+            try await LocationAuthorizationRequester.shared.requestWhenInUse()
+        } else {
+            try requireCurrentAuthorization()
+        }
+
         if let location = manager.location {
             return location
         }
@@ -284,6 +345,19 @@ final class LocationCurrentPositionProvider: NSObject, CLLocationManagerDelegate
             self.continuation = continuation
             manager.requestLocation()
         }
+    }
+
+    private func requireCurrentAuthorization() throws {
+        let status = manager.authorizationStatus
+        #if os(macOS)
+        guard status == .authorizedAlways else {
+            throw LocationStoreError.locationPermissionDenied
+        }
+        #else
+        guard status == .authorizedAlways || status == .authorizedWhenInUse else {
+            throw LocationStoreError.locationPermissionDenied
+        }
+        #endif
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {

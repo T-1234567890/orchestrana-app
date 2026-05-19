@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 
+@MainActor
 final class OnboardingState: ObservableObject {
     @Published var isPresented: Bool
     @Published var needsSystemPermissions: Bool
@@ -33,14 +34,15 @@ final class OnboardingState: ObservableObject {
     }
 
     func markCompleted() {
+        guard isPresented || needsSystemPermissions || needsMenuBarTip || !eventKitRequestCalled else { return }
+        isPresented = false
+        needsSystemPermissions = false
+        needsMenuBarTip = false
+        eventKitRequestCalled = true
         userDefaults.set(true, forKey: DefaultsKey.onboardingCompleted)
         userDefaults.set(true, forKey: DefaultsKey.calendarPermissionsPrompted)
         userDefaults.set(true, forKey: DefaultsKey.menuBarTipSeen)
         userDefaults.set(true, forKey: DefaultsKey.eventKitRequestCalled)
-        needsSystemPermissions = false
-        needsMenuBarTip = false
-        eventKitRequestCalled = true
-        isPresented = false
     }
 
     func reopen() {

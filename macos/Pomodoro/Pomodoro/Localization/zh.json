@@ -337,7 +337,7 @@
   "onboarding.permissions.calendar_title": "日历",
   "onboarding.permissions.description": "允许访问你的日历和提醒事项，以便更智能地规划一天。",
   "onboarding.permissions.enable_access": "启用权限",
-  "onboarding.permissions.always_location": "始终定位，用于附近工作提醒",
+  "onboarding.permissions.always_location": "位置权限用于附近工作情境",
   "onboarding.permissions.location_title": "位置",
   "onboarding.permissions.read_write": "读取与写入",
   "onboarding.permissions.reminders_title": "提醒事项",

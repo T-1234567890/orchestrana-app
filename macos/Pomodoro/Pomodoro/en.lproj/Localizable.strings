@@ -226,7 +226,7 @@
 "onboarding.notifications.unavailable" = "Unavailable";
 "onboarding.permissions.body" = "Calendar and Reminders access lets Orchestrana sync your schedule and tasks.";
 "onboarding.permissions.enable_access" = "Enable Access";
-"onboarding.permissions.always_location" = "Always location for nearby work reminders";
+"onboarding.permissions.always_location" = "Location for nearby work context";
 "onboarding.permissions.location_title" = "Location";
 "onboarding.permissions.title" = "Permissions";
 "onboarding.requesting" = "Requesting…";
