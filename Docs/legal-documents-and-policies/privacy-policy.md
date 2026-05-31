@@ -1,7 +1,7 @@
 # Privacy Policy
 
-**Effective Date:** April 30, 2026  
-**Last Updated:** April 30, 2026
+**Effective Date:** May 31, 2026
+**Last Updated:** May 31, 2026
 
 ---
 
@@ -40,6 +40,8 @@ The website may also rely on third-party services such as Google Fonts, Google F
 
 ## 2. Data Stored Locally on Your Mac
 
+Orchestrana is designed to be local-first. Some local data may be sent to our backend only when you sign in, verify subscriptions, use cloud-backed AI features, request support, or explicitly use a feature that requires server processing.
+
 Orchestrana stores a significant amount of data locally on your device, including:
 
 - Timer settings and session preferences
@@ -48,20 +50,10 @@ Orchestrana stores a significant amount of data locally on your device, includin
 - Session history and usage history stored locally by the app
 - Local media or ambient audio preferences
 - Calendar and reminders metadata used by local integrations
+- Google Calendar and Google Tasks data cached locally after you connect Google services
 - Cached entitlement, account, or AI state needed to keep the app responsive
 
-This local data is generally stored in app sandbox locations such as:
-
-- `UserDefaults` entries used for task lists, planning items, preferences, onboarding state, duration settings, reminders sync preferences, Flow Mode background preferences, and cached app state
-- Application Support files such as local session history JSON files
-- macOS Keychain entries used for persisted authentication session data
-
-Examples reflected in the current app code include:
-
-- Task and planning storage in `UserDefaults`
-- Flow Mode background bookmarks and preferences in `UserDefaults`
-- Session record storage in Application Support under a `PomodoroApp` directory
-- Auth session persistence in Keychain using a generic password entry
+This local data is generally stored in app-controlled local storage, app support files, browser storage where relevant, or secure platform storage for sensitive session data where appropriate.
 
 ## 3. Account and Sign-In Data
 
@@ -112,6 +104,32 @@ We only use Google user data to provide and improve core app functionality.
 
 Google user data is not used for advertising, is not sold to third parties, and is not used for tracking users across apps.
 
+### Google Calendar and Google Tasks Integration
+
+If you choose to connect Google Calendar and Google Tasks, Orchestrana may request Google OAuth permissions that allow the app to access and manage Google Calendar events and Google Tasks on your behalf. This integration is optional and is separate from basic sign-in. You do not need to authorize Calendar or Tasks scopes just to log in.
+
+When you connect these Google services, Orchestrana may process Google Calendar and Google Tasks data such as:
+
+- Calendar names, event titles, event notes or descriptions, start and end times, status, identifiers, and sync metadata
+- Task list identifiers, task titles, task notes, due dates, completion state, status, identifiers, and sync metadata
+- OAuth access or refresh information handled by Google's sign-in systems and local secure storage where needed to keep the integration connected
+
+We use this Google data only to:
+
+- Display connected Google Calendar events and Google Tasks in Orchestrana
+- Synchronize Orchestrana tasks and calendar events with Google Calendar and Google Tasks
+- Create, update, or delete Google Calendar events and Google Tasks based on actions you take in Orchestrana
+- Preserve sync state, avoid duplicate items, prevent merge conflicts, and support manual or automatic synchronization
+- Pause Apple Calendar or Apple Reminders sync while Google services are connected, where needed to reduce duplicate items and merge conflicts
+
+Google Calendar and Google Tasks data may be cached locally on your Mac so the app can show the current synchronized state and avoid unnecessary API requests. Sync operations are intended to communicate directly from the app to Google's APIs where possible.
+
+Our backend is not intended to store your Google Calendar event content or Google Tasks content for the Google sync integration. However, if you separately invoke cloud-backed AI, planning, scheduling, support, or account features and choose to include related task, calendar, or scheduling context, that context may be processed as described in this Privacy Policy.
+
+We do not use Google Calendar or Google Tasks data for advertising, tracking users across apps, or training our own AI models. We do not sell Google user data.
+
+Orchestrana's use and transfer of information received from Google APIs will adhere to the [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy), including the Limited Use requirements.
+
 ## 4. Subscription and Billing Data
 
 If you use paid features or subscriptions, we may process:
@@ -123,6 +141,8 @@ If you use paid features or subscriptions, we may process:
 - Quota period metadata, remaining allowance, usage totals, reset dates, and related plan enforcement state
 
 Payments themselves are generally handled by Apple or another platform provider. We do not state that we store your full payment card number because platform billing is typically handled outside our systems.
+
+Payments are handled by Apple through the App Store when you purchase through Apple. We do not receive or store your full payment card details.
 
 ## 5. AI, Planning, and Scheduling Data
 
@@ -136,7 +156,7 @@ If you use AI-assisted features, we may process content you submit for those fea
 We only process this data when you actively use the relevant AI or cloud-assisted feature.
 We only send the minimum necessary data required to fulfill each AI request.
 
-The current product includes cloud-backed AI and planning routes for features such as:
+Cloud-backed AI and planning features may include:
 
 - AI task breakdown
 - AI task planning
@@ -145,7 +165,7 @@ The current product includes cloud-backed AI and planning routes for features su
 - AI calendar schedule generation and rescheduling
 - Productivity insight or summary requests sent through the AI proxy
 
-AI traffic in the current backend is routed through our backend and may be forwarded through **OpenRouter** to supported model families. The current codebase references Standard Models and Frontier Models and tracks quota or allowance usage for those families.
+AI requests may be routed through our backend and forwarded to supported AI providers or routing services. We may track quota, allowance, model category, and usage metadata needed to operate these features.
 
 ### Third-Party AI Processing
 
@@ -170,6 +190,7 @@ If you grant them, the app may access:
 - **Notifications** to send focus alerts and reminders
 - **Calendar** to read your events and support planning, display, and optional scheduling features
 - **Reminders** to support task/reminder workflows
+- **Google Calendar and Google Tasks** only if you explicitly connect Google services and authorize the requested Google OAuth scopes
 
 Some of this information may remain local. However, if you explicitly use cloud-backed planning or AI scheduling features, relevant task or calendar context may be transmitted to our backend and to AI providers acting on our behalf to fulfill your request.
 
@@ -192,6 +213,8 @@ We use information to:
 
 We do not sell your personal data to advertisers or data brokers.
 
+We do not use your AI input data for advertising. We do not use your data to train our own AI models.
+
 We may also use account, quota, and entitlement data to:
 
 - determine whether a feature is available on your current plan
@@ -209,29 +232,16 @@ We may share information in the following situations:
 
 We use service providers and infrastructure that process data on our behalf, including:
 
-- **Firebase / Google Cloud** for authentication, backend infrastructure, Cloud Functions, and related account, entitlement, quota, and subscription processing
+- **Firebase / Google Cloud** for authentication, backend infrastructure, and related account, entitlement, quota, and subscription processing
 - **Apple** for platform services, subscriptions, Sign in with Apple, App Store billing, and server-side subscription verification where applicable
-- **Google** for Google Sign-In and related provider services
+- **Google** for Google Sign-In, Google Calendar, Google Tasks, and related provider services you choose to connect
 - **GitHub** for GitHub sign-in and public repository integrations
 - **OpenRouter** as an AI routing/provider layer where configured in the backend
 - **AI model providers** used behind OpenRouter or related routing infrastructure to fulfill AI requests you explicitly send through the Service
 
 Only the information reasonably necessary to fulfill the relevant AI request or cloud feature is transmitted to those providers.
 
-Backend systems reflected in the current codebase include Firebase Cloud Functions and related endpoints or callable functions used for:
-
-- `aiProxy`
-- `taskBreakdown`
-- `taskPlanning`
-- `generateTaskDescription`
-- `aiAssistant`
-- `generateCalendarSchedule`
-- `getAllowance`
-- `getMe`
-- `subscriptionVerify`
-- App Store subscription notification handling
-
-The backend also uses Firestore-backed account, quota, or subscription state in current server-side logic.
+We may use backend systems for authentication, AI request handling, entitlement checks, quota enforcement, account lookup, subscription verification, subscription reconciliation, and App Store subscription notification handling.
 
 ## 2. Platform and Integration Providers
 
@@ -281,6 +291,8 @@ We retain information for as long as reasonably necessary for the purposes descr
 
 Local app data generally remains on your device until you delete it, reset the app, sign out, uninstall the app, or remove related local files. Account and backend data may remain until you request deletion, your account is removed, or retention is no longer required for operational or legal purposes.
 
+Local app data remains on your device unless you delete it, reset the app, remove the app, or use a feature that sends data to the backend.
+
 Retention may also vary based on the category of data, including:
 
 - authentication/account records
@@ -302,9 +314,12 @@ You can also:
 - Sign out of your account
 - Remove local app data from your device
 - Revoke Calendar, Reminders, Notifications, or sign-in permissions through system or provider settings
+- Disconnect Google services in the app where available, or revoke Orchestrana's Google access from your Google Account permissions
 - Contact us to request deletion or account assistance
 
 If you request account deletion, we may delete or de-identify account-linked data unless we need to retain certain records for security, billing, fraud prevention, or legal compliance.
+
+Some records may be retained when necessary for security, fraud prevention, billing, tax, legal compliance, or legitimate operational needs.
 
 ---
 
@@ -316,23 +331,19 @@ Your information may be processed in countries other than your own, including th
 
 ## Security
 
-We use reasonable technical and organizational measures to help protect personal information, including HTTPS/TLS, provider-managed authentication systems, app sandboxing, and platform security features. No system is perfectly secure, and we cannot guarantee absolute security.
+We use reasonable technical and organizational measures to protect data, including platform security controls, Firebase security practices, authenticated requests, server-side entitlement checks, limited secret access, and secure storage mechanisms such as Keychain for sensitive local session data where appropriate.
+
+No system is perfectly secure, and we cannot guarantee absolute security.
 
 You are responsible for keeping your device, provider accounts, and credentials secure.
 
-Current implementation details reflected in the codebase include:
-
-- HTTPS-backed requests to backend APIs and Cloud Functions
-- Firebase Authentication tokens for authenticated cloud requests
-- Keychain-backed persisted auth session storage on device
-- provider-managed sign-in flows for Google and GitHub, and Apple provider support in backend/provider handling
-- backend quota and entitlement enforcement intended to reduce unauthorized use of paid or limited AI features
+These safeguards are intended to protect account access, cloud-backed requests, subscription-gated functionality, and paid or limited AI features.
 
 ---
 
 ## Children's Privacy
 
-The Service is not directed to children under 13, and we do not knowingly collect personal information from children under 13. If you believe a child has provided personal information to us, contact us and we will investigate and take appropriate action.
+The Service is intended for users who are at least 9 years old and legally allowed to use the Service in their location. If a higher minimum age or parental consent requirement applies under local law, that requirement controls. We do not knowingly collect personal information from anyone who is not legally allowed to use the Service. If you believe a child has provided personal information to us without the required legal permission, contact us and we will investigate and take appropriate action.
 
 ---
 
@@ -347,8 +358,8 @@ We may update this Privacy Policy as the product, backend, sign-in options, subs
 For privacy questions or requests:
 
 **Support:** support@orchestrana.app  
-**General:** hello@orchestrana.app  
-**GitHub Issues:** https://github.com/T-1234567890/orchestrana-app/issues  
+**General:** hello@orchestrana.app
+**GitHub Issues:** https://github.com/T-1234567890/orchestrana-app/issues
 **Website:** https://orchestrana.app
 
 ---

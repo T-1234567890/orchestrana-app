@@ -1,7 +1,7 @@
 # Terms of Service
 
-**Effective Date:** April 5, 2026  
-**Last Updated:** April 5, 2026
+**Effective Date:** May 31, 2026
+**Last Updated:** May 31, 2026
 
 ---
 
@@ -24,15 +24,19 @@ The Service may include:
 - Cloud-backed planning, AI, and scheduling features
 - Optional integrations and provider-based sign-in flows
 
-The current product may use backend routes or callable cloud functions for tasks such as AI proxying, AI planning, task breakdown, task description generation, calendar schedule generation, allowance checks, account lookup, subscription verification, subscription reconciliation, and related quota or entitlement enforcement.
+The product may use backend services for authentication, AI-assisted features, planning, scheduling, allowance checks, account lookup, subscription verification, subscription reconciliation, and related quota or entitlement enforcement.
 
 Features may change over time. Some features may be limited by plan, region, platform, beta status, or account state.
+
+We may add, change, limit, suspend, or remove features at any time for product, operational, legal, security, or platform reasons.
 
 ---
 
 ## 3. Eligibility and Accounts
 
 You must be legally able to use the Service under applicable law. If you create or use an account, you are responsible for maintaining the security of your credentials and for activity that occurs under your account.
+
+You are responsible for providing accurate account information, keeping your sign-in credentials secure, maintaining access to your Apple ID and App Store account where needed, all activity that occurs through your account, and promptly notifying us if you believe your account has been compromised.
 
 You may use sign-in methods we make available, including:
 
@@ -92,7 +96,7 @@ When you use these features, relevant User Content may be transmitted to our bac
 
 This may include task titles, notes, deadlines, estimated hours, calendar events, availability constraints, plan context, prompts, and similar workflow inputs needed to fulfill the request.
 
-The current backend architecture routes AI traffic through backend-controlled endpoints and may use **OpenRouter** to access supported model providers or model families. Current implementation references include Standard Models and Frontier Models, along with quota, allowance, and usage enforcement.
+AI requests may be routed through backend-controlled services and supported AI providers or routing providers. AI features may depend on model categories, quota, allowance, and usage enforcement.
 
 Some AI-dependent features rely on third-party AI providers, routing providers, or related infrastructure. Those providers may change, fail, become unavailable, return delayed responses, or alter model behavior over time, and the Service does not guarantee continuous availability of AI features.
 
@@ -108,15 +112,19 @@ AI features may also be subject to usage limits, quotas, rate limits, plan restr
 
 The Service may integrate with Calendar, Reminders, notifications, music, or other local/system services when you enable them. Some integrations operate locally; others may involve cloud-backed requests when you explicitly invoke planning, scheduling, or account-based features.
 
+The Service may also offer optional third-party integrations, including Google Calendar and Google Tasks. If you connect Google services, you authorize Orchestrana to access, display, synchronize, create, update, and delete the connected Google Calendar events or Google Tasks as needed to provide the integration and reflect actions you take in the app.
+
+When Google services are connected, Apple Calendar or Apple Reminders sync may be paused to reduce duplicate items and merge conflicts. Disconnecting Google may stop future Google synchronization, but it may not automatically remove items that were already created or changed in Google unless the app provides and completes a specific deletion action.
+
 You remain responsible for verifying any changes, suggested schedules, or calendar actions before relying on them.
 
-We do not guarantee that third-party integrations will always remain available or behave identically over time.
+We do not guarantee that third-party integrations will always remain available, synchronize instantly, remain conflict-free, or behave identically over time.
 
 ---
 
 ## 8. Subscriptions, Paid Features, and Entitlements
 
-Some features may require a paid plan, beta entitlement, or another access tier. We may verify eligibility through platform billing systems, backend entitlement records, subscription verification endpoints, App Store server notifications, or related infrastructure.
+Some features may require a paid plan, beta entitlement, or another access tier. We may verify eligibility through platform billing systems, backend entitlement records, subscription verification, App Store server notifications, or related infrastructure.
 
 If you purchase through Apple or another platform:
 
@@ -132,12 +140,17 @@ For subscriptions purchased through Apple:
 - Subscriptions automatically renew unless canceled at least 24 hours before the end of the current billing period.
 - Your account may be charged for renewal within 24 hours before the end of the current period.
 - You can manage or cancel your subscription through your App Store account settings after purchase.
+- Deleting the app does not cancel your subscription.
+- Refund requests for App Store purchases are handled by Apple except where applicable law requires otherwise.
+- If a free trial or introductory offer is available, it is offered only under the terms shown in the App Store. Unless canceled at least 24 hours before the trial or offer period ends, the subscription may automatically renew as a paid subscription.
 - Pricing may vary by region, currency, taxes, promotions, introductory offers, or platform rules.
 - Access to subscription-gated features depends on your active subscription and verified entitlement status.
 
 We may suspend access to paid features if we reasonably believe there is fraud, abuse, quota manipulation, or an entitlement mismatch.
 
 We may also use backend allowance, quota, and entitlement systems to determine which AI models, AI features, or premium workflows are available to your account.
+
+If you previously purchased a subscription through the App Store, you may use the app's restore purchase option to ask Apple and our entitlement systems to refresh your subscription status. Restoration requires the same Apple ID that made or holds the subscription.
 
 ---
 
@@ -149,6 +162,7 @@ The Service may depend on third-party services, including:
 - Google
 - GitHub
 - Firebase / Google Cloud
+- Google Calendar and Google Tasks
 - OpenRouter
 - AI providers and model routing services
 - Calendar, reminders, music, or other optional integrations
@@ -159,14 +173,7 @@ We are not responsible for outages, latency, degraded responses, policy changes,
 
 This includes sign-in providers such as Google Sign-In, GitHub sign-in, Apple Sign-In, and email/password authentication handled through Firebase Authentication or related providers.
 
-This also includes backend infrastructure and data processors used for:
-
-- Firebase Authentication
-- Firebase Cloud Functions
-- Firestore-backed account, quota, or subscription state
-- App Store subscription verification and server notifications
-- OpenRouter-routed AI requests
-- AI model providers accessed through our routing or provider stack
+This also includes backend infrastructure and data processors used for authentication, account state, quota or subscription state, App Store subscription verification and notifications, AI request routing, and AI model provider access.
 
 ---
 
@@ -208,8 +215,9 @@ We do not guarantee that:
 - Schedules, task plans, or recommendations will fit your exact needs
 - Third-party sign-in providers or integrations will always work without interruption
 - Subscription verification, quota counters, or provider APIs will always remain continuously available without delay or incident
+- Your productivity outcomes will improve from using the Service
 
-You are responsible for maintaining backups and for protecting your own device, credentials, and workflow decisions.
+You are responsible for maintaining backups, protecting your own device and credentials, making independent decisions about your work, and reviewing any plans or outputs before relying on them.
 
 ---
 
@@ -237,7 +245,7 @@ Sections that should survive by their nature will survive termination, including
 
 Our data practices are described in the Privacy Policy, which should be read together with these Terms:
 
-- [Privacy Policy](../../website/privacy.html)
+- [Privacy Policy](https://orchestrana.app/privacy)
 
 If there is a conflict between a product description and the Privacy Policy about data handling, the Privacy Policy controls on that topic.
 
@@ -246,6 +254,8 @@ If there is a conflict between a product description and the Privacy Policy abou
 ## 16. Intellectual Property
 
 The Service, excluding your User Content and third-party materials, is owned by us or our licensors and is protected by applicable intellectual property laws.
+
+Orchestrana™ is a trademark of Shenzhen Tushengjin Commercial Services Co., Ltd.
 
 Open-source components are governed by their own licenses, and those licenses control where required.
 
@@ -264,8 +274,8 @@ These Terms are governed by applicable law. If you are a consumer, mandatory rig
 For questions about these Terms:
 
 **Support:** support@orchestrana.app  
-**General:** hello@orchestrana.app  
-**GitHub Issues:** https://github.com/T-1234567890/orchestrana-app/issues  
+**General:** hello@orchestrana.app
+**GitHub Issues:** https://github.com/T-1234567890/orchestrana-app/issues
 **Website:** https://orchestrana.app
 
 ---
