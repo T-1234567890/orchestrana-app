@@ -341,6 +341,7 @@
 "tasks.add_task" = "Add Task";
 "tasks.auto_sync" = "Auto-sync";
 "tasks.auto_sync.description" = "Keep linked tasks updated with Apple Reminders automatically.";
+"tasks.auto_sync.google_description" = "Keep tasks updated with Google Tasks automatically.";
 "tasks.batch.delete_confirmation_body" = "This will remove all selected tasks. This action cannot be undone.";
 "tasks.batch.delete_confirmation_title" = "Delete %d items?";
 "tasks.editor.add_title" = "Add Task";

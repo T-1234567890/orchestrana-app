@@ -15,9 +15,12 @@ struct CalendarView: View {
     @ObservedObject var locationStore: LocationStore
     @ObservedObject var calendarAutoSync: CalendarAutoSync
     @ObservedObject private var featureGate = FeatureGate.shared
+    @ObservedObject private var googleIntegrationManager = GoogleIntegrationManager.shared
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var localizationManager: LocalizationManager
     @Namespace private var rescheduleAnimationNamespace
+    @AppStorage(DeveloperDemoMode.googleVideoDemoModeKey) private var googleVideoDemoMode = false
+    @AppStorage("googleCalendarPausedBannerDismissed") private var isGoogleCalendarPausedBannerDismissed = false
     
     @State private var selectedView: ViewType = .day
     @State private var anchorDate: Date = Date()
@@ -171,6 +174,14 @@ struct CalendarView: View {
             anchorDate = Date()
             calendarAutoSync.visibleRangeDidChange()
         }
+        .onChange(of: googleVideoDemoMode) { _, _ in
+            selectedEventIDs.removeAll()
+            selectedLocalEventID = nil
+            selectedTaskDetailID = nil
+            Task {
+                await loadEvents()
+            }
+        }
         .sheet(isPresented: $showingAddEvent) {
             AddEventSheet(
                 locationStore: locationStore,
@@ -249,7 +260,7 @@ struct CalendarView: View {
             }
         )) {
             if let selectedTaskDetailID,
-               let task = todoStore.items.first(where: { $0.id == selectedTaskDetailID }) {
+               let task = displayedTodoItems.first(where: { $0.id == selectedTaskDetailID }) {
                 CalendarTaskDetailSheet(task: task) {
                     self.selectedTaskDetailID = nil
                 }
@@ -279,7 +290,7 @@ struct CalendarView: View {
         }
         .sheet(isPresented: $showAIAssistant) {
             AIAssistantView(
-                tasks: todoStore.pendingItems,
+                tasks: displayedPendingTodoItems,
                 availableActions: [.breakdown, .planning, .reschedule],
                 isLoading: isRunningAIAssistant || isRescheduling,
                 errorMessage: rescheduleError ?? aiAssistantErrorMessage,
@@ -361,7 +372,7 @@ struct CalendarView: View {
                             calendarAutoSync.visibleRangeDidChange()
                         }
 
-                        if !permissionsManager.isCalendarAuthorized {
+                        if !googleIntegrationManager.isAnyGoogleServiceConnected && !permissionsManager.isCalendarAuthorized {
                             Text(localizationManager.text("calendar.permission_off.badge"))
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.secondary)
@@ -400,12 +411,17 @@ struct CalendarView: View {
                         .help(localizationManager.text("calendar.ai_assistant.reschedule_description"))
 
                         Button {
-                            permissionsManager.refreshCalendarStatus()
-                            Task { await loadEvents() }
+                            Task { await performToolbarSync() }
                         } label: {
-                            Label(localizationManager.text("common.refresh"), systemImage: "arrow.clockwise")
+                            if activeCalendarSyncInProgress {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Label("Sync", systemImage: "arrow.triangle.2.circlepath")
+                            }
                         }
                         .buttonStyle(.bordered)
+                        .disabled(!canUseToolbarSync)
 
                     }
 
@@ -415,7 +431,9 @@ struct CalendarView: View {
                         batchEventActionsBar
                     }
 
-                    if !permissionsManager.isCalendarAuthorized {
+                    if googleIntegrationManager.isAnyGoogleServiceConnected && !isGoogleCalendarPausedBannerDismissed {
+                        googleCalendarPausedBanner
+                    } else if !permissionsManager.isCalendarAuthorized {
                         calendarPermissionBanner
                     }
                 }
@@ -494,6 +512,43 @@ struct CalendarView: View {
         }
     }
 
+    private var googleCalendarPausedBanner: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "link.badge.plus")
+                .font(.title3)
+                .foregroundStyle(.blue)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Apple Calendar sync is paused")
+                    .font(.subheadline.weight(.semibold))
+                Text("Google services are connected. To prevent duplicate events and merge conflicts, Apple Calendar sync will resume after you disconnect Google in Settings.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 12)
+
+            Button {
+                isGoogleCalendarPausedBannerDismissed = true
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(6)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Dismiss")
+        }
+        .padding(12)
+        .background(Color.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.blue.opacity(0.20), lineWidth: 1)
+        }
+    }
+
     private var calendarPermissionMessage: String {
         if permissionsManager.calendarStatus == .denied || permissionsManager.calendarStatus == .restricted {
             return localizationManager.text("calendar.permission_off.denied_body")
@@ -503,52 +558,89 @@ struct CalendarView: View {
 
     private var calendarSyncPanel: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if calendarAutoSync.isSyncing {
-                Label("Calendar sync in progress", systemImage: "arrow.triangle.2.circlepath")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else if let error = calendarAutoSync.lastSyncError, !error.isEmpty {
-                Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-            } else if let lastSyncDate = calendarAutoSync.lastSyncDate {
-                Label("Last synced \(lastSyncDate.formatted(date: .omitted, time: .shortened))", systemImage: "checkmark.circle")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            if googleIntegrationManager.isAnyGoogleServiceConnected {
+                if googleIntegrationManager.isSyncing {
+                    Label("Google sync in progress", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if let error = googleIntegrationManager.lastSyncError, !error.isEmpty {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                } else if let lastSyncDate = googleIntegrationManager.lastSyncDate {
+                    Label("Google last synced \(lastSyncDate.formatted(date: .omitted, time: .shortened))", systemImage: "checkmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                if calendarAutoSync.isSyncing {
+                    Label("Calendar sync in progress", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if let error = calendarAutoSync.lastSyncError, !error.isEmpty {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                } else if let lastSyncDate = calendarAutoSync.lastSyncDate {
+                    Label("Last synced \(lastSyncDate.formatted(date: .omitted, time: .shortened))", systemImage: "checkmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Auto-sync")
                         .font(.subheadline.weight(.medium))
-                    Text("Keep app-linked Calendar tasks synchronized automatically.")
+                    Text(googleIntegrationManager.isAnyGoogleServiceConnected ? "Keep Google Calendar and Google Tasks synchronized automatically." : "Keep app-linked Calendar tasks synchronized automatically.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
-                Button {
-                    Task { await calendarAutoSync.syncNow(refreshVisibleEvents: true) }
-                } label: {
-                    if calendarAutoSync.isSyncing {
-                        ProgressView()
-                            .controlSize(.small)
-                    } else {
-                        Label("Sync Now", systemImage: "arrow.triangle.2.circlepath")
-                    }
+                if googleIntegrationManager.isAnyGoogleServiceConnected {
+                    Toggle("Auto-sync", isOn: $googleIntegrationManager.isAutoSyncEnabled)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .accessibilityLabel("Google auto-sync")
+                        .accessibilityHint("Keep Google Calendar and Google Tasks synchronized automatically.")
+                } else {
+                    Toggle("Auto-sync", isOn: $calendarAutoSync.isAutoSyncEnabled)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .accessibilityLabel("Calendar auto-sync")
+                        .accessibilityHint("Keep app-linked Calendar tasks synchronized automatically.")
+                        .disabled(!permissionsManager.isCalendarAuthorized)
                 }
-                .buttonStyle(.bordered)
-                .disabled(calendarAutoSync.isSyncing || !permissionsManager.isCalendarAuthorized)
-
-                Toggle("Auto-sync", isOn: $calendarAutoSync.isAutoSyncEnabled)
-                    .toggleStyle(.switch)
-                    .labelsHidden()
-                    .accessibilityLabel("Calendar auto-sync")
-                    .accessibilityHint("Keep app-linked Calendar tasks synchronized automatically.")
-                    .disabled(!permissionsManager.isCalendarAuthorized)
             }
         }
+    }
+
+    private var activeCalendarSyncInProgress: Bool {
+        googleIntegrationManager.isAnyGoogleServiceConnected ? googleIntegrationManager.isSyncing : calendarAutoSync.isSyncing
+    }
+
+    private var activeCalendarLoading: Bool {
+        googleIntegrationManager.isCalendarConnected ? false : calendarManager.isLoading
+    }
+
+    private var canUseToolbarSync: Bool {
+        if googleIntegrationManager.isAnyGoogleServiceConnected {
+            return !googleIntegrationManager.isSyncing
+        }
+        return permissionsManager.isCalendarAuthorized && !calendarAutoSync.isSyncing
+    }
+
+    private func performToolbarSync() async {
+        if googleIntegrationManager.isAnyGoogleServiceConnected {
+            await googleIntegrationManager.syncNow()
+            await loadEvents()
+            return
+        }
+
+        permissionsManager.refreshCalendarStatus()
+        await calendarAutoSync.syncNow(refreshVisibleEvents: true)
     }
 
     @ViewBuilder
@@ -580,7 +672,7 @@ struct CalendarView: View {
     }
 
     @ViewBuilder
-    private func eventsContent(maxWidth: CGFloat) -> some View {        if calendarManager.isLoading {
+    private func eventsContent(maxWidth: CGFloat) -> some View {        if activeCalendarLoading {
             ProgressView(localizationManager.text("calendar.loading"))
                 .padding(32)
                 .frame(maxWidth: maxWidth, alignment: .leading)
@@ -591,11 +683,13 @@ struct CalendarView: View {
             case .week:
                 WeekCalendarView(
                     days: daysInWeek(from: anchorDate),
-                    events: calendarManager.events,
-                    localEvents: planningStore.localEvents,
-                    tasks: todoStore.items,
+                    events: displayedCalendarEvents,
+                    localEvents: displayedLocalEvents,
+                    tasks: displayedTodoItems,
                     onSelectLocalEvent: { event in
-                        selectedLocalEventID = event.id
+                        if planningStore.localEvents.contains(where: { $0.id == event.id }) {
+                            selectedLocalEventID = event.id
+                        }
                     }
                 )
                 .frame(maxWidth: maxWidth, alignment: .leading)
@@ -619,10 +713,12 @@ struct CalendarView: View {
     private func monthContent(maxWidth: CGFloat) -> some View {
         CalendarMonthView(
             date: anchorDate,
-            events: calendarManager.events,
-            localEvents: planningStore.localEvents,
+            events: displayedCalendarEvents,
+            localEvents: displayedLocalEvents,
             onSelectLocalEvent: { event in
-                selectedLocalEventID = event.id
+                if planningStore.localEvents.contains(where: { $0.id == event.id }) {
+                    selectedLocalEventID = event.id
+                }
             }
         )
         .frame(maxWidth: maxWidth, alignment: .leading)
@@ -816,7 +912,7 @@ struct CalendarView: View {
 
         let eventStore = SharedEventStore.shared.eventStore
         let defaultCalendar = eventStore.defaultCalendarForNewEvents
-        let canSyncCalendar = permissionsManager.isCalendarAuthorized
+        let canSyncCalendar = permissionsManager.isCalendarAuthorized && !googleIntegrationManager.isAnyGoogleServiceConnected
 
         for entry in response.schedule {
             guard let taskID = UUID(uuidString: entry.taskId),
@@ -934,7 +1030,7 @@ struct CalendarView: View {
         guard let preferredDayEnd = Calendar.current.date(byAdding: .day, value: 1, to: schedulingStart),
               let schedulingRangeEnd = Calendar.current.date(byAdding: .day, value: 2, to: schedulingStart) else { return }
 
-        let calendarEvents = permissionsManager.isCalendarAuthorized
+        let calendarEvents = permissionsManager.isCalendarAuthorized && !googleIntegrationManager.isAnyGoogleServiceConnected
             ? calendarManager.readEvents(from: schedulingStart, to: schedulingRangeEnd)
             : []
         let schedulableTasks = tasksRelevantForTodayReschedule(
@@ -1149,6 +1245,10 @@ struct CalendarView: View {
     }
     
     private func loadEvents() async {
+        if googleIntegrationManager.isCalendarConnected {
+            return
+        }
+
         switch selectedView {
         case .day:
             await calendarManager.fetchDayEvents(for: anchorDate)
@@ -1776,12 +1876,15 @@ struct CalendarView: View {
     private func createLocalEvent(from task: TodoItem) {
         guard let start = task.dueDate else { return }
         let duration = task.durationMinutes ?? 30
-        _ = planningStore.addLocalEvent(
+        let item = planningStore.addLocalEvent(
             title: task.title,
             notes: task.notes,
             startDate: start,
             endDate: start.addingTimeInterval(Double(duration * 60))
         )
+        Task {
+            await googleIntegrationManager.syncLocalCalendarEvent(item, planningStore: planningStore)
+        }
     }
 
     private func enableEventTasks(for item: PlanningItem) {
@@ -1798,7 +1901,10 @@ struct CalendarView: View {
     }
 
     private func duplicateLocalEvent(_ item: PlanningItem) {
-        _ = planningStore.duplicateLocalEvent(item)
+        guard let duplicate = planningStore.duplicateLocalEvent(item) else { return }
+        Task {
+            await googleIntegrationManager.syncLocalCalendarEvent(duplicate, planningStore: planningStore)
+        }
     }
 
     private func beginMoveSystemEvent(_ event: EKEvent) {
@@ -1845,6 +1951,9 @@ struct CalendarView: View {
         case .localEvent(let id):
             guard let item = planningStore.items.first(where: { $0.id == id }) else { return }
             planningStore.moveEvent(item, to: moveTargetDate)
+            if let updated = planningStore.items.first(where: { $0.id == id }) {
+                await googleIntegrationManager.syncLocalCalendarEvent(updated, planningStore: planningStore)
+            }
         case .task(let id):
             guard let item = todoStore.items.first(where: { $0.id == id }) else { return }
             var updated = item
@@ -1865,7 +1974,8 @@ struct CalendarView: View {
                 batchEventWarning = localizationManager.format("calendar.error.delete_all_failed", error.localizedDescription)
             }
         case .localEvent(let id):
-            guard let item = planningStore.items.first(where: { $0.id == id }) else { return }
+            guard let item = displayedLocalEvents.first(where: { $0.id == id }) else { return }
+            await googleIntegrationManager.deleteGoogleCalendarEventIfNeeded(item)
             planningStore.deleteTask(item)
         }
     }
@@ -2011,15 +2121,71 @@ struct CalendarView: View {
 
     // MARK: - Data helpers
 
+    private var isGoogleVideoDemoModeEnabled: Bool {
+        DeveloperDemoMode.isGoogleVideoDemoModeEnabled(tier: featureGate.tier, storedValue: googleVideoDemoMode)
+    }
+
+    private var displayedCalendarEvents: [EKEvent] {
+        if isGoogleVideoDemoModeEnabled || googleIntegrationManager.isCalendarConnected {
+            return []
+        }
+        return calendarManager.events.filter {
+            DeveloperDemoMode.isSystemEventVisible(
+                identifier: $0.eventIdentifier,
+                tier: featureGate.tier,
+                storedValue: googleVideoDemoMode
+            )
+        }
+    }
+
+    private var displayedLocalEvents: [PlanningItem] {
+        let events: [PlanningItem]
+        if googleIntegrationManager.isCalendarConnected {
+            events = planningStore.localEvents + displayedGoogleSyncedEvents
+        } else {
+            events = planningStore.localEvents
+        }
+        return deduplicatedPlanningEvents(
+            DeveloperDemoMode.visiblePlanningItems(events, tier: featureGate.tier, storedValue: googleVideoDemoMode)
+        )
+    }
+
+    private var displayedTodoItems: [TodoItem] {
+        DeveloperDemoMode.visibleTasks(todoStore.items, tier: featureGate.tier, storedValue: googleVideoDemoMode)
+    }
+
+    private var displayedPendingTodoItems: [TodoItem] {
+        DeveloperDemoMode.visibleTasks(todoStore.pendingItems, tier: featureGate.tier, storedValue: googleVideoDemoMode)
+    }
+
+    private var displayedGoogleSyncedEvents: [PlanningItem] {
+        deduplicatedPlanningEvents(googleIntegrationManager.calendarEvents + planningStore.googleSyncedEvents)
+            .sorted { ($0.startDate ?? .distantPast) < ($1.startDate ?? .distantPast) }
+    }
+
+    private func deduplicatedPlanningEvents(_ events: [PlanningItem]) -> [PlanningItem] {
+        var seen = Set<String>()
+        return events.filter { event in
+            let key = event.googleSyncIdentifier ?? event.id.uuidString
+            return seen.insert(key).inserted
+        }
+    }
+
     private func events(for day: Date) -> [EKEvent] {
         let calendar = Calendar.current
-        return calendarManager.events
+        return displayedCalendarEvents
             .filter { calendar.isDate($0.startDate, inSameDayAs: day) }
             .sorted { $0.startDate < $1.startDate }
     }
 
     private func localEvents(for day: Date) -> [PlanningItem] {
-        planningStore.localEvents(on: day)
+        let calendar = Calendar.current
+        return displayedLocalEvents
+            .filter { item in
+                guard let start = item.startDate else { return false }
+                return calendar.isDate(start, inSameDayAs: day)
+            }
+            .sorted { ($0.startDate ?? .distantPast) < ($1.startDate ?? .distantPast) }
     }
 
     private enum DayEventBlock: Identifiable {
@@ -2052,7 +2218,7 @@ struct CalendarView: View {
 
     private func tasks(for day: Date) -> [TodoItem] {
         let calendar = Calendar.current
-        return todoStore.items.filter { item in
+        return displayedTodoItems.filter { item in
             guard !item.isCompleted else { return false }
             if let due = item.dueDate {
                 return calendar.isDate(due, inSameDayAs: day)
@@ -2137,7 +2303,7 @@ struct CalendarView: View {
 
         let eventStore = SharedEventStore.shared.eventStore
         let defaultCalendar = eventStore.defaultCalendarForNewEvents
-        let canSyncCalendar = permissionsManager.isCalendarAuthorized
+        let canSyncCalendar = permissionsManager.isCalendarAuthorized && !googleIntegrationManager.isAnyGoogleServiceConnected
         let originalTasksByID = Dictionary(uniqueKeysWithValues: originalTasks.map { ($0.id, $0) })
         var restoredEvents: [CalendarEventSnapshot] = []
         var restoredEventIDs: Set<String> = []
@@ -2285,13 +2451,14 @@ struct CalendarView: View {
             return
         }
 
-        _ = planningStore.addLocalEvent(
+        let item = planningStore.addLocalEvent(
             title: trimmedTitle,
             notes: newEventNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : newEventNotes,
             startDate: newEventStart,
             endDate: endDate,
             locationID: newEventLocationID
         )
+        await googleIntegrationManager.syncLocalCalendarEvent(item, planningStore: planningStore)
         addEventError = nil
         showingAddEvent = false
     }
@@ -2322,6 +2489,9 @@ struct CalendarView: View {
                 }
                 selectedLocalEventID = newValue.id
                 planningStore.updateTask(newValue)
+                Task {
+                    await googleIntegrationManager.syncLocalCalendarEvent(newValue, planningStore: planningStore)
+                }
             }
         )
     }

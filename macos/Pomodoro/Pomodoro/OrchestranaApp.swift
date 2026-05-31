@@ -8,7 +8,6 @@
 import SwiftUI
 import AppKit
 import FirebaseCore
-import FirebaseAppCheck
 
 enum ClientLog {
     static func debug(_ message: @autoclosure () -> String) {
@@ -21,20 +20,6 @@ enum ClientLog {
 #if DEBUG
         let nsError = error as NSError
         print("\(prefix): [\(nsError.domain):\(nsError.code)]")
-#endif
-    }
-}
-
-private final class OrchestranaAppCheckProviderFactory: NSObject, AppCheckProviderFactory {
-    func createProvider(with app: FirebaseApp) -> AppCheckProvider? {
-#if DEBUG
-        return AppCheckDebugProvider(app: app)
-#else
-        if #available(macOS 14.0, *) {
-            return AppAttestProvider(app: app)
-        }
-        ClientLog.debug("[Firebase] App Check is unavailable on this OS version.")
-        return nil
 #endif
     }
 }
@@ -97,7 +82,6 @@ struct OrchestranaApp: App {
     @StateObject private var flowWindowManager: FlowWindowManager
 
     init() {
-        AppCheck.setAppCheckProviderFactory(OrchestranaAppCheckProviderFactory())
         _ = FirebaseBootstrap.configureIfPossible()
 
         SubscriptionStore.shared.start()
@@ -323,23 +307,118 @@ struct OrchestranaApp: App {
         private func configureWindow(for view: NSView, context: Context) {
             DispatchQueue.main.async {
                 guard let window = view.window else { return }
-                guard context.coordinator.configuredWindow !== window else { return }
-                context.coordinator.configuredWindow = window
-
-                window.identifier = NSUserInterfaceItemIdentifier(OrchestranaApp.mainWindowID)
-                window.collectionBehavior.remove(.fullScreenPrimary)
-                window.collectionBehavior.remove(.fullScreenAuxiliary)
-                window.collectionBehavior.insert(.fullScreenNone)
-                window.delegate = context.coordinator
+                context.coordinator.configure(window)
             }
         }
 
         final class Coordinator: NSObject, NSWindowDelegate {
             weak var configuredWindow: NSWindow?
+            weak var zoomOnlyButton: ZoomOnlyTrafficLightButton?
 
-            func windowWillUseStandardFrame(_ window: NSWindow, defaultFrame newFrame: NSRect) -> NSRect {
-                newFrame
+            func configure(_ window: NSWindow) {
+                if configuredWindow !== window {
+                    zoomOnlyButton?.removeFromSuperview()
+                    zoomOnlyButton = nil
+                    configuredWindow = window
+                    window.delegate = self
+                }
+                window.identifier = NSUserInterfaceItemIdentifier(OrchestranaApp.mainWindowID)
+                window.collectionBehavior = [.fullScreenNone]
+                if let zoomButton = window.standardWindowButton(.zoomButton) {
+                    installZoomOnlyButton(over: zoomButton)
+                }
             }
+
+            private func installZoomOnlyButton(over zoomButton: NSButton) {
+                guard let container = zoomButton.superview else { return }
+
+                zoomButton.isHidden = true
+                let replacement = zoomOnlyButton ?? ZoomOnlyTrafficLightButton(frame: zoomButton.frame)
+                replacement.frame = zoomButton.frame
+                replacement.autoresizingMask = zoomButton.autoresizingMask
+                replacement.target = self
+                replacement.action = #selector(performMainWindowZoom(_:))
+
+                if replacement.superview !== container {
+                    replacement.removeFromSuperview()
+                    container.addSubview(replacement, positioned: .above, relativeTo: zoomButton)
+                }
+                zoomOnlyButton = replacement
+            }
+
+            @objc private func performMainWindowZoom(_ sender: Any?) {
+                configuredWindow?.performZoom(sender)
+            }
+        }
+
+        final class ZoomOnlyTrafficLightButton: NSButton {
+            private var isHovered = false
+
+            override init(frame frameRect: NSRect) {
+                super.init(frame: frameRect)
+                isBordered = false
+                imagePosition = .noImage
+                title = ""
+                toolTip = "Maximize"
+                setButtonType(.momentaryPushIn)
+                setAccessibilityLabel("Maximize")
+            }
+
+            required init?(coder: NSCoder) {
+                super.init(coder: coder)
+                isBordered = false
+                imagePosition = .noImage
+                title = ""
+                toolTip = "Maximize"
+                setButtonType(.momentaryPushIn)
+                setAccessibilityLabel("Maximize")
+            }
+
+            override func updateTrackingAreas() {
+                super.updateTrackingAreas()
+                trackingAreas.forEach(removeTrackingArea)
+                addTrackingArea(NSTrackingArea(
+                    rect: bounds,
+                    options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                    owner: self,
+                    userInfo: nil
+                ))
+            }
+
+            override func mouseEntered(with event: NSEvent) {
+                isHovered = true
+                needsDisplay = true
+            }
+
+            override func mouseExited(with event: NSEvent) {
+                isHovered = false
+                needsDisplay = true
+            }
+
+            override func draw(_ dirtyRect: NSRect) {
+                let diameter = min(bounds.width, bounds.height, 13)
+                let circleRect = NSRect(
+                    x: bounds.midX - diameter / 2,
+                    y: bounds.midY - diameter / 2,
+                    width: diameter,
+                    height: diameter
+                )
+                NSColor(calibratedRed: 0.16, green: 0.78, blue: 0.25, alpha: isEnabled ? 1 : 0.45).setFill()
+                NSBezierPath(ovalIn: circleRect).fill()
+
+                guard isHovered || isHighlighted else { return }
+                let plusPath = NSBezierPath()
+                plusPath.lineWidth = 1.6
+                plusPath.lineCapStyle = .round
+                let inset = diameter * 0.31
+                plusPath.move(to: NSPoint(x: circleRect.minX + inset, y: circleRect.midY))
+                plusPath.line(to: NSPoint(x: circleRect.maxX - inset, y: circleRect.midY))
+                plusPath.move(to: NSPoint(x: circleRect.midX, y: circleRect.minY + inset))
+                plusPath.line(to: NSPoint(x: circleRect.midX, y: circleRect.maxY - inset))
+                NSColor(calibratedWhite: 0, alpha: 0.55).setStroke()
+                plusPath.stroke()
+            }
+
         }
     }
 

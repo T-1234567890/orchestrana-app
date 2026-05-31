@@ -72,7 +72,6 @@ final class FeatureGate: ObservableObject {
         case aiEnabled = "AI_ENABLED"
         case advancedCharts = "ADVANCED_CHARTS"
         case proLayout = "PRO_LAYOUT"
-        case fullscreenMode = "FULLSCREEN_MODE"
     }
 
     enum AnalyticsLevel: String, Codable {
@@ -199,12 +198,13 @@ final class FeatureGate: ObservableObject {
         analyticsLevel == .pro || tier == .pro || tier == .developer
     }
 
-    var canUseFullscreenFlow: Bool {
-        canAccess(.fullscreenMode)
-    }
-
     var canUseCustomFlowBackgrounds: Bool {
-        canUseFullscreenFlow
+        switch tier {
+        case .plus, .pro, .developer:
+            return true
+        case .free, .beta, .expired:
+            return false
+        }
     }
 
     var canUseCustomFlowLayout: Bool {
@@ -679,7 +679,7 @@ final class FeatureGate: ObservableObject {
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        await AppCheckRequestAuthorizer.authorize(&request)
+        await CloudRequestAuthorizer.authorize(&request)
         return request
     }
 
@@ -911,21 +911,18 @@ final class FeatureGate: ObservableObject {
                 .aiEnabled: true,
                 .advancedCharts: true,
                 .proLayout: true,
-                .fullscreenMode: true,
             ]
         case .plus:
             return [
                 .aiEnabled: true,
                 .advancedCharts: true,
                 .proLayout: false,
-                .fullscreenMode: true,
             ]
         case .free, .beta, .expired:
             return [
                 .aiEnabled: false,
                 .advancedCharts: false,
                 .proLayout: false,
-                .fullscreenMode: false,
             ]
         }
     }

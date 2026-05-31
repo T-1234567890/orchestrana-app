@@ -1,5 +1,85 @@
 import Foundation
 
+enum DeveloperDemoMode {
+    static let googleVideoDemoModeKey = "googleVideoDemoMode"
+    private static let baselineActiveKey = "googleVideoDemoMode.baselineActive"
+    private static let baselineTaskIDsKey = "googleVideoDemoMode.baselineTaskIDs"
+    private static let baselinePlanningItemIDsKey = "googleVideoDemoMode.baselinePlanningItemIDs"
+    private static let baselineSystemEventIDsKey = "googleVideoDemoMode.baselineSystemEventIDs"
+
+    static func isGoogleVideoDemoModeEnabled(tier: FeatureGate.Tier, storedValue: Bool) -> Bool {
+        tier == .developer && storedValue
+    }
+
+    static func recordBaseline(
+        tasks: [TodoItem],
+        planningItems: [PlanningItem],
+        systemEventIDs: [String]
+    ) {
+        let defaults = UserDefaults.standard
+        defaults.set(tasks.map { $0.id.uuidString }, forKey: baselineTaskIDsKey)
+        defaults.set(planningItems.map { $0.googleSyncIdentifier ?? $0.id.uuidString }, forKey: baselinePlanningItemIDsKey)
+        defaults.set(systemEventIDs, forKey: baselineSystemEventIDsKey)
+        defaults.set(true, forKey: baselineActiveKey)
+    }
+
+    static func clearBaseline() {
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: baselineActiveKey)
+        defaults.removeObject(forKey: baselineTaskIDsKey)
+        defaults.removeObject(forKey: baselinePlanningItemIDsKey)
+        defaults.removeObject(forKey: baselineSystemEventIDsKey)
+    }
+
+    static var hasBaseline: Bool {
+        UserDefaults.standard.bool(forKey: baselineActiveKey)
+    }
+
+    static func visibleTasks(_ items: [TodoItem], tier: FeatureGate.Tier, storedValue: Bool) -> [TodoItem] {
+        guard isGoogleVideoDemoModeEnabled(tier: tier, storedValue: storedValue) else {
+            return items
+        }
+        let baselineIDs = stringSet(forKey: baselineTaskIDsKey)
+        return items.filter { !baselineIDs.contains($0.id.uuidString) }
+    }
+
+    static func isTaskVisible(_ item: TodoItem, tier: FeatureGate.Tier, storedValue: Bool) -> Bool {
+        guard isGoogleVideoDemoModeEnabled(tier: tier, storedValue: storedValue) else {
+            return true
+        }
+        return !stringSet(forKey: baselineTaskIDsKey).contains(item.id.uuidString)
+    }
+
+    static func visiblePlanningItems(_ items: [PlanningItem], tier: FeatureGate.Tier, storedValue: Bool) -> [PlanningItem] {
+        guard isGoogleVideoDemoModeEnabled(tier: tier, storedValue: storedValue) else {
+            return items
+        }
+        let baselineIDs = stringSet(forKey: baselinePlanningItemIDsKey)
+        return items.filter { !baselineIDs.contains(planningItemIdentity($0)) }
+    }
+
+    static func isSystemEventVisible(identifier: String?, tier: FeatureGate.Tier, storedValue: Bool) -> Bool {
+        guard isGoogleVideoDemoModeEnabled(tier: tier, storedValue: storedValue),
+              let identifier else {
+            return true
+        }
+        return !stringSet(forKey: baselineSystemEventIDsKey).contains(identifier)
+    }
+
+    private static func planningItemIdentity(_ item: PlanningItem) -> String {
+        item.googleSyncIdentifier ?? item.id.uuidString
+    }
+
+    private static func stringSet(forKey key: String) -> Set<String> {
+        Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+    }
+}
+
+enum GoogleSyncIdentifierPrefix {
+    static let task = "google-task:"
+    static let calendar = "google-calendar:"
+}
+
 struct TodoSubtask: Identifiable, Codable, Equatable {
     let id: UUID
     var title: String
@@ -232,5 +312,11 @@ struct TodoItem: Identifiable, Codable, Equatable {
     var lastModified: Date {
         get { modifiedAt }
         set { modifiedAt = newValue }
+    }
+
+    var isGoogleSynced: Bool {
+        reminderIdentifier?.hasPrefix(GoogleSyncIdentifierPrefix.task) == true
+            || calendarEventIdentifier?.hasPrefix(GoogleSyncIdentifierPrefix.calendar) == true
+            || linkedCalendarEventId?.hasPrefix(GoogleSyncIdentifierPrefix.calendar) == true
     }
 }

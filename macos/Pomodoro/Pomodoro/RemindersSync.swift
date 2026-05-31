@@ -58,11 +58,15 @@ final class RemindersSync: ObservableObject {
     // MARK: - Sync Operations
     
     var isSyncAvailable: Bool {
-        permissionsManager.isRemindersAuthorized
+        permissionsManager.isRemindersAuthorized && !GoogleIntegrationManager.shared.isAnyGoogleServiceConnected
     }
     
     /// Sync a single task by invoking the unified reminders sync.
     func syncTask(_ item: TodoItem) async throws {
+        guard !GoogleIntegrationManager.shared.isAnyGoogleServiceConnected else {
+            lastSyncError = "Apple Reminders sync is paused while Google services are connected."
+            return
+        }
         beginSyncOperation()
         defer { endSyncOperation() }
         
@@ -80,6 +84,10 @@ final class RemindersSync: ObservableObject {
     
     /// Unified sync for all tasks (delegates to SyncEngine).
     func syncAllTasks() async {
+        guard !GoogleIntegrationManager.shared.isAnyGoogleServiceConnected else {
+            lastSyncError = "Apple Reminders sync is paused while Google services are connected."
+            return
+        }
         beginSyncOperation()
         defer { endSyncOperation() }
         
@@ -103,6 +111,10 @@ final class RemindersSync: ObservableObject {
 
     /// Re-read one linked Apple Reminder into its local task.
     func resynchronizeTaskFromReminder(_ item: TodoItem) async throws {
+        guard !GoogleIntegrationManager.shared.isAnyGoogleServiceConnected else {
+            lastSyncError = "Apple Reminders sync is paused while Google services are connected."
+            return
+        }
         guard item.reminderIdentifier != nil else { return }
 
         beginSyncOperation()
@@ -130,6 +142,10 @@ final class RemindersSync: ObservableObject {
     
     /// Delete reminder from Apple Reminders via SyncEngine.
     func deleteReminder(_ item: TodoItem) async throws {
+        guard !GoogleIntegrationManager.shared.isAnyGoogleServiceConnected else {
+            lastSyncError = "Apple Reminders sync is paused while Google services are connected."
+            return
+        }
         beginSyncOperation()
         defer { endSyncOperation() }
 
@@ -162,7 +178,7 @@ final class RemindersSync: ObservableObject {
     }
 
     private func configureAutoSyncBehavior() {
-        guard isAutoSyncEnabled else {
+        guard isAutoSyncEnabled, !GoogleIntegrationManager.shared.isAnyGoogleServiceConnected else {
             stopAutoSync()
             return
         }
@@ -197,6 +213,7 @@ final class RemindersSync: ObservableObject {
 
     private func scheduleChangeTriggeredAutoSync(immediate: Bool = false) {
         guard isAutoSyncEnabled else { return }
+        guard !GoogleIntegrationManager.shared.isAnyGoogleServiceConnected else { return }
         guard shouldHandleChangeTriggeredSync() else { return }
         changeTriggeredSyncTask?.cancel()
         changeTriggeredSyncTask = Task { [weak self] in
@@ -212,6 +229,7 @@ final class RemindersSync: ObservableObject {
 
     private func scheduleReminderStoreChangeSync() {
         guard isAutoSyncEnabled else { return }
+        guard !GoogleIntegrationManager.shared.isAnyGoogleServiceConnected else { return }
         guard isSyncAvailable else { return }
         guard shouldHandleChangeTriggeredSync() else { return }
         remindersChangeSyncTask?.cancel()
@@ -225,6 +243,10 @@ final class RemindersSync: ObservableObject {
 
     private func triggerAutoSync(reason: String) async {
         guard isAutoSyncEnabled else { return }
+        guard !GoogleIntegrationManager.shared.isAnyGoogleServiceConnected else {
+            lastSyncError = "Apple Reminders sync is paused while Google services are connected."
+            return
+        }
         guard isSyncAvailable else {
             lastSyncError = LocalizationManager.shared.text("tasks.sync.auto_requires_reminders_access")
             return

@@ -3,38 +3,54 @@ import SwiftUI
 struct EisenhowerMatrixView: View {
     let tasks: [TodoItem]
     let onSelectTask: (TodoItem) -> Void
-
-    private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
-    ]
+    @State private var topRowHeight: CGFloat = 180
+    @State private var bottomRowHeight: CGFloat = 180
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 12) {
-            quadrantCard(
-                title: "Do First",
-                subtitle: "Important • Urgent",
-                color: .red,
-                tasks: tasks.filter { $0.matrixQuadrant == .doFirst }
-            )
-            quadrantCard(
-                title: "Schedule",
-                subtitle: "Important • Not Urgent",
-                color: .blue,
-                tasks: tasks.filter { $0.matrixQuadrant == .schedule }
-            )
-            quadrantCard(
-                title: "Delegate",
-                subtitle: "Not Important • Urgent",
-                color: .orange,
-                tasks: tasks.filter { $0.matrixQuadrant == .delegate }
-            )
-            quadrantCard(
-                title: "Eliminate",
-                subtitle: "Not Important • Not Urgent",
-                color: .gray,
-                tasks: tasks.filter { $0.matrixQuadrant == .eliminate }
-            )
+        VStack(spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                quadrantCard(
+                    title: "Do First",
+                    subtitle: "Important • Urgent",
+                    color: .red,
+                    tasks: tasks.filter { $0.matrixQuadrant == .doFirst }
+                )
+                .readHeight { topRowHeight = max(topRowHeight, $0) }
+                .frame(height: topRowHeight)
+
+                quadrantCard(
+                    title: "Schedule",
+                    subtitle: "Important • Not Urgent",
+                    color: .blue,
+                    tasks: tasks.filter { $0.matrixQuadrant == .schedule }
+                )
+                .readHeight { topRowHeight = max(topRowHeight, $0) }
+                .frame(height: topRowHeight)
+            }
+
+            HStack(alignment: .top, spacing: 12) {
+                quadrantCard(
+                    title: "Delegate",
+                    subtitle: "Not Important • Urgent",
+                    color: .orange,
+                    tasks: tasks.filter { $0.matrixQuadrant == .delegate }
+                )
+                .readHeight { bottomRowHeight = max(bottomRowHeight, $0) }
+                .frame(height: bottomRowHeight)
+
+                quadrantCard(
+                    title: "Eliminate",
+                    subtitle: "Not Important • Not Urgent",
+                    color: .gray,
+                    tasks: tasks.filter { $0.matrixQuadrant == .eliminate }
+                )
+                .readHeight { bottomRowHeight = max(bottomRowHeight, $0) }
+                .frame(height: bottomRowHeight)
+            }
+        }
+        .onChange(of: tasks) { _, _ in
+            topRowHeight = 180
+            bottomRowHeight = 180
         }
     }
 
@@ -86,6 +102,26 @@ struct EisenhowerMatrixView: View {
                 .stroke(color.opacity(0.25), lineWidth: 1)
         )
         .cornerRadius(12)
+    }
+}
+
+private struct HeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private extension View {
+    func readHeight(_ onChange: @escaping (CGFloat) -> Void) -> some View {
+        background(
+            GeometryReader { proxy in
+                Color.clear
+                    .preference(key: HeightPreferenceKey.self, value: proxy.size.height)
+            }
+        )
+        .onPreferenceChange(HeightPreferenceKey.self, perform: onChange)
     }
 }
 

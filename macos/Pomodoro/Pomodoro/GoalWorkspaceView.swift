@@ -72,6 +72,7 @@ struct GoalWorkspaceView: View {
     @ObservedObject var appState: AppState
 
     @AppStorage(AppearanceMode.appStorageKey) private var appearanceModeRawValue = AppearanceMode.standard.rawValue
+    @AppStorage(DeveloperDemoMode.googleVideoDemoModeKey) private var googleVideoDemoMode = false
     @AppStorage("com.pomodoro.workspace.dynamicGoalAdaptEnabled") private var isDynamicGoalAdaptEnabled = false
     @AppStorage("com.pomodoro.workspace.dynamicGoalAdaptIntervalHours") private var dynamicGoalAdaptIntervalHours = 12
     @AppStorage("com.pomodoro.workspace.lastGoalAdjustmentTimestamp") private var lastGoalAdjustmentTimestamp = 0.0
@@ -1094,6 +1095,14 @@ struct GoalWorkspaceView: View {
         return fractionalFormatter.date(from: value) ?? standardFormatter.date(from: value)
     }
 
+    private var visibleTodoItems: [TodoItem] {
+        DeveloperDemoMode.visibleTasks(todoStore.items, tier: featureGate.tier, storedValue: googleVideoDemoMode)
+    }
+
+    private var visiblePlanningItems: [PlanningItem] {
+        DeveloperDemoMode.visiblePlanningItems(planningStore.items, tier: featureGate.tier, storedValue: googleVideoDemoMode)
+    }
+
     private func draftGoal(from prompt: String) -> GoalDraft {
         let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return GoalDraft() }
@@ -1167,7 +1176,7 @@ struct GoalWorkspaceView: View {
     }
 
     private func goalCreationContextPayload() -> [String: Any] {
-        let tasks = todoStore.items
+        let tasks = visibleTodoItems
             .prefix(40)
             .map { task in
                 [
@@ -1178,7 +1187,7 @@ struct GoalWorkspaceView: View {
                 ]
             }
 
-        let events = planningStore.items
+        let events = visiblePlanningItems
             .filter(\.isCalendarEvent)
             .sorted { ($0.startDate ?? .distantPast) > ($1.startDate ?? .distantPast) }
             .prefix(40)
@@ -1204,7 +1213,7 @@ struct GoalWorkspaceView: View {
             }
 
         let notes = Array(
-            (todoStore.items.compactMap(\.descriptionMarkdown) + planningStore.items.compactMap(\.notes))
+            (visibleTodoItems.compactMap(\.descriptionMarkdown) + visiblePlanningItems.compactMap(\.notes))
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
                 .prefix(30)
@@ -1282,7 +1291,7 @@ struct GoalWorkspaceView: View {
     }
 
     private func smartLinkCandidatesPayload(for goal: GoalRecord) -> [String: Any] {
-        let tasks = todoStore.items
+        let tasks = visibleTodoItems
             .filter { isSmartLinkEligibleTask($0, for: goal) }
             .prefix(40)
             .map { task in
@@ -1294,7 +1303,7 @@ struct GoalWorkspaceView: View {
                 ]
             }
 
-        let events = planningStore.items
+        let events = visiblePlanningItems
             .filter { isSmartLinkEligibleEvent($0, for: goal) }
             .prefix(40)
             .map { event in
@@ -1408,7 +1417,7 @@ struct GoalWorkspaceView: View {
 
     private func goalAdjustmentActivityPayload() -> [String: Any] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? .distantPast
-        let completedTasks = todoStore.items
+        let completedTasks = visibleTodoItems
             .filter { $0.isCompleted && $0.modifiedAt >= cutoff }
             .sorted { $0.modifiedAt > $1.modifiedAt }
             .prefix(40)
@@ -1422,7 +1431,7 @@ struct GoalWorkspaceView: View {
                 ] as [String: Any]
             }
 
-        let events = planningStore.items
+        let events = visiblePlanningItems
             .filter { item in
                 guard item.isCalendarEvent else { return false }
                 return (item.startDate ?? item.endDate ?? Date.distantPast) >= cutoff
@@ -1468,7 +1477,7 @@ struct GoalWorkspaceView: View {
         let tasks = links
             .filter { $0.kind == .task }
             .compactMap { link in
-                todoStore.items.first { $0.id.uuidString == link.targetID }
+                visibleTodoItems.first { $0.id.uuidString == link.targetID }
             }
             .map { task in
                 [
@@ -1482,7 +1491,7 @@ struct GoalWorkspaceView: View {
         let events = links
             .filter { $0.kind == .event }
             .compactMap { link in
-                planningStore.items.first { $0.id.uuidString == link.targetID }
+                visiblePlanningItems.first { $0.id.uuidString == link.targetID }
             }
             .map { event in
                 [
@@ -1560,7 +1569,7 @@ struct GoalWorkspaceView: View {
 
         var scored: [(suggestion: GoalSmartLinkSuggestion, score: Int)] = []
 
-        for task in todoStore.items where isSmartLinkEligibleTask(task, for: goal) {
+        for task in visibleTodoItems where isSmartLinkEligibleTask(task, for: goal) {
             let score = overlapScore(goalWords, searchWords([task.title, task.descriptionMarkdown ?? "", task.tags.joined(separator: " ")].joined(separator: " ")))
             if score > 0 {
                 scored.append((
@@ -1576,7 +1585,7 @@ struct GoalWorkspaceView: View {
             }
         }
 
-        for event in planningStore.items where isSmartLinkEligibleEvent(event, for: goal) {
+        for event in visiblePlanningItems where isSmartLinkEligibleEvent(event, for: goal) {
             let score = overlapScore(goalWords, searchWords([event.title, event.notes ?? ""].joined(separator: " ")))
             if score > 0 {
                 scored.append((
@@ -1661,7 +1670,7 @@ struct GoalWorkspaceView: View {
         let taskIDs = links
             .filter { $0.kind == .task }
             .compactMap { UUID(uuidString: $0.targetID) }
-        let relatedTasks = todoStore.items.filter { taskIDs.contains($0.id) }
+        let relatedTasks = visibleTodoItems.filter { taskIDs.contains($0.id) }
         let sessionIDs = links
             .filter { $0.kind == .session }
             .compactMap { UUID(uuidString: $0.targetID) }
@@ -1683,7 +1692,7 @@ struct GoalWorkspaceView: View {
             let sessionCount = links.filter { $0.kind == .session }.count
             return sessionCount > 0 ? "\(sessionCount) related focus sessions" : nil
         }
-        let relatedTasks = todoStore.items.filter { taskIDs.contains($0.id) }
+        let relatedTasks = visibleTodoItems.filter { taskIDs.contains($0.id) }
         let completed = relatedTasks.filter(\.isCompleted).count
         return "\(completed)/\(relatedTasks.count) related tasks complete"
     }
@@ -1692,13 +1701,13 @@ struct GoalWorkspaceView: View {
         switch link.kind {
         case .task:
             guard let id = UUID(uuidString: link.targetID),
-                  let task = todoStore.items.first(where: { $0.id == id }) else {
+                  let task = visibleTodoItems.first(where: { $0.id == id }) else {
                 return "Missing task"
             }
             return task.title
         case .event:
             guard let id = UUID(uuidString: link.targetID),
-                  let item = planningStore.items.first(where: { $0.id == id }) else {
+                  let item = visiblePlanningItems.first(where: { $0.id == id }) else {
                 return "Missing event"
             }
             return item.title
@@ -1717,7 +1726,7 @@ struct GoalWorkspaceView: View {
             return "Task"
         case .event:
             guard let id = UUID(uuidString: link.targetID),
-                  let item = planningStore.items.first(where: { $0.id == id }),
+                  let item = visiblePlanningItems.first(where: { $0.id == id }),
                   let startDate = item.startDate else {
                 return "Event"
             }
@@ -1734,7 +1743,7 @@ struct GoalWorkspaceView: View {
     private func sessionTitle(_ session: SessionRecord) -> String {
         let taskTitle: String
         if let taskId = session.taskId,
-           let task = todoStore.items.first(where: { $0.id == taskId }) {
+           let task = visibleTodoItems.first(where: { $0.id == taskId }) {
             taskTitle = task.title
         } else {
             taskTitle = session.sessionType == .focus ? "Focus session" : session.sessionType.rawValue.capitalized

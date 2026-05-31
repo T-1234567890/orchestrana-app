@@ -160,3 +160,18 @@ struct PlanningItem: Identifiable, Codable, Equatable {
         try container.encodeIfPresent(locationID, forKey: .locationID)
     }
 }
+
+extension PlanningItem {
+    var googleSyncIdentifier: String? {
+        [sourceID, calendarEventIdentifier, linkedCalendarEventId, reminderIdentifier]
+            .compactMap { $0 }
+            .first { identifier in
+                identifier.hasPrefix(GoogleSyncIdentifierPrefix.calendar)
+                    || identifier.hasPrefix(GoogleSyncIdentifierPrefix.task)
+            }
+    }
+
+    var isGoogleSynced: Bool {
+        googleSyncIdentifier != nil
+    }
+}

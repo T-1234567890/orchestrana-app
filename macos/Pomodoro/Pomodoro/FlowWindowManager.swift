@@ -7,7 +7,6 @@ final class FlowWindowManager: ObservableObject {
     private static let flowWindowIdentifier = NSUserInterfaceItemIdentifier("PomodoroFlowWindow")
 
     enum PremiumFeature: String, Identifiable {
-        case fullscreen
         case customBackground
 
         var id: String { rawValue }
@@ -89,18 +88,6 @@ final class FlowWindowManager: ObservableObject {
         }
     }
 
-    func toggleFlowFullscreen() {
-        if isFullscreenPresentation {
-            leaveFullscreen()
-        } else {
-            Task { @MainActor [weak self] in
-                await self?.requestPremiumFeature(.fullscreen) {
-                    self?.enterFullscreen()
-                }
-            }
-        }
-    }
-
     func requestCustomBackgroundImage() {
         Task { @MainActor [weak self] in
             await self?.requestCustomBackgroundAccess {
@@ -126,11 +113,7 @@ final class FlowWindowManager: ObservableObject {
     }
 
     func dismissPremiumPreview() {
-        let preview = activePremiumPreview
         clearPremiumPreview()
-        if preview == .fullscreen {
-            leaveFullscreen()
-        }
     }
 
     func completePremiumPreviewIfUnlocked() {
@@ -235,6 +218,7 @@ final class FlowWindowManager: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
+                (window as? FlowWindow)?.allowsProgrammaticFullscreenToggle = false
                 self?.isFullscreenPresentation = true
             }
         }
@@ -246,6 +230,7 @@ final class FlowWindowManager: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
+                (window as? FlowWindow)?.allowsProgrammaticFullscreenToggle = false
                 self.isFullscreenPresentation = false
                 if self.closeAfterFullscreenExit {
                     self.closeAfterFullscreenExit = false
@@ -317,7 +302,6 @@ final class FlowWindowManager: ObservableObject {
         let flowWindow = window as? FlowWindow
         flowWindow?.allowsProgrammaticFullscreenToggle = true
         window.toggleFullScreen(nil)
-        flowWindow?.allowsProgrammaticFullscreenToggle = false
     }
 
     private func leaveFullscreen() {
@@ -326,6 +310,7 @@ final class FlowWindowManager: ObservableObject {
             return
         }
         closeAfterFullscreenExit = false
+        (window as? FlowWindow)?.allowsProgrammaticFullscreenToggle = true
         window.toggleFullScreen(nil)
     }
 
@@ -350,10 +335,6 @@ final class FlowWindowManager: ObservableObject {
     private func requestCustomBackgroundAccess(
         onAuthorized: @escaping @MainActor () -> Void
     ) async {
-        guard isFullscreenPresentation else {
-            activePremiumPreview = .customBackground
-            return
-        }
         guard let authViewModel else { return }
 
         await authViewModel.preparePurchaseReadiness()
@@ -370,8 +351,6 @@ final class FlowWindowManager: ObservableObject {
 
     private func hasAccess(to feature: PremiumFeature) -> Bool {
         switch feature {
-        case .fullscreen:
-            return FeatureGate.shared.canUseFullscreenFlow
         case .customBackground:
             return FeatureGate.shared.canUseCustomFlowBackgrounds
         }
@@ -379,18 +358,8 @@ final class FlowWindowManager: ObservableObject {
 
     private func startPremiumPreview(for feature: PremiumFeature) {
         premiumPreviewTask?.cancel()
-        activePremiumPreview = nil
-
-        premiumPreviewTask = Task { @MainActor [weak self] in
-            if feature == .fullscreen {
-                self?.enterFullscreen()
-            }
-            try? await Task.sleep(for: .milliseconds(700))
-            guard let self else { return }
-            guard !Task.isCancelled else { return }
-            guard !self.hasAccess(to: feature) else { return }
-            self.activePremiumPreview = feature
-        }
+        premiumPreviewTask = nil
+        activePremiumPreview = feature
     }
 
     private func clearPremiumPreview() {

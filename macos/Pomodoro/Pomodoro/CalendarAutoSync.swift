@@ -63,6 +63,10 @@ final class CalendarAutoSync: ObservableObject {
     }
 
     func syncNow(refreshVisibleEvents: Bool = true) async {
+        guard !isAppleCalendarSyncPausedByGoogle else {
+            lastSyncError = "Apple Calendar sync is paused while Google services are connected."
+            return
+        }
         await triggerSync(reason: "manual", refreshVisibleEvents: refreshVisibleEvents, retryOnFailure: false)
     }
 
@@ -71,12 +75,17 @@ final class CalendarAutoSync: ObservableObject {
             .publisher(for: .EKEventStoreChanged)
             .sink { [weak self] _ in
                 guard let self else { return }
+                guard !self.isAppleCalendarSyncPausedByGoogle else { return }
                 self.scheduleVisibleRefresh()
                 self.scheduleChangeTriggeredAutoSync(reason: "calendar-change")
             }
     }
 
     private func configureAutoSyncBehavior() {
+        guard !isAppleCalendarSyncPausedByGoogle else {
+            stopAutoSync()
+            return
+        }
         guard isAutoSyncEnabled else {
             stopAutoSync()
             return
@@ -108,6 +117,7 @@ final class CalendarAutoSync: ObservableObject {
     }
 
     private func scheduleVisibleRefresh(immediate: Bool = false) {
+        guard !isAppleCalendarSyncPausedByGoogle else { return }
         guard permissionsManager.isCalendarAuthorized else { return }
         visibleRefreshTask?.cancel()
         visibleRefreshTask = Task { [weak self] in
@@ -121,6 +131,7 @@ final class CalendarAutoSync: ObservableObject {
     }
 
     private func scheduleChangeTriggeredAutoSync(reason: String, immediate: Bool = false) {
+        guard !isAppleCalendarSyncPausedByGoogle else { return }
         guard isAutoSyncEnabled else { return }
         guard permissionsManager.isCalendarAuthorized else { return }
         guard shouldHandleChangeTriggeredSync() else { return }
@@ -136,6 +147,10 @@ final class CalendarAutoSync: ObservableObject {
     }
 
     private func triggerSync(reason: String, refreshVisibleEvents: Bool, retryOnFailure: Bool) async {
+        guard !isAppleCalendarSyncPausedByGoogle else {
+            lastSyncError = "Apple Calendar sync is paused while Google services are connected."
+            return
+        }
         guard permissionsManager.isCalendarAuthorized else {
             lastSyncError = "Calendar access is required for auto-sync."
             return
@@ -206,5 +221,9 @@ final class CalendarAutoSync: ObservableObject {
 
     private func persistAutoSyncPreference() {
         UserDefaults.standard.set(isAutoSyncEnabled, forKey: autoSyncDefaultsKey)
+    }
+
+    private var isAppleCalendarSyncPausedByGoogle: Bool {
+        GoogleIntegrationManager.shared.isAnyGoogleServiceConnected
     }
 }

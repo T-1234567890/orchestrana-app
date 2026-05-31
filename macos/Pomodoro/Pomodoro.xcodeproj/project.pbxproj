@@ -44,7 +44,6 @@
 		7C7920B62F5C38BE00C588C1 /* FirebaseAppDistribution-Beta in Frameworks */ = {isa = PBXBuildFile; productRef = 7C7920B52F5C38BE00C588C1 /* FirebaseAppDistribution-Beta */; };
 		7C7920B82F5C38BE00C588C1 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 7C7920B72F5C38BE00C588C1 /* FirebaseAuth */; };
 		7C7920BA2F5C38BE00C588C1 /* FirebaseAuthCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 7C7920B92F5C38BE00C588C1 /* FirebaseAuthCombine-Community */; };
-		7C7920BA2F5C38BE00C588C2 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 7C7920B92F5C38BE00C588C2 /* FirebaseAppCheck */; };
 		7C7920BC2F5C38BE00C588C1 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7C7920BB2F5C38BE00C588C1 /* FirebaseCore */; };
 		7C7920BE2F5C38BE00C588C1 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 7C7920BD2F5C38BE00C588C1 /* FirebaseCrashlytics */; };
 		7C7920C02F5C38BE00C588C1 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 7C7920BF2F5C38BE00C588C1 /* FirebaseDatabase */; };
@@ -91,6 +90,7 @@
 		D1A1B00F0000000000000001 /* SettingsPermissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A1B0100000000000000001 /* SettingsPermissionsView.swift */; };
 		D1A1B0110000000000000001 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A1B0120000000000000001 /* SettingsView.swift */; };
 		D1A1B01A0000000000000001 /* CalendarAutoSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A1B01B0000000000000001 /* CalendarAutoSync.swift */; };
+		D1A1B01C0000000000000001 /* GoogleIntegrationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A1B01D0000000000000001 /* GoogleIntegrationManager.swift */; };
 		D2A1B0130000000000000001 /* AcknowledgementsLicensesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2A1B0140000000000000001 /* AcknowledgementsLicensesView.swift */; };
 		D2A1B0150000000000000001 /* GoalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2A1B0160000000000000001 /* GoalStore.swift */; };
 		D2A1B0170000000000000001 /* GoalWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2A1B0180000000000000001 /* GoalWorkspaceView.swift */; };
@@ -181,6 +181,7 @@
 		D1A1B0100000000000000001 /* SettingsPermissionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPermissionsView.swift; sourceTree = "<group>"; };
 		D1A1B0120000000000000001 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		D1A1B01B0000000000000001 /* CalendarAutoSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarAutoSync.swift; sourceTree = "<group>"; };
+		D1A1B01D0000000000000001 /* GoogleIntegrationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleIntegrationManager.swift; sourceTree = "<group>"; };
 		D2A1B0140000000000000001 /* AcknowledgementsLicensesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcknowledgementsLicensesView.swift; sourceTree = "<group>"; };
 		D2A1B0160000000000000001 /* GoalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalStore.swift; sourceTree = "<group>"; };
 		D2A1B0180000000000000001 /* GoalWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalWorkspaceView.swift; sourceTree = "<group>"; };
@@ -215,7 +216,6 @@
 				7C7920B02F5C38BE00C588C1 /* FirebaseAnalyticsCore in Frameworks */,
 				7C5B41642F68065A00C12AA1 /* StoreKit.framework in Frameworks */,
 				7C7920CC2F5C38BE00C588C1 /* FirebasePerformance in Frameworks */,
-				7C7920BA2F5C38BE00C588C2 /* FirebaseAppCheck in Frameworks */,
 				7C7920BA2F5C38BE00C588C1 /* FirebaseAuthCombine-Community in Frameworks */,
 				7C7920C82F5C38BE00C588C1 /* FirebaseFunctionsCombine-Community in Frameworks */,
 				7C7920BE2F5C38BE00C588C1 /* FirebaseCrashlytics in Frameworks */,
@@ -299,6 +299,7 @@
 				D2A1B0200000000000000001 /* LocationStore.swift */,
 				D1A1B00E0000000000000001 /* RemindersSync.swift */,
 				D1A1B01B0000000000000001 /* CalendarAutoSync.swift */,
+				D1A1B01D0000000000000001 /* GoogleIntegrationManager.swift */,
 				B6A2000B2FFD4BD7B90F8AC1 /* ExternalID.swift */,
 				B6A2000C2FFD4BD7B90F8AC1 /* IntentMarkers.swift */,
 				B6A2001E2FFD4BD7B90F8AC1 /* SessionRecordStore.swift */,
@@ -434,7 +435,6 @@
 				7C7920AF2F5C38BE00C588C1 /* FirebaseAnalyticsCore */,
 				7C7920B12F5C38BE00C588C1 /* FirebaseAnalyticsIdentitySupport */,
 				7C7920B52F5C38BE00C588C1 /* FirebaseAppDistribution-Beta */,
-				7C7920B92F5C38BE00C588C2 /* FirebaseAppCheck */,
 				7C7920B72F5C38BE00C588C1 /* FirebaseAuth */,
 				7C7920B92F5C38BE00C588C1 /* FirebaseAuthCombine-Community */,
 				7C7920BB2F5C38BE00C588C1 /* FirebaseCore */,
@@ -568,6 +568,7 @@
 				A1B2C3D60000000000000001 /* TaskMarkdownView.swift in Sources */,
 				D1A1B00D0000000000000001 /* RemindersSync.swift in Sources */,
 				D1A1B01A0000000000000001 /* CalendarAutoSync.swift in Sources */,
+				D1A1B01C0000000000000001 /* GoogleIntegrationManager.swift in Sources */,
 				D1A1B00F0000000000000001 /* SettingsPermissionsView.swift in Sources */,
 				D1A1B0110000000000000001 /* SettingsView.swift in Sources */,
 				D2A1B0130000000000000001 /* AcknowledgementsLicensesView.swift in Sources */,
@@ -781,7 +782,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 2.3.1;
+				MARKETING_VERSION = 2.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.pomodoro.Pomodoro;
 				PRODUCT_NAME = Orchestrana;
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -847,7 +848,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 2.3.1;
+				MARKETING_VERSION = 2.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.pomodoro.Pomodoro;
 				PRODUCT_NAME = Orchestrana;
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -944,11 +945,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 7C7920AC2F5C38BE00C588C1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = "FirebaseAuthCombine-Community";
-		};
-		7C7920B92F5C38BE00C588C2 /* FirebaseAppCheck */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 7C7920AC2F5C38BE00C588C1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAppCheck;
 		};
 		7C7920BB2F5C38BE00C588C1 /* FirebaseCore */ = {
 			isa = XCSwiftPackageProductDependency;

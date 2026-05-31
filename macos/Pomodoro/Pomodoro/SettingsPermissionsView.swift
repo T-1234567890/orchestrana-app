@@ -917,14 +917,14 @@ struct PlansComparisonView: View {
                 "Everything in Free",
                 "AI task drafting",
                 "AI summaries",
-                "Extended task tools"
+                "Custom Flow backgrounds"
             ]
         case .pro:
             return [
                 "Everything in Plus",
                 "Advanced AI models",
                 "Advanced analytics",
-                "Auto fullscreen Flow Mode"
+                "Custom Flow layout"
             ]
         }
     }
@@ -947,8 +947,8 @@ struct PlansComparisonView: View {
         case .advanced:
             return [
                 PlanFeatureRow(title: "Flow mode customization", freeAvailability: .available, plusAvailability: .available, proAvailability: .available),
+                PlanFeatureRow(title: "Custom Flow backgrounds", freeAvailability: .unavailable, plusAvailability: .available, proAvailability: .available),
                 PlanFeatureRow(title: "Advanced analytics", freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available),
-                PlanFeatureRow(title: "Auto fullscreen Flow Mode", freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available),
                 PlanFeatureRow(title: "Markdown tasks & subtasks", freeAvailability: .unavailable, plusAvailability: .available, proAvailability: .available),
                 PlanFeatureRow(title: "Advanced AI models", freeAvailability: .unavailable, plusAvailability: .limited("Standard Models"), proAvailability: .available),
                 PlanFeatureRow(title: "Eisenhower Matrix", freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available)

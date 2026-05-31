@@ -2,50 +2,14 @@ import Foundation
 import AppKit
 import Combine
 import CryptoKit
-import FirebaseAppCheck
 import FirebaseAuth
 import FirebaseCore
 import StoreKit
 
-enum AppCheckRequestAuthorizer {
-    static let headerName = "X-Firebase-AppCheck"
-
-    enum AppCheckError: LocalizedError {
-        case missingToken
-
-        var errorDescription: String? {
-            switch self {
-            case .missingToken:
-                return "App Check token is unavailable."
-            }
-        }
-    }
-
-    static func fetchToken(forceRefresh: Bool = false) async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
-            AppCheck.appCheck().token(forcingRefresh: forceRefresh) { token, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-
-                guard let value = token?.token, !value.isEmpty else {
-                    continuation.resume(throwing: AppCheckError.missingToken)
-                    return
-                }
-
-                continuation.resume(returning: value)
-            }
-        }
-    }
-
+enum CloudRequestAuthorizer {
     static func authorize(_ request: inout URLRequest) async {
-        do {
-            let token = try await fetchToken()
-            request.setValue(token, forHTTPHeaderField: headerName)
-        } catch {
-            ClientLog.debugError("[AppCheck] Token unavailable. Continuing without App Check header", error)
-        }
+        // App Check token requests are intentionally disabled for the macOS client.
+        // The backend currently treats missing App Check as advisory and continues.
     }
 }
 
@@ -140,7 +104,7 @@ final class APIClient {
 
         let token = try await fetchIDToken()
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        await AppCheckRequestAuthorizer.authorize(&request)
+        await CloudRequestAuthorizer.authorize(&request)
 
         return request
     }
@@ -226,7 +190,7 @@ final class AccountDeletionAPIClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        await AppCheckRequestAuthorizer.authorize(&request)
+        await CloudRequestAuthorizer.authorize(&request)
 
         let data: Data
         let response: URLResponse
@@ -333,7 +297,7 @@ final class UserProfileAPIClient {
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        await AppCheckRequestAuthorizer.authorize(&request)
+        await CloudRequestAuthorizer.authorize(&request)
 
         let data: Data
         let response: URLResponse
@@ -542,7 +506,7 @@ final class AIProxyClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        await AppCheckRequestAuthorizer.authorize(&request)
+        await CloudRequestAuthorizer.authorize(&request)
         request.httpBody = bodyData
 
         let data: Data
@@ -747,7 +711,7 @@ final class EventTasksAPIClient {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        await AppCheckRequestAuthorizer.authorize(&request)
+        await CloudRequestAuthorizer.authorize(&request)
         return request
     }
 
@@ -888,7 +852,7 @@ final class SubscriptionAPIClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        await AppCheckRequestAuthorizer.authorize(&request)
+        await CloudRequestAuthorizer.authorize(&request)
         request.httpBody = try JSONEncoder().encode(VerifyRequest(
             transactionId: transactionId,
             originalTransactionId: originalTransactionId,

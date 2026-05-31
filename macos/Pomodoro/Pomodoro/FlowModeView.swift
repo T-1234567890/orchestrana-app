@@ -16,6 +16,8 @@ struct FlowModeView: View {
     @EnvironmentObject private var todoStore: TodoStore
     @EnvironmentObject private var flowWindowManager: FlowWindowManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @AppStorage(AppearanceMode.appStorageKey) private var appearanceModeRawValue = AppearanceMode.standard.rawValue
     @ObservedObject private var featureGate = FeatureGate.shared
     @ObservedObject private var subscriptionStore = SubscriptionStore.shared
     @StateObject private var layoutStore = FlowLayoutStore.shared
@@ -31,8 +33,6 @@ struct FlowModeView: View {
     @State private var sessionDissolve = false
     @State private var timerHovering = false
     @GestureState private var timerPressing = false
-    @State private var fullscreenHovering = false
-    @GestureState private var fullscreenPressing = false
     @State private var exitHovering = false
     @GestureState private var exitPressing = false
     @State private var previewBillingCycle: PlanBillingCycle = .yearly
@@ -98,45 +98,56 @@ struct FlowModeView: View {
 
     // MARK: - UI Sections
 
-    private var topBar: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(localizationManager.text("flow.focus_state"))
+    private func flowStatusChip(compact: Bool) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "circle.dotted")
+                .font(.subheadline.weight(.semibold))
+            if !compact {
+                Text("Flow")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Text(localizationManager.text("flow.calm_time_awareness"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary.opacity(0.8))
             }
-            Spacer()
-            controlGroups
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 38)
+        .flowGlassCapsule(prominent: true)
+    }
+
+    @ViewBuilder
+    private func controlGroups(compact: Bool) -> some View {
+        if #available(macOS 26.0, *), appearanceMode == .glass {
+            GlassEffectContainer(spacing: 10) {
+                controlGroupContent(compact: compact)
+            }
+        } else {
+            controlGroupContent(compact: compact)
         }
     }
 
-    private var controlGroups: some View {
-            HStack(alignment: .center, spacing: 10) {
-                timerControl
-                exitControl
-                fullscreenSettingsControl
-            }
+    private func controlGroupContent(compact: Bool) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            timerControl(compact: compact)
+            exitControl(compact: compact)
+            flowSettingsControl
         }
+        .fixedSize(horizontal: true, vertical: true)
+    }
 
-    private var timerControl: some View {
+    private func timerControl(compact: Bool) -> some View {
         Button {
             handleTimerTap()
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "timer")
                     .font(.title3.weight(.semibold))
-                Text(localizationManager.text("timer.timer"))
-                    .font(.subheadline.weight(.semibold))
+                if !compact {
+                    Text(localizationManager.text("timer.timer"))
+                        .font(.subheadline.weight(.semibold))
+                }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(.ultraThinMaterial)
-            )
+            .padding(.horizontal, compact ? 0 : 12)
+            .frame(minWidth: 38)
+            .frame(height: 38)
+            .flowGlassCapsule(prominent: true, interactive: true)
         }
         .buttonStyle(.plain)
         .scaleEffect(timerScale)
@@ -150,21 +161,21 @@ struct FlowModeView: View {
         .accessibilityLabel(localizationManager.text("flow.accessibility.show_pomodoro_timer"))
     }
 
-    private var exitControl: some View {
+    private func exitControl(compact: Bool) -> some View {
         Button(action: exitAction) {
             HStack(spacing: 6) {
                 Image(systemName: "xmark.circle.fill")
                     .font(.title3.weight(.semibold))
-                Text(localizationManager.text("flow.exit"))
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
+                if !compact {
+                    Text(localizationManager.text("flow.exit"))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(.ultraThinMaterial)
-            )
+            .padding(.horizontal, compact ? 0 : 12)
+            .frame(minWidth: 38)
+            .frame(height: 38)
+            .flowGlassCapsule(prominent: true, interactive: true)
         }
         .buttonStyle(.plain)
         .scaleEffect(exitScale)
@@ -180,83 +191,50 @@ struct FlowModeView: View {
         .accessibilityLabel(localizationManager.text("flow.accessibility.exit_mode"))
     }
 
-    private var fullscreenSettingsControl: some View {
-        Group {
-            if isActiveFullscreenPresentation || featureGate.canUseCustomFlowLayout {
-                HStack(alignment: .center, spacing: 0) {
-                    fullscreenButton
-
-                    Divider()
-                        .frame(height: 20)
-
-                    flowSettingsMenu(label: {
-                        settingsIcon
-                    })
-                }
-            } else {
-                fullscreenButton
-            }
-        }
-        .background(
-            Capsule(style: .continuous)
-                .fill(.ultraThinMaterial)
-        )
-    }
-
-    private var fullscreenButton: some View {
-        Button {
-            handleFullscreenButton()
-        } label: {
-            Image(systemName: "arrow.up.left.and.arrow.down.right")
-                .font(.title3.weight(.semibold))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .scaleEffect(fullscreenScale)
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: fullscreenPressing)
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: fullscreenHovering)
-        .onHover { fullscreenHovering = $0 }
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .updating($fullscreenPressing) { _, state, _ in state = true }
-        )
-        .help(localizationManager.text(isActiveFullscreenPresentation ? "focus.fullscreen.exit" : "focus.fullscreen.enter"))
+    private var flowSettingsControl: some View {
+        flowSettingsMenu(label: {
+            settingsIcon
+                .flowGlassCapsule(prominent: true, interactive: true)
+        })
+        .frame(width: 38, height: 38)
+        .fixedSize()
     }
 
     private var settingsIcon: some View {
         Image(systemName: "gearshape.fill")
             .font(.title3.weight(.semibold))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .frame(width: 38, height: 38)
             .contentShape(Rectangle())
     }
 
     private func flowSettingsMenu<MenuLabel: View>(@ViewBuilder label: () -> MenuLabel) -> some View {
         Menu {
-            if isActiveFullscreenPresentation {
-                Button {
-                    handleChooseImage()
-                } label: {
-                    SwiftUI.Label(localizationManager.text("focus.fullscreen.choose_image"), systemImage: "photo")
-                }
+            Button {
+                handleChooseImage()
+            } label: {
+                SwiftUI.Label(localizationManager.text("focus.fullscreen.choose_image"), systemImage: "photo")
+            }
 
-                Button {
-                    handleChooseFolder()
-                } label: {
-                    SwiftUI.Label(localizationManager.text("focus.fullscreen.choose_folder"), systemImage: "photo.on.rectangle")
-                }
+            Button {
+                handleChooseFolder()
+            } label: {
+                SwiftUI.Label(localizationManager.text("focus.fullscreen.choose_folder"), systemImage: "photo.on.rectangle")
+            }
 
-                Toggle(isOn: autoRotateBinding) {
-                    SwiftUI.Label(localizationManager.text("focus.fullscreen.auto_rotate"), systemImage: "arrow.triangle.2.circlepath")
+            Toggle(isOn: autoRotateBinding) {
+                SwiftUI.Label(localizationManager.text("focus.fullscreen.auto_rotate"), systemImage: "arrow.triangle.2.circlepath")
+            }
+
+            if fullscreenFocusBackdropStore.currentImageURL != nil {
+                Button {
+                    fullscreenFocusBackdropStore.clearBackground()
+                } label: {
+                    SwiftUI.Label("Remove Background", systemImage: "xmark.circle")
                 }
             }
 
             if featureGate.canUseCustomFlowLayout {
-                if isActiveFullscreenPresentation {
-                    Divider()
-                }
+                Divider()
 
                 Toggle(isOn: customLayoutBinding) {
                     SwiftUI.Label("Customize Layout", systemImage: "hand.draw")
@@ -272,7 +250,8 @@ struct FlowModeView: View {
             label()
         }
         .menuStyle(.borderlessButton)
-        .help(localizationManager.text("focus.fullscreen.settings"))
+        .menuIndicator(.hidden)
+        .help("Flow Mode Settings")
     }
 
     private func clockStack(in size: CGSize) -> some View {
@@ -282,9 +261,9 @@ struct FlowModeView: View {
                 Text(wallClockString(for: currentDate))
                     .font(clockFont(for: size))
                     // Fixed neutral tone: Flow clock should not signal urgency or timer state.
-                    .foregroundStyle(Color.primary.opacity(0.9))
+                    .foregroundStyle(flowPrimaryTextColor)
                     .kerning(-0.8)
-                    .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 10)
+                    .shadow(color: flowClockShadowColor, radius: flowClockShadowRadius, x: 0, y: 10)
                     .layoutPriority(1) // keep the clock dominant; prevents compression by surrounding content
                     // Calm numeric morph to reduce tick anxiety.
                     .contentTransition(.numericText())
@@ -317,18 +296,11 @@ struct FlowModeView: View {
                 .animation(secondTickAnimation, value: timerTimeString)
             Text(timerStatusLabel)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(flowSecondaryTextColor)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .background(
-            Capsule(style: .continuous)
-                .fill(Color.primary.opacity(0.05))
-        )
-        .overlay(
-            Capsule(style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.10), lineWidth: 1)
-        )
+        .flowGlassCapsule(prominent: true, interactive: true)
         // Soft dissolve on session changes; keeps interaction live.
         .opacity(sessionOpacity)
         .blur(radius: sessionBlur)
@@ -401,28 +373,28 @@ struct FlowModeView: View {
                 HStack(spacing: 8) {
                     Label(activePlanSourceLabel, systemImage: activePlanSourceIcon)
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(flowSecondaryTextColor)
 
                     if let remaining = appState.currentPlanPomodoros {
                         Text(localizationManager.format("flow.task_strip.pomodoros_left_format", remaining))
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(flowSecondaryTextColor)
                     }
                 }
 
                 Text(currentTaskTitle ?? localizationManager.text("focus.fullscreen.no_task"))
                     .font(.title3.weight(.semibold))
-                    .foregroundStyle(.primary.opacity(0.86))
+                    .foregroundStyle(flowPrimaryTextColor)
                     .lineLimit(1)
                     .truncationMode(.tail)
 
                 HStack(spacing: 6) {
                     Text(localizationManager.text("flow.task_strip.next"))
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(flowSecondaryTextColor)
                     Text(nextPlanTitle)
                         .font(.caption)
-                        .foregroundStyle(.secondary.opacity(0.9))
+                        .foregroundStyle(flowSecondaryTextColor)
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
@@ -471,14 +443,7 @@ struct FlowModeView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(.ultraThinMaterial)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.10), lineWidth: 1)
-        )
+        .flowGlassCard(cornerRadius: 18, prominent: true)
     }
 
     private var nextPlanTitle: String {
@@ -642,10 +607,6 @@ struct FlowModeView: View {
         appState.skipActiveExecutionEntry()
     }
 
-    private func handleFullscreenButton() {
-        flowWindowManager.toggleFlowFullscreen()
-    }
-
     private var flowContent: some View {
         GeometryReader { proxy in
             ZStack(alignment: .top) {
@@ -654,14 +615,30 @@ struct FlowModeView: View {
                 } else {
                     defaultLayoutCanvas(in: proxy.size)
                 }
-
-                topBar
-                    .padding(.horizontal, horizontalChromePadding)
-                    .padding(.top, verticalChromePadding)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .foregroundStyle(contentForegroundStyle)
+            .overlay(alignment: .top) {
+                topChrome(in: proxy.size)
+            }
         }
+    }
+
+    private func topChrome(in size: CGSize) -> some View {
+        let useCompactControls = size.width < 720
+        let useCompactStatus = size.width < 520
+        return HStack(alignment: .center, spacing: 12) {
+            flowStatusChip(compact: useCompactStatus)
+                .layoutPriority(0)
+
+            Spacer(minLength: 12)
+
+            controlGroups(compact: useCompactControls)
+                .layoutPriority(1)
+        }
+        .padding(.horizontal, horizontalChromePadding)
+        .padding(.top, verticalChromePadding)
+        .frame(maxWidth: .infinity, alignment: .top)
     }
 
     private func defaultLayoutCanvas(in size: CGSize) -> some View {
@@ -718,36 +695,25 @@ struct FlowModeView: View {
     private var backgroundMediaLayer: some View {
         if let currentImageURL = flowBackgroundImageURL {
             FullscreenFocusBackdropImage(url: currentImageURL)
+        } else if appearanceMode == .glass {
+            AppBackground()
         } else {
-            Color.clear
+            appearanceMode.mainBackgroundColor(for: colorScheme)
                 .ignoresSafeArea()
         }
     }
 
     @ViewBuilder
     private var backgroundEffectLayer: some View {
-        if let currentImageURL = flowBackgroundImageURL {
-            ZStack {
-                FullscreenFocusBackdropImage(
-                    url: currentImageURL,
-                    opacity: 0.32,
-                    blurRadius: 24,
-                    scale: 1.06
-                )
-                LinearGradient(
-                    colors: [Color.black.opacity(0.30), Color.black.opacity(0.52)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            }
+        if flowBackgroundImageURL != nil {
+            LinearGradient(
+                colors: [Color.black.opacity(0.12), Color.black.opacity(0.24)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
             .ignoresSafeArea()
         } else {
-            ZStack {
-                VisualEffectBlur(material: .hudWindow, blendingMode: .behindWindow)
-                    .ignoresSafeArea()
-                Color.white.opacity(0.04)
-                    .ignoresSafeArea()
-            }
+            EmptyView()
         }
     }
 
@@ -871,14 +837,33 @@ private extension FlowModeView {
         flowWindowManager.isFullscreenPresentation || isFullscreenPresentation
     }
 
+    var appearanceMode: AppearanceMode {
+        AppearanceMode.resolved(from: appearanceModeRawValue)
+    }
+
     var flowBackgroundImageURL: URL? {
-        guard isActiveFullscreenPresentation else { return nil }
         guard featureGate.canUseCustomFlowBackgrounds else { return nil }
         return fullscreenFocusBackdropStore.currentImageURL
     }
 
     var activePremiumPreview: FlowWindowManager.PremiumFeature? {
         flowWindowManager.activePremiumPreview
+    }
+
+    var flowPrimaryTextColor: Color {
+        Color.primary.opacity(0.9)
+    }
+
+    var flowSecondaryTextColor: Color {
+        Color.secondary
+    }
+
+    var flowClockShadowColor: Color {
+        flowBackgroundImageURL == nil ? Color.black.opacity(0.08) : Color.black.opacity(0.42)
+    }
+
+    var flowClockShadowRadius: CGFloat {
+        flowBackgroundImageURL == nil ? 12 : 20
     }
 
     var layoutConfiguration: FlowLayoutConfiguration {
@@ -1037,23 +1022,19 @@ private extension FlowModeView {
 
     var premiumPreviewTitle: String {
         switch activePremiumPreview {
-        case .fullscreen:
-            return localizationManager.text("focus.fullscreen.preview_title")
         case .customBackground:
             return localizationManager.text("focus.background.preview_title")
         case .none:
-            return localizationManager.text("focus.fullscreen.preview_title")
+            return localizationManager.text("focus.background.preview_title")
         }
     }
 
     var premiumPreviewMessage: String {
         switch activePremiumPreview {
-        case .fullscreen:
-            return localizationManager.text("focus.fullscreen.preview_message")
         case .customBackground:
             return localizationManager.text("focus.background.preview_message")
         case .none:
-            return localizationManager.text("focus.fullscreen.preview_message")
+            return localizationManager.text("focus.background.preview_message")
         }
     }
 
@@ -1067,11 +1048,6 @@ private extension FlowModeView {
         return exitPressing ? 0.98 : 1.0
     }
 
-    var fullscreenScale: CGFloat {
-        guard !reduceMotion, !isActiveFullscreenPresentation else { return 1.0 }
-        return fullscreenPressing ? 0.98 : 1.0
-    }
-    
     var flowScale: CGFloat {
         guard !reduceMotion, !isActiveFullscreenPresentation else { return 1.0 }
         return isPresented ? 1.0 : 0.98
@@ -1243,6 +1219,90 @@ private extension View {
         )
         .onPreferenceChange(SizePreferenceKey.self, perform: onChange)
     }
+
+    func flowGlassCapsule(prominent: Bool = false, interactive: Bool = false) -> some View {
+        modifier(FlowGlassSurfaceModifier(shape: Capsule(style: .continuous), prominent: prominent, interactive: interactive))
+    }
+
+    func flowGlassCard(cornerRadius: CGFloat, prominent: Bool = false, interactive: Bool = false) -> some View {
+        modifier(FlowGlassSurfaceModifier(shape: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous), prominent: prominent, interactive: interactive))
+    }
+}
+
+private struct FlowGlassSurfaceModifier<S: InsettableShape>: ViewModifier {
+    @AppStorage(AppearanceMode.appStorageKey) private var appearanceModeRawValue = AppearanceMode.standard.rawValue
+    @Environment(\.colorScheme) private var colorScheme
+
+    let shape: S
+    let prominent: Bool
+    let interactive: Bool
+
+    private var appearanceMode: AppearanceMode {
+        AppearanceMode.resolved(from: appearanceModeRawValue)
+    }
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *), appearanceMode == .glass {
+            if interactive {
+                content.glassEffect(.regular.interactive(), in: shape)
+            } else {
+                content.glassEffect(.regular, in: shape)
+            }
+        } else {
+            fallback(content)
+        }
+    }
+
+    private func fallback(_ content: Content) -> some View {
+        let highlightOpacity = fallbackHighlightOpacity
+        let strokeOpacity = fallbackStrokeOpacity
+        let shadowOpacity = fallbackShadowOpacity
+
+        return content
+            .background(shape.fill(fallbackMaterial))
+            .background(
+                shape.fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(highlightOpacity),
+                            Color.white.opacity(highlightOpacity * 0.38)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+            )
+            .overlay(
+                shape.strokeBorder(Color.white.opacity(strokeOpacity), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(shadowOpacity), radius: prominent ? 22 : 14, x: 0, y: prominent ? 14 : 8)
+    }
+
+    private var fallbackMaterial: Material {
+        appearanceMode == .glass ? .regularMaterial : .thinMaterial
+    }
+
+    private var fallbackHighlightOpacity: Double {
+        if appearanceMode == .glass {
+            return prominent ? 0.24 : 0.16
+        }
+        return colorScheme == .dark ? (prominent ? 0.14 : 0.10) : (prominent ? 0.18 : 0.12)
+    }
+
+    private var fallbackStrokeOpacity: Double {
+        if appearanceMode == .glass {
+            return prominent ? 0.30 : 0.20
+        }
+        return colorScheme == .dark ? (prominent ? 0.18 : 0.12) : (prominent ? 0.24 : 0.16)
+    }
+
+    private var fallbackShadowOpacity: Double {
+        if appearanceMode == .glass {
+            return prominent ? 0.22 : 0.14
+        }
+        return colorScheme == .dark ? (prominent ? 0.20 : 0.12) : (prominent ? 0.10 : 0.06)
+    }
 }
 
 // MARK: - Ambient Audio
@@ -1262,11 +1322,8 @@ private struct AmbientAudioStrip: View {
                 Image(systemName: bottomBarPlaybackIcon)
                     .font(.title3.weight(.semibold))
                     .frame(width: 42, height: 42)
-                    .foregroundStyle(.primary)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(.ultraThinMaterial)
-                    )
+                    .foregroundStyle(primaryTextColor)
+                    .flowGlassCard(cornerRadius: 12, prominent: true)
             }
             .buttonStyle(.plain)
 
@@ -1276,14 +1333,14 @@ private struct AmbientAudioStrip: View {
                 HStack(spacing: 10) {
                 Image(systemName: "slider.horizontal.3")
                     .font(.headline.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(secondaryTextColor)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(localizationManager.text("audio.open_mixer"))
                         .font(.subheadline.weight(.semibold))
                     Text(nowPlayingSubtitle)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(secondaryTextColor)
                         .lineLimit(1)
                 }
 
@@ -1291,7 +1348,7 @@ private struct AmbientAudioStrip: View {
 
                 Image(systemName: "chevron.up")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(secondaryTextColor)
                 }
             }
             .buttonStyle(.plain)
@@ -1299,10 +1356,7 @@ private struct AmbientAudioStrip: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .frame(maxWidth: 360)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.ultraThinMaterial)
-        )
+        .flowGlassCard(cornerRadius: 18, prominent: true)
         .popover(isPresented: $showMixer, arrowEdge: .bottom) {
             FlowAudioMixerPopover()
                 .environmentObject(musicController)
@@ -1314,6 +1368,14 @@ private struct AmbientAudioStrip: View {
 
     private var bottomBarPlaybackIcon: String {
         isBottomBarAudioPlaying ? "pause.fill" : "play.fill"
+    }
+
+    private var primaryTextColor: Color {
+        Color.primary
+    }
+
+    private var secondaryTextColor: Color {
+        Color.secondary
     }
 
     private var isBottomBarAudioPlaying: Bool {
@@ -1755,6 +1817,18 @@ final class FullscreenFocusBackdropStore: ObservableObject {
         pendingSelection = nil
     }
 
+    func clearBackground() {
+        rotationTask?.cancel()
+        rotationTask = nil
+        pendingSelection = nil
+        imageURLs = []
+        currentIndex = 0
+        currentImageURL = nil
+        previewImageURL = nil
+        UserDefaults.standard.removeObject(forKey: Self.imageBookmarkKey)
+        UserDefaults.standard.removeObject(forKey: Self.bookmarkKey)
+    }
+
     func commitPreviewSelectionIfNeeded() async {
         guard let pendingSelection else { return }
         switch pendingSelection {
@@ -1879,7 +1953,7 @@ final class FullscreenFocusBackdropStore: ObservableObject {
     }
 }
 
-private struct FullscreenFocusBackdropImage: View {
+struct FullscreenFocusBackdropImage: View {
     let url: URL
     var opacity: Double = 1.0
     var blurRadius: CGFloat = 0
@@ -1907,7 +1981,16 @@ private struct FullscreenFocusBackdropImage: View {
 
     private func loadImage() async {
         let loadedImage = await Task.detached(priority: .utility) {
-            NSImage(contentsOf: url)
+            let didStartAccessing = url.startAccessingSecurityScopedResource()
+            defer {
+                if didStartAccessing {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+            guard let data = try? Data(contentsOf: url) else {
+                return NSImage(contentsOf: url)
+            }
+            return NSImage(data: data)
         }.value
         await MainActor.run {
             image = loadedImage

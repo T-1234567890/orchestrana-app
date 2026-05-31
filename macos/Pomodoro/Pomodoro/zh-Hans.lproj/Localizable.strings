@@ -341,6 +341,7 @@
 "tasks.add_task" = "添加任务";
 "tasks.auto_sync" = "自动同步";
 "tasks.auto_sync.description" = "自动保持已关联任务与 Apple 提醒事项同步。";
+"tasks.auto_sync.google_description" = "自动保持任务与 Google Tasks 同步。";
 "tasks.batch.delete_confirmation_body" = "这将删除所有已选任务，且无法撤销。";
 "tasks.batch.delete_confirmation_title" = "删除 %d 项？";
 "tasks.editor.add_title" = "添加任务";

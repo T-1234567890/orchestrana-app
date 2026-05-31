@@ -24,6 +24,7 @@ struct MainWindowView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var onboardingState: OnboardingState
     @EnvironmentObject private var flowWindowManager: FlowWindowManager
+    @EnvironmentObject private var fullscreenFocusBackdropStore: FullscreenFocusBackdropStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @ObservedObject private var featureGate = FeatureGate.shared
@@ -74,6 +75,8 @@ struct MainWindowView: View {
     @State private var splitViewVisibility: NavigationSplitViewVisibility = .all
     @State private var selectedSettingsPane: SettingsPane = .general
     @AppStorage(AppearanceMode.appStorageKey) private var appearanceModeRawValue = AppearanceMode.standard.rawValue
+    @AppStorage(DeveloperDemoMode.googleVideoDemoModeKey) private var googleVideoDemoMode = false
+    @State private var isDeveloperDebugExpanded = false
     @State private var settingsSearchText = ""
     @State private var showSettingsPlansSheet = false
     @State private var showAcknowledgementsLicenses = false
@@ -87,6 +90,7 @@ struct MainWindowView: View {
     @StateObject private var remindersSync = RemindersSync(permissionsManager: PermissionsManager.shared)
     @StateObject private var calendarManager = CalendarManager(permissionsManager: PermissionsManager.shared)
     @StateObject private var calendarAutoSync = CalendarAutoSync(permissionsManager: PermissionsManager.shared)
+    @ObservedObject private var googleIntegrationManager = GoogleIntegrationManager.shared
     @ObservedObject private var sessionRecordStore = SessionRecordStore.shared
 
     private enum YourPlansMode: String, Identifiable {
@@ -99,6 +103,15 @@ struct MainWindowView: View {
     var body: some View {
         ZStack(alignment: .top) {
             MainInterfaceBackground()
+            if let activeFlowCustomBackgroundURL {
+                FullscreenFocusBackdropImage(url: activeFlowCustomBackgroundURL)
+                LinearGradient(
+                    colors: [Color.black.opacity(0.18), Color.black.opacity(0.30)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+            }
             navigationShell
             popupOverlay
         }
@@ -486,12 +499,18 @@ struct MainWindowView: View {
             todoStore.attachPlanningStore(planningStore)
             remindersSync.setTodoStore(todoStore)
             calendarAutoSync.setTodoStore(todoStore)
+            googleIntegrationManager.setTodoStore(todoStore)
+            googleIntegrationManager.setPlanningStore(planningStore)
             flowWindowManager.setTodoStore(todoStore)
+            ensureGoogleVideoDemoBaselineIfNeeded()
         }
         .onChange(of: appState.durationConfig) { _, _ in
             syncDurationTexts()
             syncLongBreakInterval()
             syncDashboardPomodoroSessionDefaults()
+        }
+        .onChange(of: featureGate.tier) { _, _ in
+            ensureGoogleVideoDemoBaselineIfNeeded()
         }
         .onChange(of: sidebarSelection) { oldValue, newValue in
             if newValue == .flow {
@@ -592,7 +611,7 @@ struct MainWindowView: View {
 
     private var flowModeView: some View {
         FlowModeView(
-            showsBackgroundLayer: false,
+            showsBackgroundLayer: activeFlowCustomBackgroundURL == nil,
             isFullscreenPresentation: false,
             exitAction: {
                 withAnimation {
@@ -601,6 +620,14 @@ struct MainWindowView: View {
             }
         )
         .environmentObject(todoStore)
+    }
+
+    private var activeFlowCustomBackgroundURL: URL? {
+        guard sidebarSelection == .flow,
+              featureGate.canUseCustomFlowBackgrounds else {
+            return nil
+        }
+        return fullscreenFocusBackdropStore.currentImageURL
     }
 
     private var countdownView: some View {
@@ -1088,8 +1115,12 @@ struct MainWindowView: View {
         case .account:
             AdaptivePageGrid(minimumWidth: 360, spacing: 20) {
                 settingsAccountModule
+                settingsGoogleIntegrationsModule
                 settingsAccountSecurityModule
                 settingsPoliciesModule
+                if featureGate.tier == .developer {
+                    settingsDeveloperDebugModule
+                }
             }
         }
     }
@@ -1176,6 +1207,18 @@ struct MainWindowView: View {
 
     private var currentAppearanceMode: AppearanceMode {
         AppearanceMode.resolved(from: appearanceModeRawValue)
+    }
+
+    private var isGoogleVideoDemoModeEnabled: Bool {
+        DeveloperDemoMode.isGoogleVideoDemoModeEnabled(tier: featureGate.tier, storedValue: googleVideoDemoMode)
+    }
+
+    private var visibleTodoItems: [TodoItem] {
+        DeveloperDemoMode.visibleTasks(todoStore.items, tier: featureGate.tier, storedValue: googleVideoDemoMode)
+    }
+
+    private var visiblePendingTodoItems: [TodoItem] {
+        DeveloperDemoMode.visibleTasks(todoStore.pendingItems, tier: featureGate.tier, storedValue: googleVideoDemoMode)
     }
 
     private func title(for mode: AppearanceMode) -> String {
@@ -1467,6 +1510,163 @@ struct MainWindowView: View {
         }
     }
 
+    private var settingsGoogleIntegrationsModule: some View {
+        SettingsModuleCard(
+            title: "Google Integrations",
+            description: "Connect Google Calendar and Google Tasks for task and event synchronization."
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                if googleIntegrationManager.isAnyGoogleServiceConnected {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundStyle(.orange)
+                        Text("Google is connected, so Apple Calendar and Reminders sync are paused to prevent duplicate items and merge conflicts. Disconnect Google to resume Apple sync.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(12)
+                    .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Google Calendar & Tasks")
+                            .font(.subheadline.weight(.semibold))
+                        Text("Sync scheduled tasks with Google Calendar and tasks with Google Tasks.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(googleConnectionStatusText)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(googleIntegrationManager.isAnyGoogleServiceConnected ? .green : .secondary)
+                    }
+
+                    Spacer()
+
+                    Button(googleIntegrationManager.isAnyGoogleServiceConnected ? "Disconnect Google" : "Connect Google") {
+                        if googleIntegrationManager.isAnyGoogleServiceConnected {
+                            googleIntegrationManager.disconnectAllServices()
+                        } else {
+                            Task { await googleIntegrationManager.connectAllServices() }
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                if googleIntegrationManager.isAnyGoogleServiceConnected {
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Last Sync")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(googleIntegrationManager.lastSyncDate.map(formattedSettingsDateTime) ?? "Not synced yet")
+                            .font(.subheadline.weight(.medium))
+                    }
+                }
+
+                if let error = googleIntegrationManager.lastSyncError, !error.isEmpty {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    private var settingsDeveloperDebugModule: some View {
+        DisclosureGroup(isExpanded: $isDeveloperDebugExpanded) {
+            VStack(alignment: .leading, spacing: 14) {
+                settingsLabeledControl(
+                    title: "Google Video Demo Mode",
+                    description: "Clear existing tasks and events from the demo view when the mode starts, then show only new items created or synced after enabling it. This is reversible and does not delete stored data."
+                ) {
+                    Toggle("Google Video Demo Mode", isOn: googleVideoDemoModeBinding)
+                        .toggleStyle(.switch)
+                        .disabled(featureGate.tier != .developer)
+                }
+
+                if googleVideoDemoMode {
+                    Label("Existing tasks and events are hidden for this demo session. New items created after enabling the mode remain visible.", systemImage: "eye.slash")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.top, 14)
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Developer & Debug")
+                    .font(appTypography.cardTitleFont())
+                Text("Developer-only recording and diagnostics controls.")
+                    .font(.subheadline)
+                    .foregroundStyle(currentAppearanceMode.secondaryTextColor(for: colorScheme))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .appRoundedSurface(
+            mode: currentAppearanceMode,
+            cornerRadius: 18,
+            glassMaterial: .regularMaterial,
+            standardLevel: .panel
+        )
+    }
+
+    private var googleVideoDemoModeBinding: Binding<Bool> {
+        Binding(
+            get: {
+                featureGate.tier == .developer && googleVideoDemoMode
+            },
+            set: { newValue in
+                guard featureGate.tier == .developer else {
+                    googleVideoDemoMode = false
+                    DeveloperDemoMode.clearBaseline()
+                    return
+                }
+                if newValue {
+                    recordGoogleVideoDemoBaseline()
+                    googleVideoDemoMode = true
+                } else {
+                    googleVideoDemoMode = false
+                    DeveloperDemoMode.clearBaseline()
+                }
+            }
+        )
+    }
+
+    private func ensureGoogleVideoDemoBaselineIfNeeded() {
+        guard featureGate.tier == .developer,
+              googleVideoDemoMode,
+              !DeveloperDemoMode.hasBaseline else {
+            return
+        }
+        recordGoogleVideoDemoBaseline()
+    }
+
+    private func recordGoogleVideoDemoBaseline() {
+        DeveloperDemoMode.recordBaseline(
+            tasks: todoStore.items,
+            planningItems: planningStore.items + googleIntegrationManager.calendarEvents,
+            systemEventIDs: calendarManager.events.compactMap(\.eventIdentifier)
+        )
+    }
+
+    private var googleConnectionStatusText: String {
+        switch (googleIntegrationManager.isCalendarConnected, googleIntegrationManager.isTasksConnected) {
+        case (true, true):
+            return "Connected"
+        case (true, false):
+            return "Calendar connected"
+        case (false, true):
+            return "Tasks connected"
+        case (false, false):
+            return "Not connected"
+        }
+    }
+
     private var settingsAccountSecurityModule: some View {
         SettingsModuleCard(
             title: LocalizationManager.shared.text("settings.account.security_title"),
@@ -1592,6 +1792,38 @@ struct MainWindowView: View {
         }
     }
 
+    private func googleIntegrationRow(
+        title: String,
+        description: String,
+        isConnected: Bool,
+        connectAction: @escaping () -> Void,
+        disconnectAction: @escaping () -> Void
+    ) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(isConnected ? "Connected" : "Not connected")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(isConnected ? .green : .secondary)
+            }
+
+            Spacer()
+
+            Button(isConnected ? "Disconnect" : "Connect") {
+                if isConnected {
+                    disconnectAction()
+                } else {
+                    connectAction()
+                }
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
     private func usageColor(for ratio: Double) -> Color {
         switch ratio {
         case ..<0.6:
@@ -1634,6 +1866,10 @@ struct MainWindowView: View {
 
     private func formattedSettingsDate(_ date: Date) -> String {
         date.formatted(date: .long, time: .omitted)
+    }
+
+    private func formattedSettingsDateTime(_ date: Date) -> String {
+        date.formatted(date: .abbreviated, time: .shortened)
     }
 
     private func handleCalendarAccessRequest() {
@@ -2952,11 +3188,11 @@ struct MainWindowView: View {
         VStack(alignment: .leading, spacing: 12) {
             summarySectionHeader(title: languageManager.text("summary.task_completion"))
             
-            if todoStore.items.isEmpty {
+            if visibleTodoItems.isEmpty {
                 emptyChartCard(message: "Insights will appear after you have data.")
             } else {
-                let completedCount = todoStore.items.filter { $0.isCompleted }.count
-                let total = todoStore.items.count
+                let completedCount = visibleTodoItems.filter { $0.isCompleted }.count
+                let total = visibleTodoItems.count
                 let activeCount = max(0, total - completedCount)
                 let progressValue = total == 0 ? 0 : Double(completedCount) / Double(total)
                 
@@ -3075,8 +3311,8 @@ struct MainWindowView: View {
         if shouldUseMockInsights {
             completionRate = snapshot.insights.completionRate
         } else {
-            let totalTasks = todoStore.items.count
-            let completed = todoStore.items.filter { $0.isCompleted }.count
+            let totalTasks = visibleTodoItems.count
+            let completed = visibleTodoItems.filter { $0.isCompleted }.count
             completionRate = totalTasks == 0 ? 0 : Double(completed) / Double(totalTasks)
         }
     }
@@ -3212,7 +3448,7 @@ struct MainWindowView: View {
     }
 
     private var summaryTaskSummary: AIService.ProductivityTaskSummary {
-        AIService.ProductivityTaskSummary.from(items: todoStore.items)
+        AIService.ProductivityTaskSummary.from(items: visibleTodoItems)
     }
 
     private var hasInsightContent: Bool {
@@ -3222,7 +3458,7 @@ struct MainWindowView: View {
             focusByHourPoints.contains(where: { $0.focusSeconds > 0 }) ||
             sessionLengthDistributionPoints.contains(where: { $0.sessionCount > 0 }) ||
             (summarySnapshot?.dailyAggregates.contains(where: { $0.totalFocusSeconds > 0 || $0.totalBreakSeconds > 0 }) ?? false)
-        return hasAnalyticsData || !todoStore.items.isEmpty
+        return hasAnalyticsData || !visibleTodoItems.isEmpty
     }
 
     private func ensureInsightAIUnlocked(requiredTier: PlanTier = .plus) -> Bool {
@@ -3444,7 +3680,7 @@ struct MainWindowView: View {
     }
 
     private func plannedTaskEntries() -> [AppState.PlanExecutionEntry] {
-        todoStore.pendingItems
+        visiblePendingTodoItems
             .filter { !$0.isCompleted && $0.aiOrigin == .planning }
             .sorted { left, right in
                 let leftOrder = left.aiOrder ?? Int.max
@@ -3470,7 +3706,7 @@ struct MainWindowView: View {
 
     private func todayCalendarPlanEntries() -> [AppState.PlanExecutionEntry] {
         let calendar = Calendar.current
-        return todoStore.pendingItems
+        return visiblePendingTodoItems
             .filter { item in
                 guard !item.isCompleted,
                       item.aiOrigin == .calendarSchedule,

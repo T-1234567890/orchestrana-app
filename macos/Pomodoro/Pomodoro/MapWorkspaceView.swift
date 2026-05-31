@@ -11,6 +11,7 @@ struct MapWorkspaceView: View {
     @ObservedObject var goalStore: GoalStore
     @ObservedObject var featureGate: FeatureGate
     var onScrollOffsetChange: ((CGFloat) -> Void)? = nil
+    @AppStorage(DeveloperDemoMode.googleVideoDemoModeKey) private var googleVideoDemoMode = false
 
     @State private var filter: MapWorkFilter = .standard
     @State private var selectedLocationID: UUID?
@@ -84,7 +85,7 @@ struct MapWorkspaceView: View {
     }
 
     private var taskLocationCount: Int {
-        todoStore.items.filter { $0.locationID != nil }.count
+        visibleTodoItems.filter { $0.locationID != nil }.count
     }
 
     private var allTags: [String] {
@@ -96,7 +97,7 @@ struct MapWorkspaceView: View {
     }
 
     private var allWorkItems: [MapWorkItem] {
-        let taskItems = todoStore.items.compactMap { task -> MapWorkItem? in
+        let taskItems = visibleTodoItems.compactMap { task -> MapWorkItem? in
             guard let location = locationStore.location(id: task.locationID) else { return nil }
             return MapWorkItem(
                 id: "task-\(task.id.uuidString)",
@@ -111,7 +112,7 @@ struct MapWorkspaceView: View {
             )
         }
 
-        let localEventItems = planningStore.items.compactMap { event -> MapWorkItem? in
+        let localEventItems = visiblePlanningItems.compactMap { event -> MapWorkItem? in
             guard event.isCalendarEvent,
                   let location = locationStore.location(id: event.locationID) else { return nil }
             return MapWorkItem(
@@ -127,7 +128,7 @@ struct MapWorkspaceView: View {
             )
         }
 
-        let systemEventItems = calendarManager.events.compactMap { event -> MapWorkItem? in
+        let systemEventItems = visibleSystemEvents.compactMap { event -> MapWorkItem? in
             guard let coordinate = event.structuredLocation?.geoLocation?.coordinate,
                   let identifier = event.eventIdentifier else { return nil }
             return MapWorkItem(
@@ -144,6 +145,31 @@ struct MapWorkspaceView: View {
         }
 
         return taskItems + localEventItems + systemEventItems
+    }
+
+    private var isGoogleVideoDemoModeEnabled: Bool {
+        DeveloperDemoMode.isGoogleVideoDemoModeEnabled(tier: featureGate.tier, storedValue: googleVideoDemoMode)
+    }
+
+    private var visibleTodoItems: [TodoItem] {
+        DeveloperDemoMode.visibleTasks(todoStore.items, tier: featureGate.tier, storedValue: googleVideoDemoMode)
+    }
+
+    private var visiblePlanningItems: [PlanningItem] {
+        DeveloperDemoMode.visiblePlanningItems(planningStore.items, tier: featureGate.tier, storedValue: googleVideoDemoMode)
+    }
+
+    private var visibleSystemEvents: [EKEvent] {
+        guard !isGoogleVideoDemoModeEnabled else {
+            return []
+        }
+        return calendarManager.events.filter {
+            DeveloperDemoMode.isSystemEventVisible(
+                identifier: $0.eventIdentifier,
+                tier: featureGate.tier,
+                storedValue: googleVideoDemoMode
+            )
+        }
     }
 
     private var filteredWorkItems: [MapWorkItem] {
@@ -186,7 +212,7 @@ struct MapWorkspaceView: View {
 
     private var selectedTaskDetail: TodoItem? {
         guard let selectedTaskDetailID else { return nil }
-        return todoStore.items.first { $0.id == selectedTaskDetailID }
+        return visibleTodoItems.first { $0.id == selectedTaskDetailID }
     }
 
     var body: some View {
@@ -711,7 +737,7 @@ struct MapWorkspaceView: View {
         do {
             try await locationStore.enableNotification(
                 for: location,
-                taskCount: max(1, todoStore.items.filter { $0.locationID == location.id && !$0.isCompleted }.count)
+                taskCount: max(1, visibleTodoItems.filter { $0.locationID == location.id && !$0.isCompleted }.count)
             )
             mapMessage = "Location notification enabled for \(location.name)."
         } catch {
@@ -762,7 +788,7 @@ struct MapWorkspaceView: View {
     }
 
     private func isSystemEventGoalRelated(identifier: String) -> Bool {
-        guard let snapshot = planningStore.items.first(where: { $0.calendarEventIdentifier == identifier }) else {
+        guard let snapshot = visiblePlanningItems.first(where: { $0.calendarEventIdentifier == identifier }) else {
             return false
         }
         return goalStore.links.contains { $0.kind == .event && $0.targetID == snapshot.id.uuidString }

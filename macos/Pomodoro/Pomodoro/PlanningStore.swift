@@ -176,6 +176,15 @@ final class PlanningStore: ObservableObject {
         save()
     }
 
+    func linkToGoogleCalendarEvent(itemID: UUID, googleID: String) {
+        guard let index = items.firstIndex(where: { $0.id == itemID }) else { return }
+        let wrappedID = GoogleSyncIdentifierPrefix.calendar + googleID
+        items[index].sourceID = wrappedID
+        items[index].calendarEventIdentifier = wrappedID
+        items[index].linkedCalendarEventId = wrappedID
+        save()
+    }
+
     func removeTaskPlan(for id: UUID) {
         let before = items.count
         items.removeAll { $0.sourceType == .task && $0.sourceID == id.uuidString }
@@ -313,6 +322,12 @@ final class PlanningStore: ObservableObject {
     var localEvents: [PlanningItem] {
         items
             .filter { $0.source == .local && $0.isCalendarEvent && !$0.isTask }
+            .sorted { ($0.startDate ?? .distantPast) < ($1.startDate ?? .distantPast) }
+    }
+
+    var googleSyncedEvents: [PlanningItem] {
+        items
+            .filter { $0.isCalendarEvent && !$0.isTask && $0.isGoogleSynced }
             .sorted { ($0.startDate ?? .distantPast) < ($1.startDate ?? .distantPast) }
     }
 

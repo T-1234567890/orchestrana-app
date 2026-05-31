@@ -12,9 +12,12 @@ struct TodoListView: View {
     @ObservedObject var remindersSync: RemindersSync
     @ObservedObject var permissionsManager: PermissionsManager
     @ObservedObject private var featureGate = FeatureGate.shared
+    @ObservedObject private var googleIntegrationManager = GoogleIntegrationManager.shared
     @EnvironmentObject private var authViewModel: AuthViewModel
     @EnvironmentObject private var localizationManager: LocalizationManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage(DeveloperDemoMode.googleVideoDemoModeKey) private var googleVideoDemoMode = false
+    @AppStorage("googleRemindersPausedBannerDismissed") private var isGoogleRemindersPausedBannerDismissed = false
     
     @State private var showingEditor = false
     @State private var editingItem: TodoItem?
@@ -149,7 +152,8 @@ struct TodoListView: View {
         let visibleItems = filteredItems
         let visibleEventTaskGroups = filteredEventTaskGroups
 
-        VStack(spacing: 0) {
+        GeometryReader { _ in
+            VStack(spacing: 0) {
             // Header
             VStack(spacing: 8) {
                 Text(localizationManager.text("tasks.title"))
@@ -164,7 +168,9 @@ struct TodoListView: View {
             .padding(.bottom, 16)
             
             // Non-blocking Reminders banner
-            if !permissionsManager.isRemindersAuthorized {
+            if googleIntegrationManager.isAnyGoogleServiceConnected && !isGoogleRemindersPausedBannerDismissed {
+                googleRemindersPausedBanner
+            } else if !permissionsManager.isRemindersAuthorized {
                 remindersBanner
             }
             
@@ -185,7 +191,23 @@ struct TodoListView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 
-                if permissionsManager.isRemindersAuthorized {
+                if googleIntegrationManager.isAnyGoogleServiceConnected {
+                    Button {
+                        Task { await googleIntegrationManager.syncNow() }
+                    } label: {
+                        if googleIntegrationManager.isSyncing {
+                            HStack {
+                                ProgressView()
+                                    .controlSize(.small)
+                                Text(localizationManager.text("tasks.syncing"))
+                            }
+                        } else {
+                            Label(localizationManager.text("tasks.sync_all_tasks"), systemImage: "arrow.triangle.2.circlepath")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(googleIntegrationManager.isSyncing)
+                } else if permissionsManager.isRemindersAuthorized {
                     Button {
                         Task { await remindersSync.syncAllTasks() }
                     } label: {
@@ -267,7 +289,42 @@ struct TodoListView: View {
                 .padding(.bottom, 8)
             }
             
-            if let last = remindersSync.lastSyncDate {
+            if googleIntegrationManager.isAnyGoogleServiceConnected {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        if let last = googleIntegrationManager.lastSyncDate {
+                            Text(localizationManager.format("tasks.last_sync_format", formatLastSyncDate(last)))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("Not synced yet")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+
+                    HStack(alignment: .center, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(localizationManager.text("tasks.auto_sync"))
+                                .font(.subheadline.weight(.medium))
+                            Text(localizationManager.text("tasks.auto_sync.google_description"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        Toggle(localizationManager.text("tasks.auto_sync"), isOn: $googleIntegrationManager.isAutoSyncEnabled)
+                            .toggleStyle(.switch)
+                            .labelsHidden()
+                            .accessibilityLabel(localizationManager.text("tasks.auto_sync"))
+                            .accessibilityHint(localizationManager.text("tasks.auto_sync.google_description"))
+                    }
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 6)
+            } else if let last = remindersSync.lastSyncDate {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Text(localizationManager.format("tasks.last_sync_format", formatLastSyncDate(last)))
@@ -308,46 +365,49 @@ struct TodoListView: View {
             }
             
             // Tasks list
-            if shouldShowMatrixView {
-                ScrollView {
-                    EisenhowerMatrixView(tasks: visibleItems) { task in
-                        openEditorForEdit(task)
-                    }
-                    .padding(16)
-                }
-            } else {
-                if visibleItems.isEmpty && visibleEventTaskGroups.isEmpty {
-                    emptyState
-                } else {
-                    List {
-                        ForEach(visibleItems) { item in
-                            todoRow(item)
-                                .opacity(selectedSegment == .completed ? 0.9 : 1.0)
-                                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
+            Group {
+                if shouldShowMatrixView {
+                    ScrollView {
+                        EisenhowerMatrixView(tasks: visibleItems) { task in
+                            openEditorForEdit(task)
                         }
-
-                        if !visibleEventTaskGroups.isEmpty {
-                            eventSectionDivider
-                                .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16))
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
-
-                            ForEach(visibleEventTaskGroups) { group in
-                                eventTaskGroupRow(group)
+                        .padding(16)
+                    }
+                } else {
+                    if visibleItems.isEmpty && visibleEventTaskGroups.isEmpty {
+                        emptyState
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        List {
+                            ForEach(visibleItems) { item in
+                                todoRow(item)
+                                    .opacity(selectedSegment == .completed ? 0.9 : 1.0)
                                     .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                                     .listRowSeparator(.hidden)
                                     .listRowBackground(Color.clear)
                             }
+
+                            if !visibleEventTaskGroups.isEmpty {
+                                eventSectionDivider
+                                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 8, trailing: 16))
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
+
+                                ForEach(visibleEventTaskGroups) { group in
+                                    eventTaskGroupRow(group)
+                                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                                        .listRowSeparator(.hidden)
+                                        .listRowBackground(Color.clear)
+                                }
+                            }
                         }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
                     }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
                 }
             }
-            
-            Spacer()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 32)
@@ -475,6 +535,42 @@ struct TodoListView: View {
         } message: {
             Text(localizationManager.text("tasks.reminders_access_denied.body"))
         }
+    }
+
+    private var googleRemindersPausedBanner: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "link.badge.plus")
+                .foregroundStyle(.blue)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Apple Reminders sync is paused")
+                    .font(.headline)
+
+                Text("Google services are connected. To prevent duplicate tasks and merge conflicts, Apple Reminders sync will resume after you disconnect Google in Settings.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+
+            Button {
+                isGoogleRemindersPausedBannerDismissed = true
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(6)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Dismiss")
+        }
+        .padding(12)
+        .background(Color.blue.opacity(0.08))
+        .cornerRadius(8)
+        .padding(.horizontal, 32)
+        .padding(.bottom, 12)
     }
 
     private var planningOverview: some View {
@@ -683,7 +779,7 @@ struct TodoListView: View {
                 Spacer()
                 
                 Menu {
-                if permissionsManager.isRemindersAuthorized {
+                if permissionsManager.isRemindersAuthorized && !googleIntegrationManager.isAnyGoogleServiceConnected {
                     if item.reminderIdentifier == nil {
                         Button(action: {
                             Task {
@@ -743,12 +839,7 @@ struct TodoListView: View {
                 }
                 
                 Button(role: .destructive, action: {
-                    if item.reminderIdentifier != nil {
-                        Task {
-                            try? await remindersSync.deleteReminder(item)
-                        }
-                    }
-                    todoStore.deleteItem(item)
+                    Task { await deleteTask(item) }
                 }) {
                     Label(localizationManager.text("common.delete"), systemImage: "trash")
                 }
@@ -1065,6 +1156,7 @@ struct TodoListView: View {
 
     private func syncUpdatedReminderIfNeeded(for itemID: UUID) {
         guard permissionsManager.isRemindersAuthorized,
+              !googleIntegrationManager.isAnyGoogleServiceConnected,
               let updatedItem = todoStore.items.first(where: { $0.id == itemID }),
               updatedItem.reminderIdentifier != nil else {
             return
@@ -1080,11 +1172,21 @@ struct TodoListView: View {
               let task = keyboardFocusedTask else {
             return
         }
-        todoStore.deleteItem(task)
+        Task { await deleteTask(task) }
         if editingItem?.id == task.id {
             resetEditor()
             showingEditor = false
         }
+    }
+
+    private func deleteTask(_ item: TodoItem) async {
+        if googleIntegrationManager.isAnyGoogleServiceConnected {
+            await googleIntegrationManager.deleteGoogleTaskIfNeeded(item)
+            await googleIntegrationManager.deleteGoogleCalendarEventIfNeeded(for: item)
+        } else if item.reminderIdentifier != nil {
+            try? await remindersSync.deleteReminder(item)
+        }
+        todoStore.deleteItem(item)
     }
     
     private func formattedDueDate(_ item: TodoItem, dueDate: Date) -> String {
@@ -1141,14 +1243,16 @@ struct TodoListView: View {
     }
     
     private var filteredItems: [TodoItem] {
+        let items: [TodoItem]
         switch selectedSegment {
         case .today:
-            return todoStore.pendingItems.filter(isTodayTask)
+            items = todoStore.pendingItems.filter(isTodayTask)
         case .active:
-            return todoStore.pendingItems.filter { !isTodayTask($0) }
+            items = todoStore.pendingItems.filter { !isTodayTask($0) }
         case .completed:
-            return todoStore.completedItems
+            items = todoStore.completedItems
         }
+        return filterForGoogleVideoDemoMode(items)
     }
 
     private var shouldShowMatrixView: Bool {
@@ -1158,7 +1262,7 @@ struct TodoListView: View {
     }
 
     private var filteredEventTaskGroups: [EventTaskGroupEntry] {
-        planningStore.localEvents.compactMap { event in
+        visibleEventTaskSource.compactMap { event in
             let tasks = event.eventTasks.filter { task in
                 switch selectedSegment {
                 case .today:
@@ -1187,6 +1291,22 @@ struct TodoListView: View {
             }
             return $0.eventTitle.localizedCaseInsensitiveCompare($1.eventTitle) == .orderedAscending
         }
+    }
+
+    private var isGoogleVideoDemoModeEnabled: Bool {
+        DeveloperDemoMode.isGoogleVideoDemoModeEnabled(tier: featureGate.tier, storedValue: googleVideoDemoMode)
+    }
+
+    private var visibleAllTodoItems: [TodoItem] {
+        filterForGoogleVideoDemoMode(todoStore.items)
+    }
+
+    private var visibleEventTaskSource: [PlanningItem] {
+        DeveloperDemoMode.visiblePlanningItems(planningStore.localEvents, tier: featureGate.tier, storedValue: googleVideoDemoMode)
+    }
+
+    private func filterForGoogleVideoDemoMode(_ items: [TodoItem]) -> [TodoItem] {
+        DeveloperDemoMode.visibleTasks(items, tier: featureGate.tier, storedValue: googleVideoDemoMode)
     }
 
     private func isTodayTask(_ item: TodoItem) -> Bool {
@@ -1235,16 +1355,16 @@ struct TodoListView: View {
     }
 
     private var plannedTaskCount: Int {
-        todoStore.items.filter { taskPlansByID[$0.id] != nil }.count
+        visibleAllTodoItems.filter { taskPlansByID[$0.id] != nil }.count
     }
 
     private var unplannedTaskCount: Int {
-        max(0, todoStore.items.count - plannedTaskCount)
+        max(0, visibleAllTodoItems.count - plannedTaskCount)
     }
 
     private var plannedTodayCount: Int {
         let calendar = Calendar.current
-        return todoStore.pendingItems.filter { item in
+        return filterForGoogleVideoDemoMode(todoStore.pendingItems).filter { item in
             guard let start = taskPlansByID[item.id]?.startDate else { return false }
             return calendar.isDateInToday(start)
         }.count
@@ -1426,6 +1546,7 @@ struct TodoListView: View {
 
     private func syncToRemindersIfLinked(_ item: TodoItem) {
         guard permissionsManager.isRemindersAuthorized,
+              !googleIntegrationManager.isAnyGoogleServiceConnected,
               item.reminderIdentifier != nil else {
             return
         }
@@ -1436,6 +1557,7 @@ struct TodoListView: View {
 
     private func syncToCalendarIfEnabled(_ item: TodoItem) {
         guard permissionsManager.isCalendarAuthorized,
+              !googleIntegrationManager.isAnyGoogleServiceConnected,
               item.syncToCalendar || item.calendarEventIdentifier != nil else {
             return
         }
@@ -1934,6 +2056,7 @@ struct TodoListView: View {
             todoStore.updateItem(editing)
             
             if permissionsManager.isRemindersAuthorized,
+               !googleIntegrationManager.isAnyGoogleServiceConnected,
                editing.reminderIdentifier != nil {
                 Task { try? await remindersSync.syncTask(editing) }
             }
@@ -2621,6 +2744,7 @@ extension TodoListView {
             
             // Propagate to Reminders/Calendar only for managed items; this is user-initiated.
             if permissionsManager.isRemindersAuthorized,
+               !googleIntegrationManager.isAnyGoogleServiceConnected,
                task.reminderIdentifier != nil {
                 Task { try? await remindersSync.syncTask(task) }
             }
@@ -2639,6 +2763,7 @@ extension TodoListView {
             task.modifiedAt = Date()
             todoStore.updateItem(task)
             if permissionsManager.isRemindersAuthorized,
+               !googleIntegrationManager.isAnyGoogleServiceConnected,
                task.reminderIdentifier != nil {
                 Task { try? await remindersSync.syncTask(task) }
             }
@@ -2651,10 +2776,12 @@ extension TodoListView {
     fileprivate func applyBatchDelete() {
         let tasks = selectedTasks()
         guard !tasks.isEmpty else { return }
-        for task in tasks {
-            todoStore.deleteItem(task)
+        Task {
+            for task in tasks {
+                await deleteTask(task)
+            }
+            clearTaskSelection()
         }
-        clearTaskSelection()
     }
     
     private func selectedTasks() -> [TodoItem] {
