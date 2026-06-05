@@ -3,240 +3,68 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title data-en="Policies &amp; Legal · Orchestrana™" data-zh="政策与法律 · Orchestrana™">Policies &amp; Legal · Orchestrana™</title>
+  <title data-en="Policies &amp; Legal · Orchestrana&trade;" data-zh="政策与法律 · Orchestrana&trade;">Policies &amp; Legal · Orchestrana&trade;</title>
   <meta name="description" content="Orchestrana policy pages." />
   <link rel="icon" type="image/png" href="screenshots/Orchestrana%20icon%201.png" />
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Afacad:wght@400;500;600;700&amp;family=Marcellus&amp;display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
-
-  <style>
-    .policies-shell {
-      max-width: 1180px;
-      margin: 0 auto;
-      padding: 68px 20px 140px;
-    }
-    .policies-header {
-      max-width: 780px;
-      margin: 0 auto 44px;
-      text-align: center;
-    }
-    .policies-header h1 {
-      margin: 10px 0 0;
-      font-size: clamp(26px, 4vw, 36px);
-      letter-spacing: -0.02em;
-    }
-    .policies-header .muted {
-      margin: 12px auto 0;
-      max-width: 720px;
-    }
-    .policies-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 16px;
-      max-width: 760px;
-      margin: 0 auto;
-    }
-    .policy-card {
-      text-decoration: none;
-      color: var(--text);
-      padding: 18px 18px;
-      border-radius: 18px;
-      border: 1px solid var(--border);
-      background: linear-gradient(155deg, rgba(255,243,233,0.92), rgba(255,240,229,0.86));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.62),
-                  0 0 0 0.5px rgba(255,240,230,0.45),
-                  0 10px 20px rgba(114,76,58,0.1);
-      transition: transform 240ms var(--ease-soft), box-shadow 240ms var(--ease-soft), background 240ms var(--ease-soft);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      cursor: pointer;
-      position: relative;
-      padding-bottom: 18px;
-      background-size: auto;
-      background-position: 0 0;
-      background-repeat: no-repeat;
-    }
-    .policy-card:hover {
-      transform: translateY(-1px);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.68),
-                  var(--glass-glow),
-                  0 14px 26px rgba(114,76,58,0.14);
-      background: linear-gradient(155deg, rgba(255,245,238,0.94), rgba(255,241,231,0.88));
-      background-size: auto;
-    }
-
-    /* Override global link underline/line-on-hover behavior (prevents black bottom line). */
-    body.policy-hub main a.policy-card {
-      background: linear-gradient(155deg, rgba(255,243,233,0.92), rgba(255,240,229,0.86)) !important;
-      background-size: auto !important;
-      background-position: 0 0 !important;
-      background-repeat: no-repeat !important;
-      padding-bottom: 18px !important;
-    }
-    body.policy-hub main a.policy-card:hover {
-      background: linear-gradient(155deg, rgba(255,245,238,0.94), rgba(255,241,231,0.88)) !important;
-      background-size: auto !important;
-    }
-    .policy-card:active {
-      transform: translateY(0);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.64),
-                  0 0 0 0.5px rgba(255,240,230,0.4),
-                  0 10px 18px rgba(114,76,58,0.1);
-    }
-    .policy-card:focus-visible {
-      outline: none;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.68),
-                  0 0 0 3px rgba(216, 104, 86, 0.22),
-                  0 12px 22px rgba(114,76,58,0.12);
-    }
-    .policy-card-meta {
-      display: grid;
-      gap: 8px;
-      min-width: 0;
-    }
-    .policy-card-title {
-      margin: 0;
-      font-family: 'Literata', 'Georgia', 'Times New Roman', serif;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-      font-size: 19px;
-      color: var(--text);
-    }
-    .policy-card-sub {
-      margin: 0;
-      color: var(--muted);
-      font-size: 15px;
-      line-height: 1.6;
-    }
-    .policy-card-arrow {
-      flex: 0 0 auto;
-      font-size: 18px;
-      line-height: 1;
-      color: rgba(106, 90, 81, 0.72);
-      transition: transform 240ms var(--ease-soft), opacity 240ms var(--ease-soft);
-      opacity: 0.92;
-    }
-    .policy-card:hover .policy-card-arrow {
-      transform: translateX(4px);
-    }
-    .policy-card-cta {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 11px 16px;
-      border-radius: 14px;
-      border: 1px solid rgba(193,76,58,0.58);
-      background: linear-gradient(145deg, rgba(216,104,86,0.94), rgba(193,76,58,0.9));
-      color: #fffaf6;
-      font-size: 14px;
-      line-height: 1.2;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-      text-decoration: none;
-      transition: transform 180ms var(--ease-soft), box-shadow 180ms var(--ease-soft), filter 180ms var(--ease-soft);
-      box-shadow: 0 7px 15px rgba(200, 110, 90, 0.2);
-      white-space: nowrap;
-    }
-    .policy-card:hover .policy-card-cta {
-      box-shadow: 0 12px 22px rgba(200, 110, 90, 0.24);
-      filter: saturate(1.03);
-      transform: translateY(-2px);
-    }
-    .topbar .logo-link {
-      color: var(--text);
-      text-decoration: none;
-    }
-    body.legal-document .footer {
-      display: none;
-    }
-  </style>
 </head>
 <body class="policy-hub legal-document">
-  <header class="topbar glass">
-    <a class="logo logo-link" href="index.html#overview">
-      <img class="logo-icon" src="screenshots/Orchestrana%20icon%201.png" alt="Orchestrana icon" />
-      <span data-en="Orchestrana™" data-zh="Orchestrana™">Orchestrana™</span>
+  <header class="site-header legal-header">
+    <a class="brand" href="index.html#overview">
+      <img class="brand-icon" src="screenshots/Orchestrana%20icon%201.png" alt="Orchestrana icon" />
+      <span data-en="Orchestrana&trade;" data-zh="Orchestrana&trade;">Orchestrana&trade;</span>
     </a>
-    <nav class="nav-links">
-      <a href="index.html#overview" data-en="Overview" data-zh="概览">Overview</a>
-      <a href="index.html#features" data-en="Features" data-zh="功能">Features</a>
-      <a href="index.html#screenshots" data-en="Focus Cycle" data-zh="专注循环">Focus Cycle</a>
-      <a href="comparison.html" data-en="Comparison" data-zh="对比">Comparison</a>
-      <a href="index.html#docs" data-en="Docs" data-zh="文档">Docs</a>
-      <a href="index.html#download" data-en="Download" data-zh="下载">Download</a>
-      <a href="https://github.com/T-1234567890/orchestrana-app" target="_blank" rel="noreferrer" data-en="GitHub" data-zh="GitHub">GitHub</a>
-      <button id="lang-toggle" aria-label="Switch language" data-en="EN / 中文" data-zh="中文 / EN">EN / 中文</button>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a href="index.html#product" data-en="Product" data-zh="产品">Product</a>
+      <a href="index.html#rhythm" data-en="Rhythm" data-zh="节奏">Rhythm</a>
+      <a href="index.html#ai" data-en="AI" data-zh="AI">AI</a>
+      <a href="index.html#pricing" data-en="Pricing" data-zh="价格">Pricing</a>
+      <a href="policies.html" data-en="Legal" data-zh="法律">Legal</a>
     </nav>
+    <div class="header-actions">
+      <button id="lang-toggle" class="language-toggle" aria-label="Switch language" data-en="EN / 中文" data-zh="中文 / EN">EN / 中文</button>
+      <a class="header-cta" href="https://apps.apple.com/app/orchestrana/id6758972580" target="_blank" rel="noreferrer" data-en="App Store" data-zh="App Store">App Store</a>
+    </div>
   </header>
 
   <main>
     <section class="policies-shell">
       <div class="policies-header reveal">
-        <p class="eyebrow" data-en="LEGAL" data-zh="法律">LEGAL</p>
+        <p class="section-label" data-en="Legal" data-zh="法律">Legal</p>
         <h1 data-en="Policies &amp; Legal" data-zh="政策与法律">Policies &amp; Legal</h1>
         <p class="muted" data-en="Official documents that explain how Orchestrana works, handles data, and protects users." data-zh="解释 Orchestrana 如何运作、如何处理数据并保护用户的官方文档。">Official documents that explain how Orchestrana works, handles data, and protects users.</p>
       </div>
 
       <div class="policies-grid">
-        <a class="policy-card glass reveal" href="privacy.html" aria-label="Privacy Policy">
+        <a class="policy-card reveal" href="privacy.html" aria-label="Privacy Policy">
           <div class="policy-card-meta">
             <h3 class="policy-card-title" data-en="Privacy Policy" data-zh="隐私政策">Privacy Policy</h3>
             <p class="policy-card-sub" data-en="How we collect, use, and safeguard your information." data-zh="我们如何收集、使用并保护你的信息。">How we collect, use, and safeguard your information.</p>
           </div>
-          <span class="policy-card-cta" data-en="Read Privacy Policy →" data-zh="阅读隐私政策 →">Read Privacy Policy →</span>
+          <span class="policy-card-cta" data-en="Read Privacy Policy" data-zh="阅读隐私政策">Read Privacy Policy</span>
         </a>
 
-        <a class="policy-card glass reveal" href="terms.html" aria-label="Terms of Service">
+        <a class="policy-card reveal" href="terms.html" aria-label="Terms of Service">
           <div class="policy-card-meta">
             <h3 class="policy-card-title" data-en="Terms of Service" data-zh="服务条款">Terms of Service</h3>
             <p class="policy-card-sub" data-en="Rules, usage terms, and legal conditions for using Orchestrana and related services." data-zh="使用 Orchestrana 及相关服务的规则、使用条款与法律条件。">Rules, usage terms, and legal conditions for using Orchestrana and related services.</p>
           </div>
-          <span class="policy-card-cta" data-en="Read Terms of Service →" data-zh="阅读服务条款 →">Read Terms of Service →</span>
+          <span class="policy-card-cta" data-en="Read Terms of Service" data-zh="阅读服务条款">Read Terms of Service</span>
         </a>
 
-        <a class="policy-card glass reveal" href="acknowledgements.html" aria-label="Acknowledgements and Licenses">
+        <a class="policy-card reveal" href="acknowledgements.html" aria-label="Acknowledgements and Licenses">
           <div class="policy-card-meta">
             <h3 class="policy-card-title" data-en="Acknowledgements &amp; Licenses" data-zh="致谢与许可证">Acknowledgements &amp; Licenses</h3>
             <p class="policy-card-sub" data-en="Third-party resources, open-source licenses, and app attribution details." data-zh="第三方资源、开源许可证与应用致谢详情。">Third-party resources, open-source licenses, and app attribution details.</p>
           </div>
-          <span class="policy-card-cta" data-en="Read Licenses →" data-zh="阅读许可证 →">Read Licenses →</span>
+          <span class="policy-card-cta" data-en="Read Licenses" data-zh="阅读许可证">Read Licenses</span>
         </a>
       </div>
     </section>
   </main>
-
-  <footer class="footer" id="project-heartbeat">
-    <div class="footer-metrics" id="footer-metrics">
-      <div class="footer-metric">
-        <div class="footer-metric-value"><span class="footer-metric-icon" aria-hidden="true">⭐</span><span class="footer-number" id="footer-stars">--</span></div>
-        <p class="footer-metric-label" data-en="Stars" data-zh="Star 数">Stars</p>
-      </div>
-      <div class="footer-metric">
-        <div class="footer-metric-value"><span class="footer-metric-icon" aria-hidden="true">🧱</span><span class="footer-number" id="footer-commits">--</span></div>
-        <p class="footer-metric-label" data-en="Commits" data-zh="提交数">Commits</p>
-      </div>
-      <div class="footer-metric">
-        <div class="footer-metric-value"><span class="footer-metric-icon" aria-hidden="true">🐛</span><span class="footer-number" id="footer-issues">--</span></div>
-        <p class="footer-metric-label" data-en="Issues" data-zh="问题">Issues</p>
-      </div>
-    </div>
-    <div class="footer-contact">
-      <span class="footer-contact-item">📧 Support: <a href="mailto:support@orchestrana.app">support@orchestrana.app</a></span>
-      <span class="footer-contact-item">📧 General: <a href="mailto:hello@orchestrana.app">hello@orchestrana.app</a></span>
-      <span class="footer-contact-item">🌐 <a href="https://orchestrana.app" target="_blank" rel="noreferrer">orchestrana.app</a></span>
-      <span class="footer-contact-item">💬 Issues / PRs / Discussions welcome</span>
-    </div>
-    <div class="footer-legal">
-      <a href="policies.html" data-en="Policies" data-zh="政策">Policies</a>
-    </div>
-    <p class="footer-status">© 2026 Orchestrana™. All rights reserved.</p>
-    <p class="footer-status">Orchestrana™ is a trademark of Shenzhen Tushengjin Commercial Services Co., Ltd.</p>
-  </footer>
 
   <script src="script.js"></script>
 </body>

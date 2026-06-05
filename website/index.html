@@ -1,527 +1,250 @@
-<meta name="description" content="Orchestrana - a productivity and focus timer app now available on the App Store.">
-<meta name="robots" content="index, follow">
-<meta name="keywords" content="Orchestrana, focus, productivity, timer, App Store, macOS">
-
-<!-- Open Graph (Facebook / LinkedIn) -->
-<meta property="og:title" content="Orchestrana – Focus Workflow Timer App">
-<meta property="og:description" content="Orchestrana is now available on the App Store.">
-<meta property="og:url" content="https://orchestrana.app/">
-<meta property="og:image" content="https://orchestrana.app/screenshots/preview.png">
-<meta property="og:type" content="website">
-
-<!-- Twitter Card -->
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Orchestrana – Focus Workflow Timer App">
-<meta name="twitter:description" content="Orchestrana is now available on the App Store.">
-<meta name="twitter:image" content="https://orchestrana.app/screenshots/preview.png">
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Orchestrana™ · macOS Focus App</title>
+  <title>Orchestrana&trade; · Plan. Focus. Done.</title>
+  <meta name="description" content="Orchestrana is a calm macOS workspace for Pomodoro sessions, tasks, calendar planning, and AI-assisted focus." />
+  <meta name="robots" content="index, follow" />
+  <meta name="keywords" content="Orchestrana, macOS, focus, Pomodoro, tasks, calendar, AI planning, productivity" />
+
+  <meta property="og:title" content="Orchestrana - Plan. Focus. Done." />
+  <meta property="og:description" content="A calm Mac workspace for sessions, tasks, calendar blocks, and AI planning." />
+  <meta property="og:url" content="https://orchestrana.app/" />
+  <meta property="og:image" content="https://orchestrana.app/screenshots/Dashboard%20light.png" />
+  <meta property="og:type" content="website" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Orchestrana - Plan. Focus. Done." />
+  <meta name="twitter:description" content="A calm Mac workspace for sessions, tasks, calendar blocks, and AI planning." />
+  <meta name="twitter:image" content="https://orchestrana.app/screenshots/Dashboard%20light.png" />
+
   <link rel="icon" type="image/png" href="screenshots/Orchestrana%20icon%201.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Afacad:wght@400;500;600;700&amp;family=Marcellus&amp;display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
-  <header class="topbar glass">
-    <div class="logo">
-      <img class="logo-icon" src="screenshots/Orchestrana%20icon%201.png" alt="Orchestrana icon" />
-      <span data-en="Orchestrana™" data-zh="Orchestrana™">Orchestrana™</span>
-    </div>
-    <nav class="nav-links">
-      <a href="#overview" data-en="Overview" data-zh="概览">Overview</a>
-      <a href="#features" data-en="Features" data-zh="功能">Features</a>
-      <a href="#screenshots" data-en="Focus Cycle" data-zh="专注循环">Focus Cycle</a>
-      <a href="comparison.html" data-en="Comparison" data-zh="对比">Comparison</a>
-      <a href="#docs" data-en="Docs" data-zh="文档">Docs</a>
-      <a href="#download" data-en="App Store" data-zh="App Store">App Store</a>
-      <a href="https://github.com/T-1234567890/orchestrana-app" target="_blank" rel="noreferrer" data-en="GitHub" data-zh="GitHub">GitHub</a>
-      <button id="lang-toggle" aria-label="Switch language" data-en="EN / 中文" data-zh="中文 / EN">EN / 中文</button>
+<body class="landing-redesign">
+  <header class="site-header landing-header">
+    <a class="brand" href="#overview" aria-label="Orchestrana home">
+      <img class="brand-icon" src="screenshots/Orchestrana%20icon%201.png" alt="Orchestrana icon" />
+      <span data-en="Orchestrana&trade;" data-zh="Orchestrana&trade;">Orchestrana&trade;</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a href="#product" data-en="Product" data-zh="产品">Product</a>
+      <a href="#rhythm" data-en="Rhythm" data-zh="节奏">Rhythm</a>
+      <a href="#ai" data-en="AI" data-zh="AI">AI</a>
+      <a href="#pricing" data-en="Pricing" data-zh="价格">Pricing</a>
+      <a href="#open-source" data-en="Open source" data-zh="开源">Open source</a>
     </nav>
+    <div class="header-actions">
+      <button id="lang-toggle" class="language-toggle" aria-label="Switch language" data-en="EN / 中文" data-zh="中文 / EN">EN / 中文</button>
+      <a class="header-cta" href="https://apps.apple.com/app/orchestrana/id6758972580" target="_blank" rel="noreferrer" data-en="App Store" data-zh="App Store">App Store</a>
+    </div>
   </header>
 
   <main>
-    <section class="hero" id="overview">
-      <div class="hero-text fade-on-load">
-        <p class="eyebrow" data-en="Orchestrana" data-zh="Orchestrana">Orchestrana</p>
-        <h1 class="switchable-head" data-en="A calm open-source focus app for macOS" data-zh="一个为 macOS 设计的开源专注应用">A calm open-source focus app for macOS</h1>
-        <p class="lede switchable" data-en="Orchestrana is a lightweight focus tool designed for people who want to work without distraction. It combines a clean timer, gentle focus flow sessions, and task awareness in a quiet interface.<br><br>Open-source core, thoughtfully evolving." data-zh="Orchestrana 是一个轻量级专注工具，为希望减少干扰、安静工作的用户设计。它结合了计时器、专注节奏模式和任务管理，界面简洁，不打扰你的工作。<br><br>核心开源，持续演进。">Orchestrana is a lightweight focus tool designed for people who want to work without distraction. It combines a clean timer, gentle focus flow sessions, and task awareness in a quiet interface.<br><br>Open-source core, thoughtfully evolving.</p>
-        <p class="micro-hint" data-en="Try pressing the tomato" data-zh="试着点一下番茄">Try pressing the tomato</p>
-        <div class="cta-row">
-          <a class="app-store-badge" href="https://apps.apple.com/app/orchestrana/id6758972580" target="_blank" rel="noreferrer" aria-label="Download on the Mac App Store">
-            <img src="screenshots/Download_on_the_Mac_App_Store_Badge_US-UK_RGB_blk_092917.svg" alt="Download on the Mac App Store">
-          </a>
-          <a class="ghost-btn hero-github-btn" href="https://github.com/T-1234567890/orchestrana-app" target="_blank" rel="noreferrer">
-            <svg class="github-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.93.58.11.79-.25.79-.56v-2.16c-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.75 2.69 1.25 3.34.95.1-.74.4-1.25.73-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.25.45-2.28 1.18-3.08-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.16 1.18.92-.25 1.9-.38 2.87-.39.97.01 1.95.14 2.87.39 2.2-1.49 3.16-1.18 3.16-1.18.62 1.58.23 2.75.11 3.04.73.8 1.18 1.83 1.18 3.08 0 4.42-2.69 5.39-5.25 5.67.41.36.78 1.06.78 2.14v3.19c0 .31.21.68.79.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z" />
-            </svg>
-            <span data-en="View on GitHub" data-zh="在 GitHub 查看">View on GitHub</span>
-          </a>
-        </div>
-      </div>
-      <div class="hero-illustration hero-tomato fade-on-load" aria-hidden="true">
-        <svg viewBox="0 0 720 520" role="presentation">
-          <defs>
-            <path id="tomatoShape" d="M302 46c38 6 72 21 100 42 28 21 51 49 65 82 14 33 20 72 10 108-10 36-36 69-70 94-34 24-76 40-122 43-46 3-95-7-133-30-39-22-67-56-80-94-13-38-11-80 5-117 16-36 46-68 84-89 38-21 82-31 131-27 4 0 7 0 10 1z" />
-            <path id="leafShape" d="M287 66c-4-18-4-28 3-34 7-6 20-7 35-3 15 4 32 13 46 27-14-3-27-5-39-6-12-1-22 1-30 6-8 5-13 12-15 10z" />
-            <radialGradient id="tomatoSkin" cx="42%" cy="32%" r="68%">
-              <stop offset="0%" stop-color="#ffd8c7" />
-              <stop offset="45%" stop-color="#f17c69" />
-              <stop offset="100%" stop-color="#b23a32" />
-            </radialGradient>
-            <radialGradient id="tomatoDepth" cx="70%" cy="75%" r="70%">
-              <stop offset="0%" stop-color="rgba(122, 34, 30, 0)" />
-              <stop offset="45%" stop-color="rgba(122, 34, 30, 0.26)" />
-              <stop offset="100%" stop-color="rgba(74, 16, 12, 0.42)" />
-            </radialGradient>
-            <radialGradient id="tomatoBloom" cx="36%" cy="30%" r="38%">
-              <stop offset="0%" stop-color="rgba(255,255,255,0.82)" />
-              <stop offset="60%" stop-color="rgba(255,255,255,0.12)" />
-              <stop offset="100%" stop-color="rgba(255,255,255,0)" />
-            </radialGradient>
-            <radialGradient id="ambientGlow" cx="45%" cy="40%" r="75%">
-              <stop offset="0%" stop-color="rgba(255, 210, 194, 0.65)" />
-              <stop offset="100%" stop-color="rgba(218, 156, 144, 0)" />
-            </radialGradient>
-            <radialGradient id="leafSurface" cx="32%" cy="30%" r="78%">
-              <stop offset="0%" stop-color="#9bb88c" />
-              <stop offset="48%" stop-color="#6f8c61" />
-              <stop offset="100%" stop-color="#324832" />
-            </radialGradient>
-            <radialGradient id="leafBloom" cx="46%" cy="24%" r="52%">
-              <stop offset="0%" stop-color="rgba(255,255,255,0.54)" />
-              <stop offset="80%" stop-color="rgba(255,255,255,0)" />
-            </radialGradient>
-            <linearGradient id="unevenShade" x1="8%" y1="6%" x2="92%" y2="96%">
-              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.06" />
-              <stop offset="28%" stop-color="#000000" stop-opacity="0.08" />
-              <stop offset="62%" stop-color="#ffffff" stop-opacity="0.03" />
-              <stop offset="100%" stop-color="#000000" stop-opacity="0.12" />
-            </linearGradient>
-            <radialGradient id="paperWash" cx="50%" cy="48%" r="82%">
-              <stop offset="0%" stop-color="#fbe8de" stop-opacity="0.28" />
-              <stop offset="55%" stop-color="#f3d4c6" stop-opacity="0.18" />
-              <stop offset="100%" stop-color="#e0b6a7" stop-opacity="0" />
-            </radialGradient>
-            <filter id="softBlur" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="26" />
-            </filter>
-            <filter id="sheenBlur" x="-40%" y="-40%" width="180%" height="180%">
-              <feGaussianBlur stdDeviation="18" />
-            </filter>
-            <filter id="grainTexture" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB">
-              <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="12" result="noise" />
-              <feColorMatrix in="noise" type="saturate" values="0" result="mono" />
-              <feColorMatrix in="mono" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.16 0" result="grain" />
-              <feGaussianBlur in="grain" stdDeviation="0.35" />
-            </filter>
-            <filter id="paperFibers" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
-              <feTurbulence type="fractalNoise" baseFrequency="0.22" numOctaves="3" seed="4" result="fibers" />
-              <feColorMatrix in="fibers" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.10 0" />
-              <feGaussianBlur stdDeviation="5" />
-            </filter>
-            <mask id="tomatoMask">
-              <use href="#tomatoShape" fill="white" />
-            </mask>
-            <mask id="leafMask">
-              <use href="#leafShape" fill="white" />
-            </mask>
-          </defs>
-          <g transform="translate(60 40)">
-            <circle cx="320" cy="250" r="190" fill="url(#ambientGlow)" filter="url(#softBlur)" opacity="0.7" />
-            <use href="#tomatoShape" fill="url(#tomatoSkin)" />
-            <use href="#tomatoShape" fill="url(#tomatoDepth)" />
-            <g mask="url(#tomatoMask)">
-              <ellipse cx="290" cy="210" rx="140" ry="110" fill="url(#tomatoBloom)" filter="url(#sheenBlur)" />
-              <ellipse cx="380" cy="340" rx="160" ry="120" fill="rgba(80,19,12,0.28)" filter="url(#softBlur)" />
-              <rect x="60" y="30" width="500" height="440" fill="url(#unevenShade)" />
-              <rect x="40" y="10" width="540" height="470" fill="url(#paperWash)" />
-              <rect x="30" y="0" width="560" height="500" filter="url(#grainTexture)" />
-              <rect x="20" y="-10" width="580" height="520" filter="url(#paperFibers)" />
-            </g>
-            <g transform="translate(-6 -6)">
-              <use href="#leafShape" fill="url(#leafSurface)" />
-              <g mask="url(#leafMask)">
-                <ellipse cx="312" cy="62" rx="42" ry="26" fill="url(#leafBloom)" filter="url(#sheenBlur)" />
-              </g>
-            </g>
-          </g>
-        </svg>
-      </div>
-    </section>
+    <section class="atelier-hero" id="overview">
+      <video class="atelier-video" autoplay muted loop playsinline poster="screenshots/29e68f1e-626c-4a15-9115-3b583d77a15f.png" aria-hidden="true">
+        <source src="screenshots/output_fixed.mp4" type="video/mp4" />
+      </video>
 
-    <div class="top-download-badge">
-      <a class="product-hunt-badge" href="https://www.producthunt.com/products/orchestrana?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-orchestrana" target="_blank" rel="noopener noreferrer">
-        <img alt="Orchestrana™ - Not just a timer — a system for focus and thinking | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1137252&amp;theme=light&amp;t=1778245895075">
-      </a>
-    </div>
-
-    <section class="waitlist" id="waitlist">
-      <div class="waitlist-inner glass reveal">
-        <p class="eyebrow" data-en="Available now" data-zh="现已可用">Available now</p>
-        <div class="waitlist-title-stack">
-          <h2 data-en="Now available on the App Store" data-zh="现已登陆 App Store">Now available on the App Store</h2>
-        </div>
-        <p class="muted" data-en="Download Orchestrana directly from the Mac App Store." data-zh="直接从 Mac App Store 下载 Orchestrana。">Download Orchestrana directly from the Mac App Store.</p>
-        <div class="cta-row center">
-          <a class="app-store-badge" href="https://apps.apple.com/app/orchestrana/id6758972580" target="_blank" rel="noreferrer" aria-label="Download on the Mac App Store">
-            <img src="screenshots/Download_on_the_Mac_App_Store_Badge_US-UK_RGB_blk_092917.svg" alt="Download on the Mac App Store">
-          </a>
-        </div>
-        <p class="waitlist-note" data-en="Latest builds are distributed through Apple's store." data-zh="最新版本通过 Apple 商店分发。">Latest builds are distributed through Apple's store.</p>
-      </div>
-    </section>
-
-    <section class="features" id="features">
-      <div class="section-head reveal">
-        <p class="eyebrow" data-en="Features" data-zh="功能">Features</p>
-        <h2 data-en="Built for quiet productivity" data-zh="为安静的生产力而生">Built for quiet productivity</h2>
-      </div>
-      <div class="feature-grid">
-        <article class="feature-card glass reveal">
-          <div class="icon icon-circle" aria-hidden="true">◯</div>
-          <h3 data-en="Focus Flow Mode" data-zh="专注节奏模式">Focus Flow Mode</h3>
-          <p data-en="Adaptive focus sessions tuned to energy and rhythm." data-zh="根据节奏自动调整专注时间。">Adaptive focus sessions tuned to energy and rhythm.</p>
-        </article>
-        <article class="feature-card glass reveal">
-          <div class="icon icon-clock" aria-hidden="true">∷</div>
-          <h3 data-en="Focus Timer" data-zh="专注计时器">Focus Timer</h3>
-          <p data-en="Classic pacing with calm visual design." data-zh="经典计时方式，安静不打扰。">Classic pacing with calm visual design.</p>
-        </article>
-        <article class="feature-card glass reveal">
-          <div class="icon icon-square" aria-hidden="true">▢</div>
-          <h3 data-en="Calendar & Tasks" data-zh="日历与任务">Calendar & Tasks</h3>
-          <p data-en="See your schedule without distraction." data-zh="无需切换应用即可查看安排。">See your schedule without distraction.</p>
-        </article>
-        <article class="feature-card glass reveal">
-          <div class="icon icon-wave" aria-hidden="true">≈</div>
-          <h3 data-en="Ambient Audio" data-zh="环境音频">Ambient Audio</h3>
-          <p data-en="Soft soundscapes for deep work." data-zh="适合深度工作的声音环境。">Soft soundscapes for deep work.</p>
-        </article>
-      </div>
-    </section>
-
-    <section class="rhythm" id="screenshots">
-      <div class="section-head reveal">
-        <p class="eyebrow" data-en="Focus Cycle" data-zh="专注循环">Focus Cycle</p>
-        <h2 data-en="Designed for the way you focus" data-zh="为你的专注方式而设计">Designed for the way you focus</h2>
-      </div>
-      <div class="rhythm-card glass reveal breathe">
-        <div class="cycle-inner">
-          <div class="rhythm-graphic" aria-hidden="true">
-            <div class="rhythm-loop">
-              <div class="state-text">
-                <span class="state state-working" data-en="Working" data-zh="专注">Working</span>
-                <span class="state state-break" data-en="Break" data-zh="休息">Break</span>
-              </div>
-              <div class="rhythm-core"></div>
-            </div>
-          </div>
-          <div class="rhythm-copy">
-            <p class="muted" data-en="Work in gentle cycles." data-zh="在柔和的节奏中工作。">Work in gentle cycles.</p>
-            <h3 data-en="Focus, pause, return." data-zh="专注，暂停，再继续。">Focus, pause, return.</h3>
-            <p class="muted" data-en="A quiet rhythm designed for deep attention." data-zh="为深度注意力而设计的安静循环。">A quiet rhythm designed for deep attention.</p>
+      <div class="atelier-hero-inner">
+        <div class="atelier-copy fade-on-load">
+          <p class="atelier-label" data-en="A composed Mac workspace" data-zh="克制的 Mac 工作区">A composed Mac workspace</p>
+          <h1 data-en="Plan. Focus. Done." data-zh="计划。专注。完成。">Plan. Focus. Done.</h1>
+          <p class="atelier-subtitle" data-en="A calmer way to hold tasks, calendar blocks, focus sessions, and AI planning in one place." data-zh="用更安静的方式，把任务、日历时间块、专注记录与 AI 规划放在一处。">A calmer way to hold tasks, calendar blocks, focus sessions, and AI planning in one place.</p>
+          <div class="atelier-actions">
+            <a class="app-store-badge" href="https://apps.apple.com/app/orchestrana/id6758972580" target="_blank" rel="noreferrer" aria-label="Download on the Mac App Store">
+              <img src="screenshots/Download_on_the_Mac_App_Store_Badge_US-UK_RGB_blk_092917.svg" alt="Download on the Mac App Store" />
+            </a>
+            <a class="atelier-link" href="#product" data-en="See the workspace" data-zh="查看工作区">See the workspace</a>
           </div>
         </div>
+
+        <div class="atelier-screens fade-on-load" aria-label="Orchestrana product screenshots">
+          <img class="atelier-shot atelier-shot-large" src="screenshots/Dashboard%20light.png" alt="Orchestrana dashboard showing timer controls and daily focus cards" />
+          <img class="atelier-shot atelier-shot-a" src="screenshots/Screenshot%202026-04-23%20at%205.50.01%E2%80%AFPM.png" alt="Orchestrana task list" />
+          <img class="atelier-shot atelier-shot-b" src="screenshots/Screenshot%202026-04-23%20at%205.49.18%E2%80%AFPM.png" alt="Orchestrana AI event task generation" />
+        </div>
       </div>
     </section>
 
-    <section class="visual-compare" id="visual-compare">
-      <div class="section-head reveal">
-        <p class="eyebrow" data-en="Philosophy" data-zh="理念">Philosophy</p>
-        <h2 data-en="A different approach to focus" data-zh="一种不同的专注方式">A different approach to focus</h2>
-      </div>
-      <div class="compare-wrapper reveal">
-        <table class="compare-table">
-          <thead>
-            <tr>
-              <th data-en="Traditional focus/task apps" data-zh="传统专注 / 任务应用">Traditional focus/task apps</th>
-              <th data-en="Orchestrana" data-zh="Orchestrana">Orchestrana</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td data-en="Loud alerts" data-zh="响亮提醒">Loud alerts</td>
-              <td data-en="Quiet rhythm" data-zh="安静节律">Quiet rhythm</td>
-            </tr>
-            <tr>
-              <td data-en="Pressure tracking" data-zh="压力记录">Pressure tracking</td>
-              <td data-en="Gentle cycles" data-zh="温和循环">Gentle cycles</td>
-            </tr>
-            <tr>
-              <td data-en="Productivity guilt" data-zh="效率焦虑">Productivity guilt</td>
-              <td data-en="Calm attention" data-zh="平静专注">Calm attention</td>
-            </tr>
-            <tr>
-              <td data-en="Gamified stress" data-zh="游戏化压力">Gamified stress</td>
-              <td data-en="No pressure design" data-zh="无压力设计">No pressure design</td>
-            </tr>
-            <tr>
-              <td data-en="No intelligent assistance" data-zh="无智能辅助">No intelligent assistance</td>
-              <td data-en="AI focus assistant" data-zh="AI 专注助手">AI focus assistant</td>
-            </tr>
-            <tr>
-              <td data-en="Manual planning only" data-zh="仅手动规划">Manual planning only</td>
-              <td data-en="AI session suggestions" data-zh="AI 专注建议">AI session suggestions</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="docs-cta">
-        <a class="primary-btn" href="comparison.html" data-en="View full plan comparison →" data-zh="查看完整套餐对比 →">View full plan comparison →</a>
+    <section class="quiet-proof" aria-label="Product highlights">
+      <div class="quiet-proof-inner">
+        <article class="reveal">
+          <span data-en="01" data-zh="01">01</span>
+          <strong data-en="Native to the Mac" data-zh="Mac 原生">Native to the Mac</strong>
+          <p data-en="A desktop surface for the workday, not another browser tab." data-zh="面向工作日的桌面界面，而不是另一个浏览器标签。">A desktop surface for the workday, not another browser tab.</p>
+        </article>
+        <article class="reveal">
+          <span data-en="02" data-zh="02">02</span>
+          <strong data-en="Calendar-aware" data-zh="理解日历">Calendar-aware</strong>
+          <p data-en="See the real shape of the day before committing to a session." data-zh="先看清一天的真实结构，再决定专注安排。">See the real shape of the day before committing to a session.</p>
+        </article>
+        <article class="reveal">
+          <span data-en="03" data-zh="03">03</span>
+          <strong data-en="Open client" data-zh="开放客户端">Open client</strong>
+          <p data-en="The public macOS client keeps the product surface inspectable." data-zh="公开的 macOS 客户端让产品界面可检查。">The public macOS client keeps the product surface inspectable.</p>
+        </article>
       </div>
     </section>
 
-    <section class="pricing-overview" id="pricing">
-      <div class="section-head reveal">
-        <p class="eyebrow" data-en="Pricing" data-zh="价格">Pricing</p>
-        <h2 data-en="Start free. Upgrade when you need more orchestration." data-zh="免费开始。在需要更多编排能力时升级。">Start free. Upgrade when you need more orchestration.</h2>
-        <p class="muted" data-en="Free keeps the local focus workflow useful. Plus and Pro unlock hosted AI, advanced planning, and deeper analysis." data-zh="Free 保持本地专注流程可用。Plus 与 Pro 解锁托管 AI、高级规划与更深度分析。">Free keeps the local focus workflow useful. Plus and Pro unlock hosted AI, advanced planning, and deeper analysis.</p>
+    <section class="editorial-section product-editorial" id="product">
+      <div class="editorial-heading reveal">
+        <p class="atelier-label" data-en="Product" data-zh="产品">Product</p>
+        <h2 data-en="One place for the day before the day takes over." data-zh="在一天开始占据你之前，先把它放在一处。">One place for the day before the day takes over.</h2>
       </div>
+      <div class="product-editorial-grid">
+        <figure class="editorial-figure editorial-figure-primary reveal">
+          <img src="screenshots/Dashboard%20light.png" alt="Orchestrana dashboard" />
+          <figcaption data-en="Timer setup, daily context, and progress without visual noise." data-zh="计时设置、每日上下文与进度，保持视觉安静。">Timer setup, daily context, and progress without visual noise.</figcaption>
+        </figure>
+        <div class="editorial-copy reveal">
+          <h3 data-en="Focus begins before the timer starts." data-zh="专注在计时开始前就已经发生。">Focus begins before the timer starts.</h3>
+          <p data-en="Orchestrana treats planning as part of focus: tasks, due dates, sessions, and context stay close enough to act on, but quiet enough to ignore until needed." data-zh="Orchestrana 把计划视为专注的一部分：任务、截止日期、专注记录和上下文足够靠近，方便执行；又足够安静，不会打扰。">Orchestrana treats planning as part of focus: tasks, due dates, sessions, and context stay close enough to act on, but quiet enough to ignore until needed.</p>
+        </div>
+        <figure class="editorial-figure editorial-figure-secondary reveal">
+          <img src="screenshots/Screenshot%202026-04-23%20at%205.55.40%E2%80%AFPM.png" alt="Orchestrana matrix view" />
+          <figcaption data-en="A matrix view for deciding what deserves attention." data-zh="用矩阵视图判断什么值得注意力。">A matrix view for deciding what deserves attention.</figcaption>
+        </figure>
+      </div>
+    </section>
 
-      <div class="pricing-preview-grid">
-        <article class="pricing-preview-card glass reveal">
-          <h3 data-en="Free" data-zh="Free">Free</h3>
-          <p class="pricing-preview-price" data-en="Included" data-zh="已包含">Included</p>
+    <section class="rhythm-section" id="rhythm">
+      <div class="rhythm-inner">
+        <div class="rhythm-statement reveal">
+          <p class="atelier-label" data-en="Rhythm" data-zh="节奏">Rhythm</p>
+          <h2 data-en="A working rhythm, not a productivity performance." data-zh="一种工作节奏，而不是效率表演。">A working rhythm, not a productivity performance.</h2>
+        </div>
+        <div class="rhythm-rail">
+          <article class="rhythm-card reveal">
+            <span>01</span>
+            <h3 data-en="Collect" data-zh="收集">Collect</h3>
+            <p data-en="Bring tasks and reminders into a single calm list." data-zh="把任务与提醒事项放进一个安静列表。">Bring tasks and reminders into a single calm list.</p>
+          </article>
+          <article class="rhythm-card reveal">
+            <span>02</span>
+            <h3 data-en="Place" data-zh="安排">Place</h3>
+            <p data-en="Review calendar blocks before choosing what fits." data-zh="先查看日历时间块，再选择合适的工作。">Review calendar blocks before choosing what fits.</p>
+          </article>
+          <article class="rhythm-card reveal">
+            <span>03</span>
+            <h3 data-en="Enter" data-zh="进入">Enter</h3>
+            <p data-en="Start Flow Mode when the work is clear enough to begin." data-zh="当工作足够清楚时，进入 Flow Mode。">Start Flow Mode when the work is clear enough to begin.</p>
+          </article>
+        </div>
+        <figure class="rhythm-image reveal">
+          <img src="screenshots/Screenshot%202026-04-23%20at%205.34.01%E2%80%AFPM.png" alt="Orchestrana Flow Mode" />
+        </figure>
+      </div>
+    </section>
+
+    <section class="ai-editorial" id="ai">
+      <div class="ai-copy reveal">
+        <p class="atelier-label" data-en="AI planning" data-zh="AI 规划">AI planning</p>
+        <h2 data-en="Assistance that keeps its shape." data-zh="保持清晰边界的辅助。">Assistance that keeps its shape.</h2>
+        <p data-en="Planning, task breakup, event tasks, summaries, and deeper analysis stay separate so the app can help without making the workflow feel opaque." data-zh="规划、任务拆解、事件任务、总结与深度分析保持分离，让应用在帮助你时不让工作流变得不透明。">Planning, task breakup, event tasks, summaries, and deeper analysis stay separate so the app can help without making the workflow feel opaque.</p>
+      </div>
+      <div class="ai-images reveal">
+        <img class="ai-image-main" src="screenshots/Screenshot%202026-04-23%20at%205.49.18%E2%80%AFPM.png" alt="AI-generated tasks for a calendar event" />
+        <img class="ai-image-float" src="screenshots/Screenshot%202026-04-23%20at%205.50.01%E2%80%AFPM.png" alt="Orchestrana task list" />
+      </div>
+    </section>
+
+    <section class="pricing-atelier" id="pricing">
+      <div class="editorial-heading reveal">
+        <p class="atelier-label" data-en="Pricing" data-zh="价格">Pricing</p>
+        <h2 data-en="Start with the local workflow. Add orchestration when it matters." data-zh="从本地工作流开始。在需要时加入编排能力。">Start with the local workflow. Add orchestration when it matters.</h2>
+      </div>
+      <div class="pricing-atelier-grid">
+        <article class="pricing-atelier-card reveal">
+          <span data-en="Free" data-zh="Free">Free</span>
+          <strong data-en="Included" data-zh="已包含">Included</strong>
           <p data-en="Core timer, tasks, calendar visibility, reminders sync, and basic dashboard context." data-zh="核心计时器、任务、日历查看、提醒事项同步与基础仪表盘概览。">Core timer, tasks, calendar visibility, reminders sync, and basic dashboard context.</p>
         </article>
-        <article class="pricing-preview-card glass reveal is-featured">
-          <h3 data-en="Plus" data-zh="Plus">Plus</h3>
-          <p class="pricing-preview-price">$4.99 <span data-en="/ month" data-zh="/ 月">/ month</span></p>
-          <p class="pricing-preview-alt" data-en="$39.99 annually" data-zh="年付 $39.99">$39.99 annually</p>
-          <p data-en="Standard Models AI, advanced task structure, Flow Mode upgrades, and advanced charts." data-zh="Standard Models AI、高级任务结构、Flow Mode 升级与高级图表。">Standard Models AI, advanced task structure, Flow Mode upgrades, and advanced charts.</p>
+        <article class="pricing-atelier-card pricing-atelier-featured reveal">
+          <span data-en="Plus" data-zh="Plus">Plus</span>
+          <strong>$4.99 <small data-en="/ month" data-zh="/ 月">/ month</small></strong>
+          <em data-en="$39.99 annually" data-zh="年付 $39.99">$39.99 annually</em>
+          <p data-en="Standard Models AI, AI goals and Smart Link, advanced task structure, Flow Mode upgrades, and advanced charts." data-zh="Standard Models AI、AI 目标、智能关联、高级任务结构、Flow Mode 升级与高级图表。">Standard Models AI, AI goals and Smart Link, advanced task structure, Flow Mode upgrades, and advanced charts.</p>
         </article>
-        <article class="pricing-preview-card glass reveal">
-          <h3 data-en="Pro" data-zh="Pro">Pro</h3>
-          <p class="pricing-preview-price">$7.99 <span data-en="/ month" data-zh="/ 月">/ month</span></p>
-          <p class="pricing-preview-alt" data-en="$69.99 annually" data-zh="年付 $69.99">$69.99 annually</p>
-          <p data-en="Frontier Models summaries, deep analysis, AI scheduling, and Pro workflow tools." data-zh="Frontier Models 总结、深度分析、AI 排程与 Pro 工作流工具。">Frontier Models summaries, deep analysis, AI scheduling, and Pro workflow tools.</p>
+        <article class="pricing-atelier-card reveal">
+          <span data-en="Pro" data-zh="Pro">Pro</span>
+          <strong>$7.99 <small data-en="/ month" data-zh="/ 月">/ month</small></strong>
+          <em data-en="$69.99 annually" data-zh="年付 $69.99">$69.99 annually</em>
+          <p data-en="Frontier Models summaries, deep analysis, AI scheduling, dynamic goal adaptation, and Pro workflow tools." data-zh="Frontier Models 总结、深度分析、AI 排程、动态目标调整与 Pro 工作流工具。">Frontier Models summaries, deep analysis, AI scheduling, dynamic goal adaptation, and Pro workflow tools.</p>
         </article>
       </div>
-
-      <div class="docs-cta">
-        <a class="primary-btn" href="comparison.html" data-en="Compare plans and pricing →" data-zh="对比套餐与价格 →">Compare plans and pricing →</a>
-      </div>
-      <p class="waitlist-note" data-en="Prices are shown in USD. App Store regional pricing, taxes, offers, and availability may vary." data-zh="价格以美元显示。App Store 地区价格、税费、优惠与可用性可能不同。">Prices are shown in USD. App Store regional pricing, taxes, offers, and availability may vary.</p>
-    </section>
-
-    <section class="docs" id="docs">
-      <div class="section-head reveal">
-        <p class="eyebrow" data-en="Docs" data-zh="文档">Docs</p>
-        <h2 data-en="Documentation is part of the open development process." data-zh="文档是项目开放开发的一部分。">Documentation is part of the open development process.</h2>
-      </div>
-      <div class="doc-grid">
-        <a class="doc-link glass reveal" href="https://github.com/T-1234567890/orchestrana-app/blob/main/Docs/FQA.md" target="_blank" rel="noreferrer" data-en="FAQ" data-zh="常见问题">FAQ</a>
-        <a class="doc-link glass reveal" href="https://github.com/T-1234567890/orchestrana-app/blob/main/Docs/Future_Pro_Plan.md" target="_blank" rel="noreferrer" data-en="Future Plan" data-zh="未来计划">Future Plan</a>
-        <a class="doc-link glass reveal" href="https://github.com/T-1234567890/orchestrana-app/blob/main/Docs/Gatekeeper.md" target="_blank" rel="noreferrer" data-en="Gatekeeper Guide" data-zh="Gatekeeper 指南">Gatekeeper Guide</a>
-        <a class="doc-link glass reveal" href="https://github.com/T-1234567890/orchestrana-app/blob/main/Docs/Roadmap_1.0-2.0.md" target="_blank" rel="noreferrer" data-en="Roadmap 1.0-2.0" data-zh="路线图 1.0-2.0">Roadmap 1.0-2.0</a>
-      </div>
-      <div class="docs-cta">
-        <a class="primary-btn" href="https://github.com/T-1234567890/orchestrana-app/tree/main/Docs" target="_blank" rel="noreferrer" data-en="More Docs →" data-zh="更多文档 →">More Docs →</a>
+      <div class="pricing-actions reveal">
+        <a class="primary-btn" href="comparison.html" data-en="Compare plans" data-zh="对比套餐">Compare plans</a>
+        <p data-en="Prices are shown in USD. App Store regional pricing, taxes, offers, and availability may vary." data-zh="价格以美元显示。App Store 地区价格、税费、优惠与可用性可能不同。">Prices are shown in USD. App Store regional pricing, taxes, offers, and availability may vary.</p>
       </div>
     </section>
 
-    <section class="download" id="download">
-      <div class="section-head reveal">
-        <p class="eyebrow" data-en="App Store" data-zh="App Store">App Store</p>
-        <h2 data-en="Now available on the App Store." data-zh="现已登陆 App Store。">Now available on the App Store.</h2>
-        <p class="muted" data-en="Get the latest Mac build from the App Store." data-zh="从 App Store 获取最新 Mac 版本。">Get the latest Mac build from the App Store.</p>
-        <div class="cta-row">
-          <a class="app-store-badge" href="https://apps.apple.com/app/orchestrana/id6758972580" target="_blank" rel="noreferrer" aria-label="Download on the Mac App Store">
-            <img src="screenshots/Download_on_the_Mac_App_Store_Badge_US-UK_RGB_blk_092917.svg" alt="Download on the Mac App Store">
-          </a>
+    <section class="open-atelier" id="open-source">
+      <div class="open-copy reveal">
+        <p class="atelier-label" data-en="Open source" data-zh="开源">Open source</p>
+        <h2 data-en="A public client, with the serious pieces kept clear." data-zh="公开客户端，同时让严肃部分保持清晰。">A public client, with the serious pieces kept clear.</h2>
+        <p data-en="Orchestrana ships through the Mac App Store. The client is developed in the open, while cloud services remain separate from the open-source repository." data-zh="Orchestrana 通过 Mac App Store 分发。客户端开放开发，云服务与开源仓库保持分离。">Orchestrana ships through the Mac App Store. The client is developed in the open, while cloud services remain separate from the open-source repository.</p>
+        <div class="atelier-actions">
+          <a class="primary-btn" href="https://github.com/T-1234567890/orchestrana-app" target="_blank" rel="noreferrer" data-en="View repository" data-zh="查看仓库">View repository</a>
+          <a class="atelier-link dark" href="https://github.com/T-1234567890/orchestrana-app/issues/new/choose" target="_blank" rel="noreferrer" data-en="Send feedback" data-zh="提交反馈">Send feedback</a>
         </div>
+      </div>
+
+    </section>
+
+    <section class="sponsor-atelier" id="sponsors">
+      <div class="sponsor-panel reveal">
+        <div>
+          <p class="atelier-label" data-en="Sponsors &amp; Partners" data-zh="赞助与合作伙伴">Sponsors &amp; Partners</p>
+          <h2 data-en="Supported by infrastructure partners." data-zh="由基础设施伙伴支持。">Supported by infrastructure partners.</h2>
+          <p data-en="VPS.Town supports testing infrastructure and community initiatives." data-zh="VPS.Town 支持测试基础设施与社区计划。">VPS.Town supports testing infrastructure and community initiatives.</p>
+        </div>
+        <a class="sponsor-link" href="https://vps.town" target="_blank" rel="noreferrer">
+          <img src="./screenshots/vps-town-logo.png?v=2" alt="VPS.Town Sponsor" width="240" loading="lazy" decoding="async" />
+        </a>
       </div>
     </section>
 
-    <section class="join-us" id="join">
-      <div class="join-system glass reveal">
-        <p class="join-label" data-en="JOIN US" data-zh="加入我们">JOIN US</p>
-        <h2 class="join-title" data-en="Build Orchestrana together" data-zh="一起打造 Orchestrana">Build Orchestrana together</h2>
-        <p class="join-subtitle-main" data-en="Help shape the future of calm productivity." data-zh="一起塑造更安静、更专注的未来。">Help shape the future of calm productivity.</p>
-
-        <div class="contributors-ribbon" id="contributors-ribbon">
-          <div class="contributors-track" id="contributors-track"></div>
-          <p class="contributors-fallback" id="contributors-fallback" data-en="Loading contributors…" data-zh="正在加载贡献者…" hidden>Loading contributors…</p>
-          <p class="contributors-error" id="contributors-error" data-en="Unable to load contributors." data-zh="暂时无法加载贡献者。" hidden>Unable to load contributors.</p>
-        </div>
-
-        <div class="join-grid">
-          <article class="join-card">
-            <div class="join-icon" aria-hidden="true">🧪</div>
-            <h3 data-en="App Store" data-zh="App Store">App Store</h3>
-            <div class="join-copy-block">
-              <p class="join-card-subtitle" data-en="Download the current release" data-zh="下载当前版本">Download the current release</p>
-              <p class="join-card-support" data-en="Get the latest version from Apple's store" data-zh="从 Apple 商店获取最新版本">Get the latest version from Apple's store</p>
-            </div>
-            <a class="soft-btn primary-ish" href="https://apps.apple.com/app/orchestrana/id6758972580" target="_blank" rel="noreferrer" data-en="Open App Store" data-zh="打开 App Store">Open App Store</a>
-          </article>
-
-          <article class="join-card">
-            <div class="join-icon" aria-hidden="true">💬</div>
-            <h3 data-en="Feedback" data-zh="反馈建议">Feedback</h3>
-            <div class="join-copy-block">
-              <p class="join-card-subtitle" data-en="Share ideas and friction" data-zh="分享想法与问题">Share ideas and friction</p>
-              <p class="join-card-support" data-en="Tell us what breaks focus" data-zh="告诉我们哪里影响专注">Tell us what breaks focus</p>
-            </div>
-            <a class="soft-btn primary-ish" href="https://github.com/T-1234567890/orchestrana-app/issues/new/choose" target="_blank" rel="noreferrer" data-en="Send feedback" data-zh="提交反馈">Send feedback</a>
-          </article>
-
-          <article class="join-card">
-            <div class="join-icon" aria-hidden="true">🧑‍💻</div>
-            <h3 data-en="Contributors" data-zh="参与开发">Contributors</h3>
-            <div class="join-copy-block">
-              <p class="join-card-subtitle" data-en="Build the app with us" data-zh="一起参与开发">Build the app with us</p>
-              <p class="join-card-support" data-en="Code, design, docs, reviews" data-zh="代码 / 设计 / 文档 / 评审">Code, design, docs, reviews</p>
-            </div>
-            <a class="soft-btn primary-ish" href="https://github.com/T-1234567890/orchestrana-app" target="_blank" rel="noreferrer" data-en="Contribute code" data-zh="参与贡献">Contribute code</a>
-          </article>
-
-          <article class="join-card">
-            <div class="join-icon" aria-hidden="true">🌍</div>
-            <h3 data-en="Translation" data-zh="翻译本地化">Translation</h3>
-            <div class="join-copy-block">
-              <p class="join-card-subtitle" data-en="Help localize tone" data-zh="帮助语言本地化">Help localize tone</p>
-              <p class="join-card-support" data-en="Make the app feel natural" data-zh="让表达更自然舒适">Make the app feel natural</p>
-            </div>
-            <a class="soft-btn primary-ish" href="https://github.com/T-1234567890/orchestrana-app" target="_blank" rel="noreferrer" data-en="Translate app" data-zh="参与翻译">Translate app</a>
-          </article>
-        </div>
+    <section class="closing-atelier" id="download">
+      <div class="closing-panel reveal">
+        <p class="atelier-label" data-en="App Store" data-zh="App Store">App Store</p>
+        <h2 data-en="Begin with a quieter day." data-zh="从更安静的一天开始。">Begin with a quieter day.</h2>
+        <p data-en="Download the latest Mac build from the App Store." data-zh="从 App Store 获取最新 Mac 版本。">Download the latest Mac build from the App Store.</p>
+        <a class="app-store-badge" href="https://apps.apple.com/app/orchestrana/id6758972580" target="_blank" rel="noreferrer" aria-label="Download on the Mac App Store">
+          <img src="screenshots/Download_on_the_Mac_App_Store_Badge_US-UK_RGB_blk_092917.svg" alt="Download on the Mac App Store" />
+        </a>
       </div>
     </section>
-
-    <section class="project-status-block" id="project-status" aria-live="polite">
-      <div class="project-status-system glass reveal">
-        <div class="section-head">
-          <h2 data-i18n-key="project_status">Project status</h2>
-        </div>
-
-        <div class="project-status-indicator-row" aria-label="Project activity status">
-          <div class="project-status-main">
-            <span class="project-status-dot is-live" id="project-status-dot" aria-hidden="true"></span>
-            <p class="project-status-label" id="project-status-label" data-en="Live" data-zh="正在运行">Live</p>
-          </div>
-          <p class="project-status-sub" id="project-status-sub" data-en="Streak begins today" data-zh="今天开始连续记录">Streak begins today</p>
-          <span class="project-status-streak" id="project-status-streak" data-en="🔥 Starting streak" data-zh="🔥 连续记录开始">🔥 Starting streak</span>
-        </div>
-
-        <div class="project-status-commits feature-grid" id="project-status-commits" aria-label="Recent commits">
-          <article class="project-status-commit-card is-skeleton" aria-hidden="true">
-            <span class="project-status-skeleton project-status-skeleton-line"></span>
-            <div class="project-status-commit-meta">
-              <span class="project-status-skeleton project-status-skeleton-time"></span>
-              <span class="project-status-skeleton project-status-skeleton-icon"></span>
-            </div>
-          </article>
-          <article class="project-status-commit-card is-skeleton" aria-hidden="true">
-            <span class="project-status-skeleton project-status-skeleton-line"></span>
-            <div class="project-status-commit-meta">
-              <span class="project-status-skeleton project-status-skeleton-time"></span>
-              <span class="project-status-skeleton project-status-skeleton-icon"></span>
-            </div>
-          </article>
-          <article class="project-status-commit-card is-skeleton" aria-hidden="true">
-            <span class="project-status-skeleton project-status-skeleton-line"></span>
-            <div class="project-status-commit-meta">
-              <span class="project-status-skeleton project-status-skeleton-time"></span>
-              <span class="project-status-skeleton project-status-skeleton-icon"></span>
-            </div>
-          </article>
-        </div>
-
-        <div class="cta-row project-status-cta">
-          <a class="soft-btn primary-ish" href="https://github.com/T-1234567890/orchestrana-app/commits" target="_blank" rel="noreferrer" data-i18n-key="view_github">View on GitHub</a>
-        </div>
-      </div>
-    </section>
-
-    <section class="sponsors-section" id="sponsors">
-      <div class="sponsors-inner">
-        <div class="section-head">
-          <h2 data-en="Sponsors &amp; Partners" data-zh="赞助与合作伙伴">Sponsors &amp; Partners</h2>
-        </div>
-        <div class="sponsors-grid">
-          <article class="sponsor-card sponsor-panel">
-            <h3 class="sponsor-subtitle" data-en="Infrastructure Sponsor" data-zh="基础设施赞助商">Infrastructure Sponsor</h3>
-            <a class="sponsor-link" href="https://vps.town" target="_blank" rel="noreferrer">
-              <img src="./screenshots/vps-town-logo.png?v=2" alt="VPS.Town Sponsor" width="240" loading="eager" decoding="async">
-            </a>
-            <p class="sponsor-description" data-en="VPS.Town supports testing infrastructure and community initiatives." data-zh="VPS.Town 支持测试基础设施与社区计划。">VPS.Town supports testing infrastructure and community initiatives.</p>
-          </article>
-
-          <div class="sponsor-divider" aria-hidden="true"></div>
-
-          <article class="sponsor-table-card sponsor-panel">
-            <table class="sponsor-table">
-              <thead>
-                <tr>
-                  <th scope="col" data-en="Category" data-zh="类别">Category</th>
-                  <th scope="col" data-en="Partner" data-zh="合作方">Partner</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td data-en="Infrastructure Sponsor" data-zh="基础设施赞助商">Infrastructure Sponsor</td>
-                  <td>VPS.Town</td>
-                </tr>
-                <tr>
-                  <td data-en="AI Partner" data-zh="AI 合作伙伴">AI Partner</td>
-                  <td data-en="Available" data-zh="可用">Available</td>
-                </tr>
-                <tr>
-                  <td data-en="Community Partner" data-zh="社区合作伙伴">Community Partner</td>
-                  <td data-en="Available" data-zh="可用">Available</td>
-                </tr>
-                <tr>
-                  <td data-en="Tools / Integration Partner" data-zh="工具 / 集成合作伙伴">Tools / Integration Partner</td>
-                  <td data-en="Available" data-zh="可用">Available</td>
-                </tr>
-                <tr>
-                  <td data-en="Other" data-zh="其他">Other</td>
-                  <td data-en="Available" data-zh="可用">Available</td>
-                </tr>
-              </tbody>
-            </table>
-          </article>
-        </div>
-      </div>
-    </section>
-
   </main>
 
-  <footer class="footer" id="project-heartbeat">
-    <div class="footer-metrics" id="footer-metrics">
-      <div class="footer-metric">
-        <div class="footer-metric-value"><span class="footer-metric-icon" aria-hidden="true">⭐</span><span class="footer-number" id="footer-stars">--</span></div>
-        <p class="footer-metric-label" data-en="Stars" data-zh="Star 数">Stars</p>
+  <footer class="footer">
+    <div class="footer-main">
+      <div>
+        <a class="brand footer-brand" href="#overview">
+          <img class="brand-icon" src="screenshots/Orchestrana%20icon%201.png" alt="Orchestrana icon" />
+          <span>Orchestrana&trade;</span>
+        </a>
+        <p data-en="A macOS focus workspace for tasks, calendar blocks, Pomodoro rhythm, and AI planning." data-zh="一个面向任务、日历时间块、番茄节奏与 AI 规划的 macOS 专注工作区。">A macOS focus workspace for tasks, calendar blocks, Pomodoro rhythm, and AI planning.</p>
       </div>
-      <div class="footer-metric">
-        <div class="footer-metric-value"><span class="footer-metric-icon" aria-hidden="true">🧱</span><span class="footer-number" id="footer-commits">--</span></div>
-        <p class="footer-metric-label" data-en="Commits" data-zh="提交数">Commits</p>
+      <div class="footer-contact">
+        <a href="mailto:support@orchestrana.app">support@orchestrana.app</a>
+        <a href="mailto:hello@orchestrana.app">hello@orchestrana.app</a>
+        <a href="https://orchestrana.app" target="_blank" rel="noreferrer">orchestrana.app</a>
+        <a href="https://github.com/T-1234567890/orchestrana-app" target="_blank" rel="noreferrer">GitHub</a>
       </div>
-      <div class="footer-metric">
-        <div class="footer-metric-value"><span class="footer-metric-icon" aria-hidden="true">🐛</span><span class="footer-number" id="footer-issues">--</span></div>
-        <p class="footer-metric-label" data-en="Issues" data-zh="问题">Issues</p>
-      </div>
-    </div>
-    <div class="footer-contact">
-      <span class="footer-contact-item">📧 Support: <a href="mailto:support@orchestrana.app">support@orchestrana.app</a></span>
-      <span class="footer-contact-item">📧 General: <a href="mailto:hello@orchestrana.app">hello@orchestrana.app</a></span>
-      <span class="footer-contact-item">🌐 <a href="https://orchestrana.app" target="_blank" rel="noreferrer">orchestrana.app</a></span>
-      <span class="footer-contact-item">💬 Issues / PRs / Discussions welcome</span>
     </div>
     <div class="footer-legal">
       <a href="privacy.html" data-en="Privacy Policy" data-zh="隐私政策">Privacy Policy</a>
       <a href="terms.html" data-en="Terms of Service" data-zh="服务条款">Terms of Service</a>
+      <a href="policies.html" data-en="Policies" data-zh="政策">Policies</a>
       <a href="acknowledgements.html" data-en="Acknowledgements &amp; Licenses" data-zh="致谢与许可证">Acknowledgements &amp; Licenses</a>
     </div>
-    <p class="footer-status">© 2026 Orchestrana™. All rights reserved.</p>
-    <p class="footer-status">Orchestrana™ is a trademark of Shenzhen Tushengjin Commercial Services Co., Ltd.</p>
+    <p class="footer-status">&copy; 2026 Orchestrana&trade;. All rights reserved.</p>
+    <p class="footer-status">Orchestrana&trade; is a trademark of Shenzhen Tushengjin Commercial Services Co., Ltd.</p>
   </footer>
 
   <script src="script.js"></script>
