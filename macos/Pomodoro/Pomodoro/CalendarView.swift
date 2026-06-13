@@ -349,81 +349,7 @@ struct CalendarView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    HStack(spacing: 12) {
-                        Picker(localizationManager.text("calendar.view"), selection: $selectedView) {
-                            Text(localizationManager.text("calendar.view.day")).tag(ViewType.day)
-                            Text(localizationManager.text("calendar.view.week")).tag(ViewType.week)
-                            Text(localizationManager.text("calendar.view.month")).tag(ViewType.month)
-                        }
-                        .pickerStyle(.segmented)
-                        .frame(maxWidth: 260)
-                        .onChange(of: selectedView) { _, _ in
-                            calendarAutoSync.visibleRangeDidChange()
-                        }
-
-                        DatePicker(
-                            "",
-                            selection: $anchorDate,
-                            displayedComponents: .date
-                        )
-                        .labelsHidden()
-                        .datePickerStyle(.field)
-                        .onChange(of: anchorDate) { _, _ in
-                            calendarAutoSync.visibleRangeDidChange()
-                        }
-
-                        if !googleIntegrationManager.isAnyGoogleServiceConnected && !permissionsManager.isCalendarAuthorized {
-                            Text(localizationManager.text("calendar.permission_off.badge"))
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(.thinMaterial, in: Capsule())
-                        }
-
-                        Spacer()
-
-                        Button {
-                            prepareNewEventDefaults()
-                            showingAddEvent = true
-                        } label: {
-                            Label(localizationManager.text("calendar.add_event"), systemImage: "plus")
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .help(localizationManager.text("calendar.add_event"))
-
-                        Button {
-                            if !featureGate.canUseCloudProxyAI {
-                                presentLockedFeatureInfo(
-                                    featureName: localizationManager.text("tasks.ai_assistant.button"),
-                                    description: localizationManager.text("feature_gate.paywall.ai_assistant.description"),
-                                    requiredTier: .plus,
-                                    requirementText: localizationManager.text("feature_gate.paywall.requires_plus_or_pro")
-                                )
-                            } else {
-                                aiAssistantErrorMessage = nil
-                                showAIAssistant = true
-                            }
-                        } label: {
-                            Label(localizationManager.text("tasks.ai_assistant.button"), systemImage: "sparkles")
-                        }
-                        .buttonStyle(.bordered)
-                        .help(localizationManager.text("calendar.ai_assistant.reschedule_description"))
-
-                        Button {
-                            Task { await performToolbarSync() }
-                        } label: {
-                            if activeCalendarSyncInProgress {
-                                ProgressView()
-                                    .controlSize(.small)
-                            } else {
-                                Label("Sync", systemImage: "arrow.triangle.2.circlepath")
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(!canUseToolbarSync)
-
-                    }
+                    calendarToolbar
 
                     calendarSyncPanel
 
@@ -556,11 +482,125 @@ struct CalendarView: View {
         return localizationManager.text("calendar.permission_off.body")
     }
 
+    private var calendarToolbar: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 12) {
+                calendarViewControls
+
+                if !googleIntegrationManager.isAnyGoogleServiceConnected && !permissionsManager.isCalendarAuthorized {
+                    calendarPermissionOffBadge
+                }
+
+                Spacer(minLength: 16)
+
+                calendarPrimaryActions
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .center, spacing: 12) {
+                    calendarViewControls
+
+                    if !googleIntegrationManager.isAnyGoogleServiceConnected && !permissionsManager.isCalendarAuthorized {
+                        calendarPermissionOffBadge
+                    }
+                }
+
+                calendarPrimaryActions
+            }
+        }
+    }
+
+    private var calendarViewControls: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Text(localizationManager.text("calendar.view"))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 48, alignment: .trailing)
+
+            Picker("", selection: $selectedView) {
+                Text(localizationManager.text("calendar.view.day")).tag(ViewType.day)
+                Text(localizationManager.text("calendar.view.week")).tag(ViewType.week)
+                Text(localizationManager.text("calendar.view.month")).tag(ViewType.month)
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            .frame(width: 204)
+            .onChange(of: selectedView) { _, _ in
+                calendarAutoSync.visibleRangeDidChange()
+            }
+
+            DatePicker(
+                "",
+                selection: $anchorDate,
+                displayedComponents: .date
+            )
+            .labelsHidden()
+            .datePickerStyle(.field)
+            .frame(width: 148)
+            .onChange(of: anchorDate) { _, _ in
+                calendarAutoSync.visibleRangeDidChange()
+            }
+        }
+    }
+
+    private var calendarPermissionOffBadge: some View {
+        Text(localizationManager.text("calendar.permission_off.badge"))
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(.thinMaterial, in: Capsule())
+    }
+
+    private var calendarPrimaryActions: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Button {
+                prepareNewEventDefaults()
+                showingAddEvent = true
+            } label: {
+                Label(localizationManager.text("calendar.add_event"), systemImage: "plus")
+            }
+            .buttonStyle(.borderedProminent)
+            .help(localizationManager.text("calendar.add_event"))
+
+            Button {
+                if !featureGate.canUseCloudProxyAI {
+                    presentLockedFeatureInfo(
+                        featureName: localizationManager.text("tasks.ai_assistant.button"),
+                        description: localizationManager.text("feature_gate.paywall.ai_assistant.description"),
+                        requiredTier: .plus,
+                        requirementText: localizationManager.text("feature_gate.paywall.requires_plus_or_pro")
+                    )
+                } else {
+                    aiAssistantErrorMessage = nil
+                    showAIAssistant = true
+                }
+            } label: {
+                Label(localizationManager.text("tasks.ai_assistant.button"), systemImage: "sparkles")
+            }
+            .buttonStyle(.bordered)
+            .help(localizationManager.text("calendar.ai_assistant.reschedule_description"))
+
+            Button {
+                Task { await performToolbarSync() }
+            } label: {
+                if activeCalendarSyncInProgress {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Label(localizationManager.text("calendar.sync"), systemImage: "arrow.triangle.2.circlepath")
+                }
+            }
+            .buttonStyle(.bordered)
+            .disabled(!canUseToolbarSync)
+        }
+    }
+
     private var calendarSyncPanel: some View {
         VStack(alignment: .leading, spacing: 6) {
             if googleIntegrationManager.isAnyGoogleServiceConnected {
                 if googleIntegrationManager.isSyncing {
-                    Label("Google sync in progress", systemImage: "arrow.triangle.2.circlepath")
+                    Label(localizationManager.text("calendar.google_sync.in_progress"), systemImage: "arrow.triangle.2.circlepath")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else if let error = googleIntegrationManager.lastSyncError, !error.isEmpty {
@@ -568,13 +608,13 @@ struct CalendarView: View {
                         .font(.caption)
                         .foregroundStyle(.orange)
                 } else if let lastSyncDate = googleIntegrationManager.lastSyncDate {
-                    Label("Google last synced \(lastSyncDate.formatted(date: .omitted, time: .shortened))", systemImage: "checkmark.circle")
+                    Label(localizationManager.format("calendar.google_sync.last_synced", lastSyncDate.formatted(date: .omitted, time: .shortened)), systemImage: "checkmark.circle")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             } else {
                 if calendarAutoSync.isSyncing {
-                    Label("Calendar sync in progress", systemImage: "arrow.triangle.2.circlepath")
+                    Label(localizationManager.text("calendar.apple_sync.in_progress"), systemImage: "arrow.triangle.2.circlepath")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else if let error = calendarAutoSync.lastSyncError, !error.isEmpty {
@@ -582,7 +622,7 @@ struct CalendarView: View {
                         .font(.caption)
                         .foregroundStyle(.orange)
                 } else if let lastSyncDate = calendarAutoSync.lastSyncDate {
-                    Label("Last synced \(lastSyncDate.formatted(date: .omitted, time: .shortened))", systemImage: "checkmark.circle")
+                    Label(localizationManager.format("calendar.apple_sync.last_synced", lastSyncDate.formatted(date: .omitted, time: .shortened)), systemImage: "checkmark.circle")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -590,9 +630,9 @@ struct CalendarView: View {
 
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Auto-sync")
+                    Text(localizationManager.text("calendar.auto_sync.title"))
                         .font(.subheadline.weight(.medium))
-                    Text(googleIntegrationManager.isAnyGoogleServiceConnected ? "Keep Google Calendar and Google Tasks synchronized automatically." : "Keep app-linked Calendar tasks synchronized automatically.")
+                    Text(googleIntegrationManager.isAnyGoogleServiceConnected ? localizationManager.text("calendar.auto_sync.google_description") : localizationManager.text("calendar.auto_sync.apple_description"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -600,17 +640,17 @@ struct CalendarView: View {
                 Spacer()
 
                 if googleIntegrationManager.isAnyGoogleServiceConnected {
-                    Toggle("Auto-sync", isOn: $googleIntegrationManager.isAutoSyncEnabled)
+                    Toggle(localizationManager.text("calendar.auto_sync.title"), isOn: $googleIntegrationManager.isAutoSyncEnabled)
                         .toggleStyle(.switch)
                         .labelsHidden()
-                        .accessibilityLabel("Google auto-sync")
-                        .accessibilityHint("Keep Google Calendar and Google Tasks synchronized automatically.")
+                        .accessibilityLabel(localizationManager.text("calendar.auto_sync.google_label"))
+                        .accessibilityHint(localizationManager.text("calendar.auto_sync.google_description"))
                 } else {
-                    Toggle("Auto-sync", isOn: $calendarAutoSync.isAutoSyncEnabled)
+                    Toggle(localizationManager.text("calendar.auto_sync.title"), isOn: $calendarAutoSync.isAutoSyncEnabled)
                         .toggleStyle(.switch)
                         .labelsHidden()
-                        .accessibilityLabel("Calendar auto-sync")
-                        .accessibilityHint("Keep app-linked Calendar tasks synchronized automatically.")
+                        .accessibilityLabel(localizationManager.text("calendar.auto_sync.apple_label"))
+                        .accessibilityHint(localizationManager.text("calendar.auto_sync.apple_description"))
                         .disabled(!permissionsManager.isCalendarAuthorized)
                 }
             }

@@ -1,7 +1,7 @@
 # Terms of Service
 
 **Effective Date:** May 31, 2026
-**Last Updated:** May 31, 2026
+**Last Updated:** June 13, 2026
 
 ---
 
@@ -177,7 +177,25 @@ This also includes backend infrastructure and data processors used for authentic
 
 ---
 
-## 10. Acceptable Use and Security
+## 10. Regional Availability and Third-Party Provider Restrictions
+
+The Service, and certain features within the Service, may not be available or may not work the same way in all countries or regions.
+
+Availability may depend on factors including your location, Apple Account country or region, App Store storefront, payment method, local law, export control rules, sanctions restrictions, network access, device capabilities, operating system version, platform rules, and the availability or policies of third-party providers.
+
+Even if Orchestrana is available through the App Store in your country or region, some features may still be unavailable, delayed, degraded, restricted, or require fallback behavior because they depend on third-party services outside our control. These may include Apple services, Google services, AI model providers, authentication providers, billing providers, or other infrastructure and integration providers.
+
+We may limit, modify, suspend, disable, replace, or remove access to certain features, providers, models, integrations, or backend routes in specific countries or regions where required or appropriate for legal, regulatory, platform, provider, security, operational, or reliability reasons.
+
+You may not use the Service where doing so is prohibited by applicable law, sanctions, export control rules, platform restrictions, or third-party provider requirements.
+
+If you move to another country or region, change your Apple Account country or region, use a different App Store storefront, access the Service from a restricted location, or use a network where a third-party provider is unavailable, some features, subscriptions, integrations, AI models, provider routes, sync behavior, or entitlements may become unavailable, behave differently, require re-verification, or stop working.
+
+Except where required by applicable law or platform rules, we are not responsible for the unavailability, delay, restriction, degradation, or change of any feature, subscription, integration, AI model, provider, or platform service caused by regional restrictions, third-party provider rules, local laws, network conditions, provider availability, platform availability, or your account, device, payment, storefront, or location settings.
+
+---
+
+## 11. Acceptable Use and Security
 
 You agree not to:
 
@@ -192,7 +210,7 @@ We may monitor, rate-limit, suspend, or restrict access when reasonably necessar
 
 ---
 
-## 11. Beta Features and Service Changes
+## 12. Beta Features and Service Changes
 
 Some parts of the Service may be labeled beta, preview, experimental, or coming soon. Those features may change, be interrupted, or be removed without notice.
 
@@ -204,7 +222,7 @@ We do not guarantee continuous availability of any specific feature, provider, m
 
 ---
 
-## 12. Disclaimers
+## 13. Disclaimers
 
 To the maximum extent permitted by law, the Service is provided on an "AS IS" and "AS AVAILABLE" basis without warranties of any kind, whether express, implied, or statutory.
 
@@ -221,7 +239,7 @@ You are responsible for maintaining backups, protecting your own device and cred
 
 ---
 
-## 13. Limitation of Liability
+## 14. Limitation of Liability
 
 To the maximum extent permitted by law, we are not liable for indirect, incidental, special, consequential, exemplary, or punitive damages, or for loss of data, profits, goodwill, productivity, or business opportunity arising from or related to the Service.
 
@@ -231,7 +249,7 @@ Some jurisdictions do not allow certain limitations, so parts of this section ma
 
 ---
 
-## 14. Termination
+## 15. Termination
 
 You may stop using the Service at any time.
 
@@ -241,7 +259,7 @@ Sections that should survive by their nature will survive termination, including
 
 ---
 
-## 15. Privacy
+## 16. Privacy
 
 Our data practices are described in the Privacy Policy, which should be read together with these Terms:
 
@@ -251,7 +269,7 @@ If there is a conflict between a product description and the Privacy Policy abou
 
 ---
 
-## 16. Intellectual Property
+## 17. Intellectual Property
 
 The Service, excluding your User Content and third-party materials, is owned by us or our licensors and is protected by applicable intellectual property laws.
 

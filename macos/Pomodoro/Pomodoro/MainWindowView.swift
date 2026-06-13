@@ -728,15 +728,15 @@ struct MainWindowView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 SectionHeaderView(
-                    title: "Insights",
-                    subtitle: "A single place for analytics and guided AI assistance."
+                    title: languageManager.text("insights.title"),
+                    subtitle: languageManager.text("insights.subtitle")
                 )
 
                 GlassCardView {
                     VStack(alignment: .leading, spacing: 12) {
                         SectionHeaderView(
                             title: languageManager.text("main.summary.title"),
-                            subtitle: "Baseline performance signals and longer-term trends."
+                            subtitle: languageManager.text("insights.summary.subtitle")
                         )
                         summarySection
                         summaryFocusTiles
@@ -831,8 +831,8 @@ struct MainWindowView: View {
 
             AIActionCard(
                 icon: "waveform.and.magnifyingglass",
-                title: "Insight AI",
-                description: "Generate weekly overviews, deeper analysis, and metric-level explanations from your local productivity data."
+                title: languageManager.text("insights.ai.title"),
+                description: languageManager.text("insights.ai.description")
             ) {
                 VStack(alignment: .leading, spacing: 10) {
                     if let insightHubResult {
@@ -840,7 +840,7 @@ struct MainWindowView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
-                        Text("Includes weekly overview, deep analysis, and metric explanations.")
+                        Text(languageManager.text("insights.ai.includes"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -855,9 +855,9 @@ struct MainWindowView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Insight AI")
+                    Text(languageManager.text("insights.ai.title"))
                         .font(.headline)
-                    Text(SidebarItem.workspaceEnabled ? "Run analysis here, or open Workspace for the full AI toolset." : "Run analysis here from Insights.")
+                    Text(SidebarItem.workspaceEnabled ? languageManager.text("insights.ai.quick_actions.workspace_enabled") : languageManager.text("insights.ai.quick_actions.insights_only"))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -868,7 +868,7 @@ struct MainWindowView: View {
                     insightAIButtons
 
                     if SidebarItem.workspaceEnabled {
-                        Button("Open Workspace") {
+                        Button(languageManager.text("insights.open_workspace")) {
                             withAnimation {
                                 sidebarSelection = .workspace
                             }
@@ -910,9 +910,9 @@ struct MainWindowView: View {
                 )
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Come back after a little more focus")
+                Text(languageManager.text("insights.empty.title"))
                     .font(.headline)
-                Text("Start a focus session or add a few tasks first. Once you have some activity here, Insight AI will be ready with overviews and analysis.")
+                Text(languageManager.text("insights.empty.body"))
                     .font(.subheadline)
                     .foregroundStyle(currentAppearanceMode.secondaryTextColor(for: colorScheme))
                     .fixedSize(horizontal: false, vertical: true)
@@ -920,7 +920,7 @@ struct MainWindowView: View {
 
             Spacer()
 
-            Button("Start Focusing") {
+            Button(languageManager.text("insights.empty.start_focusing")) {
                 withAnimation {
                     sidebarSelection = .dashboard
                 }
@@ -940,13 +940,13 @@ struct MainWindowView: View {
                     ProgressView()
                         .controlSize(.small)
                 } else {
-                    Text("Generate Overview")
+                    Text(languageManager.text("insights.generate_overview"))
                 }
             }
             .buttonStyle(.bordered)
             .disabled(isInsightHubLoading)
 
-            Button("Run Deep Analysis") {
+            Button(languageManager.text("insights.run_deep_analysis")) {
                 Task {
                     await runInsightDeepAnalysis()
                 }
@@ -954,7 +954,7 @@ struct MainWindowView: View {
             .buttonStyle(.bordered)
             .disabled(isInsightHubLoading)
 
-            Menu("Explain Metric") {
+            Menu(languageManager.text("insights.explain_metric")) {
                 ForEach([
                     AIService.ProductivityInsightMetric.focusQualityScore,
                     .consistencyScore,
@@ -3045,7 +3045,7 @@ struct MainWindowView: View {
         VStack(alignment: .leading, spacing: 8) {
             summarySectionHeader(title: languageManager.text("summary.weekly_trend"))
             if weeklyFocusPoints.allSatisfy({ $0.minutes == 0 }) {
-                emptyChartCard(message: "Insights will appear after you have data.")
+                emptyChartCard(message: languageManager.text("insights.empty_chart"))
             } else {
                 let maxMinutes = weeklyFocusPoints.map(\.minutes).max() ?? 0
                 let minMinutes = weeklyFocusPoints.map(\.minutes).min() ?? 0
@@ -3080,14 +3080,14 @@ struct MainWindowView: View {
 
     private var dailyCompletionTrendChart: some View {
         VStack(alignment: .leading, spacing: 8) {
-            summarySectionHeader(title: "Daily Completion Trend")
+            summarySectionHeader(title: languageManager.text("insights.chart.daily_completion_trend"))
             if dailyCompletionPoints.allSatisfy({ $0.minutes == 0 }) {
-                emptyChartCard(message: "Insights will appear after you have data.")
+                emptyChartCard(message: languageManager.text("insights.empty_chart"))
             } else {
                 Chart(dailyCompletionPoints) { point in
                     BarMark(
-                        x: .value("Day", shortWeekdayFormatter.string(from: point.date)),
-                        y: .value("Completed Sessions", point.minutes)
+                        x: .value(languageManager.text("summary.chart.day"), shortWeekdayFormatter.string(from: point.date)),
+                        y: .value(languageManager.text("insights.chart.completed_sessions"), point.minutes)
                     )
                     .foregroundStyle(Color.green.gradient)
                 }
@@ -3098,20 +3098,20 @@ struct MainWindowView: View {
 
     private var focusBreakRatioCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            summarySectionHeader(title: "Focus vs Break Ratio")
+            summarySectionHeader(title: languageManager.text("insights.chart.focus_break_ratio"))
             if let snapshot = summarySnapshot,
                snapshot.dailyAggregates.contains(where: { $0.totalFocusSeconds > 0 || $0.totalBreakSeconds > 0 }) {
                 HStack(spacing: 20) {
                     Chart {
                         SectorMark(
-                            angle: .value("Focus", focusRatioValue.focus),
+                            angle: .value(languageManager.text("insights.focus"), focusRatioValue.focus),
                             innerRadius: .ratio(0.58),
                             angularInset: 2
                         )
                         .foregroundStyle(Color.accentColor.gradient)
 
                         SectorMark(
-                            angle: .value("Break", focusRatioValue.breakTime),
+                            angle: .value(languageManager.text("insights.break"), focusRatioValue.breakTime),
                             innerRadius: .ratio(0.58),
                             angularInset: 2
                         )
@@ -3120,49 +3120,49 @@ struct MainWindowView: View {
                     .frame(width: 160, height: 160)
 
                     VStack(alignment: .leading, spacing: 8) {
-                        ratioLegendRow(color: .accentColor, title: "Focus", value: "\(focusRatioPercent.focus)%")
-                        ratioLegendRow(color: .orange, title: "Break", value: "\(focusRatioPercent.breakTime)%")
+                        ratioLegendRow(color: .accentColor, title: languageManager.text("insights.focus"), value: "\(focusRatioPercent.focus)%")
+                        ratioLegendRow(color: .orange, title: languageManager.text("insights.break"), value: "\(focusRatioPercent.breakTime)%")
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else {
-                emptyChartCard(message: "Insights will appear after you have data.")
+                emptyChartCard(message: languageManager.text("insights.empty_chart"))
             }
         }
     }
 
     private var focusByHourChart: some View {
         return VStack(alignment: .leading, spacing: 8) {
-            summarySectionHeader(title: "Focus by Hour")
+            summarySectionHeader(title: languageManager.text("insights.chart.focus_by_hour"))
             if focusByHourPoints.contains(where: { $0.focusSeconds > 0 }) {
                 Chart(focusByHourPoints) { point in
                     BarMark(
-                        x: .value("Hour", point.hour),
-                        y: .value("Minutes", point.focusSeconds / 60)
+                        x: .value(languageManager.text("insights.chart.hour"), point.hour),
+                        y: .value(languageManager.text("summary.chart.minutes"), point.focusSeconds / 60)
                     )
                     .foregroundStyle(Color.cyan.gradient)
                 }
                 .frame(height: 180)
             } else {
-                emptyChartCard(message: "Insights will appear after you have data.")
+                emptyChartCard(message: languageManager.text("insights.empty_chart"))
             }
         }
     }
 
     private var sessionLengthDistributionChart: some View {
         VStack(alignment: .leading, spacing: 12) {
-            summarySectionHeader(title: "Session Length Distribution")
+            summarySectionHeader(title: languageManager.text("insights.chart.session_length_distribution"))
             if sessionLengthDistributionPoints.contains(where: { $0.sessionCount > 0 }) {
                 Chart(sessionLengthDistributionPoints) { point in
                     BarMark(
-                        x: .value("Bucket", point.bucket.title),
-                        y: .value("Sessions", point.sessionCount)
+                        x: .value(languageManager.text("insights.chart.bucket"), point.bucket.title),
+                        y: .value(languageManager.text("summary.sessions"), point.sessionCount)
                     )
                     .foregroundStyle(Color.pink.gradient)
                 }
                 .frame(height: 180)
             } else {
-                emptyChartCard(message: "Insights will appear after you have data.")
+                emptyChartCard(message: languageManager.text("insights.empty_chart"))
             }
         }
     }
@@ -3189,7 +3189,7 @@ struct MainWindowView: View {
             summarySectionHeader(title: languageManager.text("summary.task_completion"))
             
             if visibleTodoItems.isEmpty {
-                emptyChartCard(message: "Insights will appear after you have data.")
+                emptyChartCard(message: languageManager.text("insights.empty_chart"))
             } else {
                 let completedCount = visibleTodoItems.filter { $0.isCompleted }.count
                 let total = visibleTodoItems.count
@@ -3199,7 +3199,7 @@ struct MainWindowView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("\(completedCount)/\(total) completed")
+                            Text(languageManager.format("insights.completion.completed_fraction", completedCount, total))
                                 .font(.subheadline.weight(.medium))
                             Spacer()
                             Text("\(Int((progressValue * 100).rounded()))%")
@@ -3466,16 +3466,16 @@ struct MainWindowView: View {
         case .free, .beta, .expired:
             plansPaywallContext = SubscriptionPaywallContext(
                 requiredTier: requiredTier,
-                title: "Unlock AI Workspace",
-                message: "Upgrade to Plus or Pro to use task, schedule, and insight AI from the new workspace."
+                title: languageManager.text("insights.paywall.ai_workspace.title"),
+                message: languageManager.text("insights.paywall.ai_workspace.message")
             )
             return false
         case .plus:
             if requiredTier == .pro {
                 plansPaywallContext = SubscriptionPaywallContext(
                     requiredTier: .pro,
-                    title: "Unlock Deeper Insight AI",
-                    message: "Deep analysis is available in Pro."
+                    title: languageManager.text("insights.paywall.deep_ai.title"),
+                    message: languageManager.text("insights.paywall.deep_ai.message")
                 )
                 return false
             }

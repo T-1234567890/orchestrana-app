@@ -15,16 +15,16 @@ private enum WorkspaceSection: CaseIterable, Identifiable {
 
     var id: Self { self }
 
-    var title: String {
+    func title(languageManager: LanguageManager) -> String {
         switch self {
         case .notes:
-            return "Notes"
+            return languageManager.text("workspace.section.notes")
         case .goals:
-            return "Goals"
+            return languageManager.text("workspace.section.goals")
         case .knowledge:
-            return "Knowledge"
+            return languageManager.text("workspace.section.knowledge")
         case .map:
-            return "Map"
+            return languageManager.text("workspace.section.map")
         }
     }
 
@@ -70,6 +70,7 @@ struct GoalWorkspaceView: View {
     @ObservedObject var sessionRecordStore: SessionRecordStore
     @ObservedObject var featureGate: FeatureGate
     @ObservedObject var appState: AppState
+    @EnvironmentObject private var languageManager: LanguageManager
 
     @AppStorage(AppearanceMode.appStorageKey) private var appearanceModeRawValue = AppearanceMode.standard.rawValue
     @AppStorage(DeveloperDemoMode.googleVideoDemoModeKey) private var googleVideoDemoMode = false
@@ -238,9 +239,9 @@ struct GoalWorkspaceView: View {
         }
         .sheet(isPresented: $showingCreateGoalSheet) {
             goalCreationSheet(
-                title: "Create Goal",
-                subtitle: "Capture the objective. Related work can be suggested or connected from tasks and events later.",
-                primaryActionTitle: "Create Goal"
+                title: languageManager.text("workspace.goal.create.title"),
+                subtitle: languageManager.text("workspace.goal.create.subtitle"),
+                primaryActionTitle: languageManager.text("workspace.goal.create.primary")
             ) {
                 createGoalFromDraft()
                 showingCreateGoalSheet = false
@@ -346,7 +347,7 @@ struct GoalWorkspaceView: View {
                 .symbolRenderingMode(.monochrome)
                 .foregroundStyle(foreground)
                 .frame(width: 16)
-            Text(section.title)
+            Text(section.title(languageManager: languageManager))
                 .foregroundStyle(foreground)
         }
         .font(.subheadline.weight(.semibold))
@@ -411,29 +412,29 @@ struct GoalWorkspaceView: View {
                     .foregroundStyle(.secondary)
             }
 
-            TextField("Finish Orchestrana 3.0", text: $goalDraft.outcome)
+            TextField(languageManager.text("workspace.goal.placeholder.outcome"), text: $goalDraft.outcome)
                 .textFieldStyle(.roundedBorder)
 
-            TextField("Success criteria", text: $goalDraft.successCriteria, axis: .vertical)
+            TextField(languageManager.text("workspace.goal.field.success_criteria"), text: $goalDraft.successCriteria, axis: .vertical)
                 .lineLimit(3...6)
                 .textFieldStyle(.roundedBorder)
 
-            TextField("Next action", text: $goalDraft.nextAction)
+            TextField(languageManager.text("workspace.goal.field.next_action"), text: $goalDraft.nextAction)
                 .textFieldStyle(.roundedBorder)
 
-            TextField("Notes", text: $goalDraft.notes, axis: .vertical)
+            TextField(languageManager.text("workspace.goal.field.notes"), text: $goalDraft.notes, axis: .vertical)
                 .lineLimit(2...5)
                 .textFieldStyle(.roundedBorder)
 
-            Toggle("Target date", isOn: $goalDraft.hasTargetDate)
+            Toggle(languageManager.text("workspace.goal.field.target_date"), isOn: $goalDraft.hasTargetDate)
             if goalDraft.hasTargetDate {
-                DatePicker("Due", selection: $goalDraft.targetDate, displayedComponents: .date)
+                DatePicker(languageManager.text("workspace.goal.field.due"), selection: $goalDraft.targetDate, displayedComponents: .date)
                     .datePickerStyle(.compact)
             }
 
             HStack {
                 Spacer()
-                Button("Cancel") {
+                Button(languageManager.text("common.cancel")) {
                     showingCreateGoalSheet = false
                     showingAICreateGoalSheet = false
                 }
@@ -451,14 +452,14 @@ struct GoalWorkspaceView: View {
     private var aiGoalCreationSheet: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("AI Create Goal")
+                Text(languageManager.text("workspace.goal.ai_create.title"))
                     .font(.title2.weight(.semibold))
-                Text("Describe the outcome in rough language. Review the draft before creating the goal.")
+                Text(languageManager.text("workspace.goal.ai_create.subtitle"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
 
-            TextField("I want to finish the App Store launch and Product Hunt launch", text: $aiGoalPrompt, axis: .vertical)
+            TextField(languageManager.text("workspace.goal.ai_create.placeholder"), text: $aiGoalPrompt, axis: .vertical)
                 .lineLimit(3...6)
                 .textFieldStyle(.roundedBorder)
 
@@ -471,10 +472,10 @@ struct GoalWorkspaceView: View {
                     HStack(spacing: 8) {
                         ProgressView()
                             .controlSize(.small)
-                        Text("Generating Draft")
+                        Text(languageManager.text("workspace.goal.ai_create.generating"))
                     }
                 } else {
-                    Label("Generate Draft", systemImage: "sparkles")
+                    Label(languageManager.text("workspace.goal.ai_create.generate"), systemImage: "sparkles")
                 }
             }
             .buttonStyle(.bordered)
@@ -489,9 +490,9 @@ struct GoalWorkspaceView: View {
             if aiGoalDraftReady {
                 Divider()
                 goalCreationSheet(
-                    title: "Review Goal Draft",
-                    subtitle: "This creates a normal local goal. It will not create related work unless you confirm Smart Link separately.",
-                    primaryActionTitle: "Create Goal"
+                    title: languageManager.text("workspace.goal.ai_create.review_title"),
+                    subtitle: languageManager.text("workspace.goal.ai_create.review_subtitle"),
+                    primaryActionTitle: languageManager.text("workspace.goal.create.primary")
                 ) {
                     createGoalFromDraft()
                     showingAICreateGoalSheet = false
@@ -500,7 +501,7 @@ struct GoalWorkspaceView: View {
             } else {
                 HStack {
                     Spacer()
-                    Button("Cancel") {
+                    Button(languageManager.text("common.cancel")) {
                         showingAICreateGoalSheet = false
                     }
                 }
@@ -513,9 +514,9 @@ struct GoalWorkspaceView: View {
     private var smartLinkSheet: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Smart Link Related Work")
+                Text(languageManager.text("workspace.smart_link.title"))
                     .font(.title2.weight(.semibold))
-                Text("Review suggested tasks, events, and focus sessions before adding them as related work.")
+                Text(languageManager.text("workspace.smart_link.subtitle"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -526,9 +527,9 @@ struct GoalWorkspaceView: View {
                         ProgressView()
                             .controlSize(.regular)
                         VStack(spacing: 4) {
-                            Text("Finding related work with AI")
+                            Text(languageManager.text("workspace.smart_link.finding"))
                                 .font(.headline)
-                            Text(smartLinkStatusMessage ?? "Checking tasks, events, and focus sessions.")
+                            Text(smartLinkStatusMessage ?? languageManager.text("workspace.smart_link.checking"))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
@@ -537,7 +538,7 @@ struct GoalWorkspaceView: View {
                     .frame(maxWidth: .infinity, minHeight: 140)
                 } else {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("No strong suggestions found for this goal.")
+                        Text(languageManager.text("workspace.smart_link.empty"))
                             .foregroundStyle(.secondary)
                         if let smartLinkStatusMessage {
                             Text(smartLinkStatusMessage)
@@ -580,10 +581,10 @@ struct GoalWorkspaceView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Cancel") {
+                Button(languageManager.text("common.cancel")) {
                     showingSmartLinkSheet = false
                 }
-                Button("Add Related Work") {
+                Button(languageManager.text("workspace.smart_link.add_related_work")) {
                     confirmSmartLinkSuggestions()
                     showingSmartLinkSheet = false
                 }
@@ -621,16 +622,16 @@ struct GoalWorkspaceView: View {
         GoalWorkspaceCard {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Goals")
+                    Text(languageManager.text("workspace.goals.title"))
                         .font(.title3.weight(.semibold))
-                    Text("What are you trying to achieve, and what should happen next?")
+                    Text(languageManager.text("workspace.goals.subtitle"))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
 
                 VStack(spacing: 8) {
                     goalActionButton(
-                        title: "Create Goal",
+                        title: languageManager.text("workspace.goal.create.title"),
                         systemImage: "plus.circle.fill",
                         isProminent: true
                     ) {
@@ -639,13 +640,13 @@ struct GoalWorkspaceView: View {
                     }
 
                     goalActionButton(
-                        title: "AI Create Goal",
+                        title: languageManager.text("workspace.goal.ai_create.title"),
                         systemImage: "sparkles"
                     ) {
                         guard canUseGoalAI else {
                             presentGoalAIPaywall(
-                                title: "AI Create Goal requires Plus",
-                                message: "Turn rough ideas into structured goals with outcome, success criteria, and next action. Included with Plus and Pro."
+                                title: languageManager.text("workspace.paywall.ai_goal.title"),
+                                message: languageManager.text("workspace.paywall.ai_goal.message")
                             )
                             return
                         }
@@ -656,20 +657,20 @@ struct GoalWorkspaceView: View {
                     }
 
                     goalActionButton(
-                        title: isGeneratingSmartLinks ? "Finding Related Work" : "Smart Link",
+                        title: isGeneratingSmartLinks ? languageManager.text("workspace.smart_link.finding_short") : languageManager.text("workspace.smart_link.button"),
                         systemImage: "wand.and.stars",
                         isEnabled: !isGeneratingSmartLinks,
                         isLoading: isGeneratingSmartLinks
                     ) {
                         guard canUseGoalAI else {
                             presentGoalAIPaywall(
-                                title: "Smart Link requires Plus",
-                                message: "Suggest related tasks, events, and focus sessions for a goal before you confirm them. Included with Plus and Pro."
+                                title: languageManager.text("workspace.paywall.smart_link.title"),
+                                message: languageManager.text("workspace.paywall.smart_link.message")
                             )
                             return
                         }
                         guard selectedGoal != nil else {
-                            limitMessage = "Select or create a goal before using Smart Link."
+                            limitMessage = languageManager.text("workspace.smart_link.select_goal_first")
                             return
                         }
                         Task {
@@ -691,9 +692,9 @@ struct GoalWorkspaceView: View {
                     .foregroundStyle(.purple)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Dynamic Adapt")
+                    Text(languageManager.text("workspace.dynamic_adapt.title"))
                         .font(.subheadline.weight(.semibold))
-                    Text("Adjust active goals and their related tasks or events automatically.")
+                    Text(languageManager.text("workspace.dynamic_adapt.description"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -706,7 +707,7 @@ struct GoalWorkspaceView: View {
 
             if isDynamicGoalAdaptActive {
                 Stepper(
-                    "Every \(dynamicGoalAdaptIntervalHours) hours",
+                    languageManager.format("workspace.dynamic_adapt.every_hours", dynamicGoalAdaptIntervalHours),
                     value: $dynamicGoalAdaptIntervalHours,
                     in: 6...48,
                     step: 6
@@ -714,7 +715,7 @@ struct GoalWorkspaceView: View {
                 .font(.caption)
 
                 if isAdjustingGoals {
-                    Label("Adapting goals", systemImage: "sparkles")
+                    Label(languageManager.text("workspace.dynamic_adapt.adapting"), systemImage: "sparkles")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -767,7 +768,7 @@ struct GoalWorkspaceView: View {
         GoalWorkspaceCard {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("Goal Tracking")
+                    Text(languageManager.text("workspace.goal_tracking.title"))
                         .font(.headline)
                     Spacer()
                     Text("\(goalStore.goals.count)")
@@ -776,7 +777,7 @@ struct GoalWorkspaceView: View {
                 }
 
                 if goalStore.goals.isEmpty {
-                    Text("No goals yet. Create one to decide what to do next.")
+                    Text(languageManager.text("workspace.goal_tracking.empty"))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 } else {
@@ -811,17 +812,17 @@ struct GoalWorkspaceView: View {
                     selectedGoalHeader(goal)
 
                     if !goal.successCriteria.isEmpty {
-                        detailBlock(title: "Success criteria", body: goal.successCriteria)
+                        detailBlock(title: languageManager.text("workspace.goal.field.success_criteria"), body: goal.successCriteria)
                     }
 
                     if !goal.nextAction.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
-                            detailBlock(title: "Next action", body: goal.nextAction)
+                            detailBlock(title: languageManager.text("workspace.goal.field.next_action"), body: goal.nextAction)
                             HStack(spacing: 10) {
                                 Button {
                                     createRelatedTaskFromNextAction(for: goal)
                                 } label: {
-                                    Label("Create Task from Next Action", systemImage: "checklist")
+                                    Label(languageManager.text("workspace.goal.create_task_from_next_action"), systemImage: "checklist")
                                 }
                                 .buttonStyle(.bordered)
                                 .disabled(isRelatedWorkLimitReached(for: goal))
@@ -829,7 +830,7 @@ struct GoalWorkspaceView: View {
                                 Button {
                                     startFocus(for: goal)
                                 } label: {
-                                    Label("Start Focus", systemImage: "timer")
+                                    Label(languageManager.text("workspace.goal.start_focus"), systemImage: "timer")
                                 }
                                 .buttonStyle(.bordered)
                             }
@@ -841,7 +842,7 @@ struct GoalWorkspaceView: View {
                     relatedWorkList(for: goal)
 
                     if !goal.notes.isEmpty {
-                        detailBlock(title: "Notes", body: goal.notes)
+                        detailBlock(title: languageManager.text("workspace.goal.field.notes"), body: goal.notes)
                     }
 
                     dangerZone(for: goal)
@@ -849,7 +850,7 @@ struct GoalWorkspaceView: View {
             }
         } else {
             GoalWorkspaceCard {
-                Text("Select or create a goal.")
+                Text(languageManager.text("workspace.goal.empty_selection"))
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -865,7 +866,7 @@ struct GoalWorkspaceView: View {
                     Text(goal.outcome)
                         .font(.title3.weight(.semibold))
                     HStack(spacing: 8) {
-                        Label(goal.status.title, systemImage: statusIcon(for: goal.status))
+                        Label(localizedStatusTitle(goal.status), systemImage: statusIcon(for: goal.status))
                         if let targetDate = goal.targetDate {
                             Label(targetDate.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
                         }
@@ -876,7 +877,7 @@ struct GoalWorkspaceView: View {
 
                 Spacer()
 
-                StatusPill(title: goal.status.title, icon: statusIcon(for: goal.status))
+                StatusPill(title: localizedStatusTitle(goal.status), icon: statusIcon(for: goal.status))
             }
 
             if let progress = progressText(for: goal) {
@@ -901,14 +902,14 @@ struct GoalWorkspaceView: View {
     private func progressSection(for goal: GoalRecord) -> some View {
         let summary = relatedWorkSummary(for: goal)
         return VStack(alignment: .leading, spacing: 8) {
-            Text("Progress")
+            Text(languageManager.text("workspace.progress.title"))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 12) {
-                progressMetric(title: "Tasks", value: "\(summary.completedTasks)/\(summary.totalTasks)")
-                progressMetric(title: "Focus sessions", value: "\(summary.focusSessions)")
-                progressMetric(title: "Time spent", value: durationText(summary.focusSeconds))
+                progressMetric(title: languageManager.text("workspace.progress.tasks"), value: "\(summary.completedTasks)/\(summary.totalTasks)")
+                progressMetric(title: languageManager.text("workspace.progress.focus_sessions"), value: "\(summary.focusSessions)")
+                progressMetric(title: languageManager.text("workspace.progress.time_spent"), value: durationText(summary.focusSeconds))
             }
         }
     }
@@ -929,22 +930,22 @@ struct GoalWorkspaceView: View {
 
     private func dangerZone(for goal: GoalRecord) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Goal controls")
+            Text(languageManager.text("workspace.goal_controls.title"))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 10) {
-                Button("Pause") {
+                Button(languageManager.text("workspace.status.paused")) {
                     goalStore.setStatus(goalID: goal.id, status: .paused)
                 }
                 .disabled(goal.status == .paused)
 
-                Button("Complete") {
+                Button(languageManager.text("workspace.status.completed")) {
                     goalStore.setStatus(goalID: goal.id, status: .completed)
                 }
                 .disabled(goal.status == .completed)
 
-                Button("Delete", role: .destructive) {
+                Button(languageManager.text("common.delete"), role: .destructive) {
                     goalStore.deleteGoal(goal)
                 }
             }
@@ -955,12 +956,12 @@ struct GoalWorkspaceView: View {
     private func relatedWorkList(for goal: GoalRecord) -> some View {
         let links = goalStore.links(for: goal.id)
         return VStack(alignment: .leading, spacing: 8) {
-            Text("Related Work")
+            Text(languageManager.text("workspace.related_work.title"))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             if links.isEmpty {
-                Text("No related work yet. Use Smart Link or link a task/event from its menu.")
+                Text(languageManager.text("workspace.related_work.empty"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {
@@ -988,7 +989,7 @@ struct GoalWorkspaceView: View {
     private func createGoalFromDraft() {
         if let activeGoalLimit,
            goalStore.goals.filter({ $0.status == .active }).count >= activeGoalLimit {
-            limitMessage = "Free users can keep up to \(activeGoalLimit) active objectives. Complete or pause one before adding another."
+            limitMessage = languageManager.format("workspace.limit.active_goals", activeGoalLimit)
             return
         }
 
@@ -1018,8 +1019,8 @@ struct GoalWorkspaceView: View {
     private func presentDynamicGoalPaywall() {
         upgradePaywallContext = SubscriptionPaywallContext(
             requiredTier: .pro,
-            title: "Unlock Dynamic Adapt",
-            message: "Dynamic Adapt reviews active goals and related tasks or events on your schedule, then adjusts the goal plan automatically."
+            title: languageManager.text("workspace.paywall.dynamic_adapt.title"),
+            message: languageManager.text("workspace.paywall.dynamic_adapt.message")
         )
     }
 
@@ -1031,7 +1032,7 @@ struct GoalWorkspaceView: View {
         let title = goal.nextAction.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return }
 
-        let item = TodoItem(title: title, notes: "Related goal: \(goal.outcome)")
+        let item = TodoItem(title: title, notes: languageManager.format("workspace.related_goal.note", goal.outcome))
         todoStore.addItem(item)
         _ = goalStore.addLink(goalID: goal.id, kind: .task, targetID: item.id.uuidString)
         limitMessage = nil
@@ -1039,7 +1040,7 @@ struct GoalWorkspaceView: View {
 
     private func showRelatedWorkLimitMessage() {
         if let linkLimit {
-            limitMessage = "Free plan supports up to \(linkLimit) related work items per goal."
+            limitMessage = languageManager.format("workspace.limit.related_work", linkLimit)
         }
     }
 
@@ -1056,7 +1057,7 @@ struct GoalWorkspaceView: View {
 
     private func generateAIGoalDraft() async {
         guard canUseGoalAI else {
-            goalAIErrorMessage = "AI goal creation requires Plus."
+            goalAIErrorMessage = languageManager.text("workspace.paywall.ai_goal.short")
             return
         }
 
@@ -1183,7 +1184,7 @@ struct GoalWorkspaceView: View {
                     "id": task.id.uuidString,
                     "title": task.title,
                     "notes": [task.descriptionMarkdown ?? "", task.tags.joined(separator: " ")].joined(separator: "\n"),
-                    "subtitle": task.isCompleted ? "Completed task" : "Task"
+                    "subtitle": task.isCompleted ? languageManager.text("workspace.item.completed_task") : languageManager.text("workspace.item.task")
                 ]
             }
 
@@ -1196,7 +1197,7 @@ struct GoalWorkspaceView: View {
                     "id": event.id.uuidString,
                     "title": event.title,
                     "notes": event.notes ?? "",
-                    "subtitle": event.startDate?.formatted(date: .abbreviated, time: .shortened) ?? "Event"
+                    "subtitle": event.startDate?.formatted(date: .abbreviated, time: .shortened) ?? languageManager.text("workspace.item.event")
                 ]
             }
 
@@ -1230,7 +1231,7 @@ struct GoalWorkspaceView: View {
     private func prepareSmartLinkSuggestions() async {
         guard let goal = selectedGoal else { return }
         guard canUseGoalAI else {
-            smartLinkErrorMessage = "Smart Link requires Plus."
+            smartLinkErrorMessage = languageManager.text("workspace.paywall.smart_link.short")
             return
         }
 
@@ -1239,7 +1240,12 @@ struct GoalWorkspaceView: View {
 
         isGeneratingSmartLinks = true
         smartLinkErrorMessage = nil
-        smartLinkStatusMessage = "Checking \(candidateCount.tasks) tasks, \(candidateCount.events) events, and \(candidateCount.sessions) sessions with AI."
+        smartLinkStatusMessage = languageManager.format(
+            "workspace.smart_link.status.checking_counts",
+            candidateCount.tasks,
+            candidateCount.events,
+            candidateCount.sessions
+        )
         smartLinkSuggestions = []
         selectedSmartLinkSuggestionIDs = []
         showingSmartLinkSheet = true
@@ -1256,18 +1262,18 @@ struct GoalWorkspaceView: View {
             if smartLinkSuggestions.isEmpty {
                 smartLinkSuggestions = makeSmartLinkSuggestions(for: goal)
                 smartLinkStatusMessage = smartLinkSuggestions.isEmpty
-                    ? "AI checked \(candidateCount.tasks) tasks, \(candidateCount.events) events, and \(candidateCount.sessions) sessions but did not find a strong match."
-                    : "AI found no strong matches. Showing local matches instead."
+                    ? languageManager.format("workspace.smart_link.status.no_ai_match", candidateCount.tasks, candidateCount.events, candidateCount.sessions)
+                    : languageManager.text("workspace.smart_link.status.showing_local")
             } else {
-                smartLinkStatusMessage = "AI suggested \(smartLinkSuggestions.count) related item\(smartLinkSuggestions.count == 1 ? "" : "s")."
+                smartLinkStatusMessage = languageManager.format("workspace.smart_link.status.suggested_count", smartLinkSuggestions.count)
             }
         } catch {
             ClientLog.debugError("[Goals] Smart Link AI request failed", error)
             smartLinkSuggestions = makeSmartLinkSuggestions(for: goal)
             smartLinkErrorMessage = AIService.userFacingErrorMessage(error)
             smartLinkStatusMessage = smartLinkSuggestions.isEmpty
-                ? "AI request failed and no local matches were found."
-                : "AI request failed. Showing local matches instead."
+                ? languageManager.text("workspace.smart_link.status.failed_empty")
+                : languageManager.text("workspace.smart_link.status.failed_local")
         }
 
         selectedSmartLinkSuggestionIDs = Set(smartLinkSuggestions.prefix(3).map(\.id))
@@ -1299,7 +1305,7 @@ struct GoalWorkspaceView: View {
                     "id": task.id.uuidString,
                     "title": task.title,
                     "notes": [task.descriptionMarkdown ?? "", task.tags.joined(separator: " ")].joined(separator: "\n"),
-                    "subtitle": "Task"
+                    "subtitle": languageManager.text("workspace.item.task")
                 ]
             }
 
@@ -1311,7 +1317,7 @@ struct GoalWorkspaceView: View {
                     "id": event.id.uuidString,
                     "title": event.title,
                     "notes": event.notes ?? "",
-                    "subtitle": event.startDate?.formatted(date: .abbreviated, time: .shortened) ?? "Event"
+                    "subtitle": event.startDate?.formatted(date: .abbreviated, time: .shortened) ?? languageManager.text("workspace.item.event")
                 ]
             }
 
@@ -1577,8 +1583,8 @@ struct GoalWorkspaceView: View {
                         kind: .task,
                         targetID: task.id.uuidString,
                         title: task.title,
-                        subtitle: "Task",
-                        reason: "\(score) matching terms"
+                        subtitle: languageManager.text("workspace.item.task"),
+                        reason: languageManager.format("workspace.smart_link.reason.matching_terms", score)
                     ),
                     score
                 ))
@@ -1593,8 +1599,8 @@ struct GoalWorkspaceView: View {
                         kind: .event,
                         targetID: event.id.uuidString,
                         title: event.title,
-                        subtitle: event.startDate?.formatted(date: .abbreviated, time: .shortened) ?? "Event",
-                        reason: "\(score) matching terms"
+                        subtitle: event.startDate?.formatted(date: .abbreviated, time: .shortened) ?? languageManager.text("workspace.item.event"),
+                        reason: languageManager.format("workspace.smart_link.reason.matching_terms", score)
                     ),
                     score
                 ))
@@ -1612,7 +1618,7 @@ struct GoalWorkspaceView: View {
                         targetID: session.id.uuidString,
                         title: title,
                         subtitle: session.endTime.formatted(date: .abbreviated, time: .shortened),
-                        reason: "\(score) matching terms"
+                        reason: languageManager.format("workspace.smart_link.reason.matching_terms", score)
                     ),
                     score
                 ))
@@ -1690,11 +1696,11 @@ struct GoalWorkspaceView: View {
             .compactMap { UUID(uuidString: $0.targetID) }
         guard !taskIDs.isEmpty else {
             let sessionCount = links.filter { $0.kind == .session }.count
-            return sessionCount > 0 ? "\(sessionCount) related focus sessions" : nil
+            return sessionCount > 0 ? languageManager.format("workspace.progress.related_focus_sessions", sessionCount) : nil
         }
         let relatedTasks = visibleTodoItems.filter { taskIDs.contains($0.id) }
         let completed = relatedTasks.filter(\.isCompleted).count
-        return "\(completed)/\(relatedTasks.count) related tasks complete"
+        return languageManager.format("workspace.progress.related_tasks_complete", completed, relatedTasks.count)
     }
 
     private func title(for link: GoalLink) -> String {
@@ -1702,19 +1708,19 @@ struct GoalWorkspaceView: View {
         case .task:
             guard let id = UUID(uuidString: link.targetID),
                   let task = visibleTodoItems.first(where: { $0.id == id }) else {
-                return "Missing task"
+                return languageManager.text("workspace.item.missing_task")
             }
             return task.title
         case .event:
             guard let id = UUID(uuidString: link.targetID),
                   let item = visiblePlanningItems.first(where: { $0.id == id }) else {
-                return "Missing event"
+                return languageManager.text("workspace.item.missing_event")
             }
             return item.title
         case .session:
             guard let id = UUID(uuidString: link.targetID),
                   let session = sessionRecordStore.records.first(where: { $0.id == id }) else {
-                return "Missing session"
+                return languageManager.text("workspace.item.missing_session")
             }
             return sessionTitle(session)
         }
@@ -1723,18 +1729,18 @@ struct GoalWorkspaceView: View {
     private func subtitle(for link: GoalLink) -> String {
         switch link.kind {
         case .task:
-            return "Task"
+            return languageManager.text("workspace.item.task")
         case .event:
             guard let id = UUID(uuidString: link.targetID),
                   let item = visiblePlanningItems.first(where: { $0.id == id }),
                   let startDate = item.startDate else {
-                return "Event"
+                return languageManager.text("workspace.item.event")
             }
             return startDate.formatted(date: .abbreviated, time: .shortened)
         case .session:
             guard let id = UUID(uuidString: link.targetID),
                   let session = sessionRecordStore.records.first(where: { $0.id == id }) else {
-                return "Focus session"
+                return languageManager.text("workspace.item.focus_session")
             }
             return "\(durationText(session.durationSeconds)) - \(session.endTime.formatted(date: .abbreviated, time: .shortened))"
         }
@@ -1746,15 +1752,15 @@ struct GoalWorkspaceView: View {
            let task = visibleTodoItems.first(where: { $0.id == taskId }) {
             taskTitle = task.title
         } else {
-            taskTitle = session.sessionType == .focus ? "Focus session" : session.sessionType.rawValue.capitalized
+            taskTitle = session.sessionType == .focus ? languageManager.text("workspace.item.focus_session") : session.sessionType.rawValue.capitalized
         }
         return "\(taskTitle) - \(durationText(session.durationSeconds))"
     }
 
     private func durationText(_ seconds: Int) -> String {
-        guard seconds > 0 else { return "0m" }
+        guard seconds > 0 else { return languageManager.format("workspace.duration.minutes_short", 0) }
         let minutes = max(1, Int((Double(seconds) / 60.0).rounded()))
-        return "\(minutes)m"
+        return languageManager.format("workspace.duration.minutes_short", minutes)
     }
 
     private func icon(for kind: GoalLink.Kind) -> String {
@@ -1776,6 +1782,17 @@ struct GoalWorkspaceView: View {
             return "pause.circle"
         case .completed:
             return "checkmark.circle"
+        }
+    }
+
+    private func localizedStatusTitle(_ status: GoalRecord.Status) -> String {
+        switch status {
+        case .active:
+            return languageManager.text("workspace.status.active")
+        case .paused:
+            return languageManager.text("workspace.status.paused")
+        case .completed:
+            return languageManager.text("workspace.status.completed")
         }
     }
 }
@@ -1817,6 +1834,8 @@ private struct GoalWorkspaceCard<Content: View>: View {
 }
 
 private struct GoalListRow: View {
+    @EnvironmentObject private var languageManager: LanguageManager
+
     let goal: GoalRecord
     let isSelected: Bool
     let progressText: String?
@@ -1828,12 +1847,12 @@ private struct GoalListRow: View {
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(2)
                 Spacer()
-                StatusPill(title: goal.status.title, icon: statusIcon)
+                StatusPill(title: localizedStatusTitle(goal.status), icon: statusIcon)
             }
 
             if !goal.nextAction.isEmpty {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Next action")
+                    Text(languageManager.text("workspace.goal.field.next_action"))
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text(goal.nextAction)
@@ -1847,7 +1866,7 @@ private struct GoalListRow: View {
                 if let targetDate = goal.targetDate {
                     Label(targetDate.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
                 }
-                Text(progressText ?? "No related work yet")
+                Text(progressText ?? languageManager.text("workspace.related_work.none_yet"))
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -1866,6 +1885,17 @@ private struct GoalListRow: View {
             return "pause.circle"
         case .completed:
             return "checkmark.circle"
+        }
+    }
+
+    private func localizedStatusTitle(_ status: GoalRecord.Status) -> String {
+        switch status {
+        case .active:
+            return languageManager.text("workspace.status.active")
+        case .paused:
+            return languageManager.text("workspace.status.paused")
+        case .completed:
+            return languageManager.text("workspace.status.completed")
         }
     }
 }
