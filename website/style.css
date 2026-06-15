@@ -956,6 +956,7 @@ body.lang-switching-in [data-en] {
 }
 .compare-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
   border: 1px solid rgba(0,0,0,0.05);
@@ -968,6 +969,7 @@ body.lang-switching-in [data-en] {
   padding: 12px 10px;
   color: var(--text);
   font-family: 'Literata', 'Georgia', 'Times New Roman', serif;
+  width: 50%;
 }
 .pill-soon {
   display: inline-flex;
@@ -1007,8 +1009,16 @@ body.lang-switching-in [data-en] {
 .compare-table th:last-child {
   background: rgba(255,248,242,0.32);
   border-left: 1px solid rgba(0,0,0,0.03);
-  font-weight: 700;
   color: #2c1f19;
+}
+.compare-table th:last-child {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+.compare-table td:last-child {
+  font-weight: 500;
+  letter-spacing: -0.015em;
 }
 .comparison-page .comparison-content {
   display: grid;

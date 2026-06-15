@@ -185,7 +185,7 @@ Planned for future versions:
 - ⌨️ More features
 - 🛎️ Issue requirements
 
-See: `Docs/Public_Roadmap.md`, `Docs/Future_Pro_Plan.md`, and `Docs/Roadmap_1.0-2.0.md`
+See: `Docs/Public_Roadmap_3.0.md`, `Docs/Future_Pro_Plan.md`, and `Docs/Roadmap_1.0-2.0.md`
 
 ## Pricing
 
@@ -273,7 +273,8 @@ This was the **original prototype** used during the earliest stages of developme
 ## Docs
 
 - Future planning: `docs/Future_Pro_Plan.md`
-- Development roadmap: `docs/Roadmap_1.0-2.0.md`
+- Public roadmap: `Docs/Public_Roadmap_3.0.md`
+- Legacy roadmap: `Docs/Roadmap_1.0-2.0.md`
 - FAQ & design decisions: `docs/FAQ.md`
 - Gatekeeper & installation notes: `docs/Gatekeeper.md`
 

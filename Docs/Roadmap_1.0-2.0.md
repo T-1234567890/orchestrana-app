@@ -4,7 +4,7 @@
 > ## Legacy Notice
 > This is a legacy roadmap snapshot kept for historical context.
 > It may not reflect the current product direction, subscription model, or AI / PKB planning.
-> For the current public roadmap, see `Docs/Public_Roadmap.md`.
+> For the current public roadmap, see `Docs/Public_Roadmap_3.0.md`.
 
 This document outlines the development direction of **Orchestrana** from the current 1.1.x releases toward version 2.0.
 

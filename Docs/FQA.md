@@ -231,7 +231,8 @@ Feedback and bug reports are welcome.
 
 ## Where can I learn more about future plans?
 
-- Development roadmap: `docs/Roadmap_1.0-2.0.md`
+- Public roadmap: `Docs/Public_Roadmap_3.0.md`
+- Legacy roadmap: `Docs/Roadmap_1.0-2.0.md`
 - Long-term ideas: `docs/Future_Pro_Plan.md`
 
 These documents describe **directional thinking**, not commitments.
