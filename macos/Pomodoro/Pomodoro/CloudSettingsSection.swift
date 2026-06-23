@@ -66,7 +66,7 @@ struct CloudSettingsSection: View {
 
             if authViewModel.isAnonymousUser {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Sign in or create an account to make account recovery easier for support.")
+                    Text(L("account.recovery.sign_in_hint"))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
 
@@ -287,7 +287,7 @@ struct AccountSecuritySettingsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             if authViewModel.isAnonymousUser {
-                Text("You can purchase and restore subscriptions without creating an account. Use any sign-in method from the account panel only if you want an easier account-recovery path for support.")
+                Text(L("account.purchase_without_account_hint"))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else if authViewModel.isLoggedIn {

@@ -96,6 +96,15 @@ struct MapWorkspaceView: View {
         [.standard, .spatial]
     }
 
+    private func mapFilterTitle(_ filter: MapWorkFilter) -> String {
+        switch filter {
+        case .standard:
+            return L("workspace.map.mode.standard")
+        case .spatial:
+            return L("workspace.map.mode.spatial")
+        }
+    }
+
     private var allWorkItems: [MapWorkItem] {
         let taskItems = visibleTodoItems.compactMap { task -> MapWorkItem? in
             guard let location = locationStore.location(id: task.locationID) else { return nil }
@@ -256,21 +265,21 @@ struct MapWorkspaceView: View {
     private var header: some View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Work by Place")
+                Text(L("workspace.map.title"))
                     .font(.title3.weight(.semibold))
-                Text("See tasks and events in spatial context.")
+                Text(L("workspace.map.subtitle"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Picker("Map mode", selection: Binding(
+            Picker(L("workspace.map.mode.picker"), selection: Binding(
                 get: { filter },
                 set: { newValue in
                     selectMapMode(newValue)
                 }
             )) {
                 ForEach(availableMapModes) { item in
-                    Text(item.rawValue).tag(item)
+                    Text(mapFilterTitle(item)).tag(item)
                 }
             }
             .pickerStyle(.segmented)
@@ -324,10 +333,10 @@ struct MapWorkspaceView: View {
             Image(systemName: "map")
                 .font(.system(size: 42, weight: .semibold))
                 .foregroundStyle(.secondary)
-            Text("Add locations to tasks or events to see where your work happens.")
+            Text(L("workspace.map.empty.title"))
                 .font(.headline)
                 .multilineTextAlignment(.center)
-            Text("Calendar events with structured locations appear automatically when Calendar permission is enabled.")
+            Text(L("workspace.map.empty.subtitle"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -350,26 +359,26 @@ struct MapWorkspaceView: View {
 
     private var filterPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Location")
+            Text(L("common.location"))
                 .font(.headline)
 
-            Picker("Location", selection: $selectedLocationID) {
-                Text("All locations").tag(UUID?.none)
+            Picker(L("common.location"), selection: $selectedLocationID) {
+                Text(L("workspace.location.all_locations")).tag(UUID?.none)
                 ForEach(locationStore.locations) { location in
                     Text(location.name).tag(Optional(location.id))
                 }
             }
 
             if !allTags.isEmpty {
-                Picker("Tag", selection: $selectedTag) {
-                    Text("All tags").tag(String?.none)
+                Picker(L("workspace.location.tag"), selection: $selectedTag) {
+                    Text(L("workspace.location.all_tags")).tag(String?.none)
                     ForEach(allTags, id: \.self) { tag in
                         Text(tag).tag(Optional(tag))
                     }
                 }
             }
 
-            Text("Free supports up to \(LocationStore.freeTaskLocationLimit) saved task locations. Plus unlocks unlimited locations, tags, and location notifications.")
+            Text(L("location.paywall.free_limit_note", LocationStore.freeTaskLocationLimit))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -379,11 +388,11 @@ struct MapWorkspaceView: View {
 
     private var placeSearchPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Saved places")
+            Text(L("workspace.location.saved_places"))
                 .font(.headline)
 
             HStack {
-                TextField("Search a place or address", text: $searchText)
+                TextField(L("workspace.location.search_placeholder"), text: $searchText)
                     .textFieldStyle(.roundedBorder)
                 Button {
                     Task { await searchPlaces() }
@@ -394,7 +403,7 @@ struct MapWorkspaceView: View {
             }
 
             if canUseLocationTagsAndNotifications {
-                TextField("Tags, comma separated", text: $tagField)
+                TextField(L("workspace.location.tags_placeholder"), text: $tagField)
                     .textFieldStyle(.roundedBorder)
             }
 
@@ -485,15 +494,15 @@ struct MapWorkspaceView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Spatial route")
+                    Text(L("workspace.spatial_route.title"))
                         .font(.headline)
-                    Text("Click pins or use the list to link tasks and events in route order.")
+                    Text(L("workspace.spatial_route.subtitle"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
                 if !spatialRouteItemIDs.isEmpty {
-                    Button("Clear") {
+                    Button(L("common.clear")) {
                         spatialRouteItemIDs = []
                     }
                     .font(.caption)
@@ -501,7 +510,7 @@ struct MapWorkspaceView: View {
             }
 
             if visibleSpatialRouteItems.isEmpty {
-                Text("Select tasks or events below to build a route.")
+                Text(L("workspace.spatial_route.empty"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, minHeight: 54)
@@ -533,7 +542,7 @@ struct MapWorkspaceView: View {
             Button {
                 openSpatialRouteInAppleMaps()
             } label: {
-                Label("Open Apple Maps Directions", systemImage: "map")
+                Label(L("workspace.spatial_route.open_directions"), systemImage: "map")
                     .frame(maxWidth: .infinity)
             }
             .disabled(visibleSpatialRouteItems.isEmpty)
@@ -559,25 +568,25 @@ struct MapWorkspaceView: View {
                     Button {
                         Task { await enableNotification(for: location) }
                     } label: {
-                        Label("Notify Near This Place", systemImage: "bell.badge")
+                        Label(L("workspace.location.notify_near_place"), systemImage: "bell.badge")
                     }
                     Button {
                         locationStore.disableNotification(for: location.id)
                     } label: {
-                        Label("Disable Location Notification", systemImage: "bell.slash")
+                        Label(L("workspace.location.disable_notification"), systemImage: "bell.slash")
                     }
                 } else {
                     Button {
-                        presentPaywall(requiredTier: .plus, title: "Location notifications require Plus", message: "Upgrade to Plus to use location tags and near-place notifications.")
+                        presentPaywall(requiredTier: .plus, title: L("location.paywall.notifications_title"), message: L("location.paywall.notifications_message"))
                     } label: {
-                        Label("Notify Near This Place", systemImage: "bell.badge")
+                        Label(L("workspace.location.notify_near_place"), systemImage: "bell.badge")
                     }
                 }
 
                 Button(role: .destructive) {
                     locationStore.deleteLocation(location)
                 } label: {
-                    Label("Delete Place", systemImage: "trash")
+                    Label(L("workspace.location.delete_place"), systemImage: "trash")
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
@@ -709,10 +718,10 @@ struct MapWorkspaceView: View {
             let response = try await MKLocalSearch(request: request).start()
             placeResults = Array(response.mapItems.prefix(8))
             if placeResults.isEmpty {
-                mapMessage = "No matching places found."
+                mapMessage = L("workspace.location.search_empty")
             }
         } catch {
-            mapMessage = "Could not search places right now."
+            mapMessage = L("workspace.location.search_error")
         }
     }
 
@@ -773,8 +782,8 @@ struct MapWorkspaceView: View {
         guard mode != .spatial || canUseSpatialWork else {
             presentPaywall(
                 requiredTier: .pro,
-                title: "Unlock Spatial Work",
-                message: "Pro includes spatial routes for linked tasks and events, with Apple Maps directions when you are ready to go."
+                title: L("workspace.spatial_route.paywall_title"),
+                message: L("workspace.spatial_route.paywall_message")
             )
             return
         }
@@ -848,7 +857,7 @@ struct MapWorkspaceView: View {
     private func openSpatialRouteInAppleMaps() {
         let routeItems = visibleSpatialRouteItems
         guard !routeItems.isEmpty else {
-            mapMessage = "Select at least one task or event for the route."
+            mapMessage = L("workspace.spatial_route.select_required")
             return
         }
 
@@ -903,7 +912,7 @@ private struct MapTaskDetailPopover: View {
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Text(task.isCompleted ? "Completed" : "Active")
+                    Text(task.isCompleted ? L("tasks.segment.completed") : L("tasks.segment.active"))
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(task.isCompleted ? .green : .secondary)
                 }
@@ -918,32 +927,32 @@ private struct MapTaskDetailPopover: View {
             VStack(alignment: .leading, spacing: 5) {
                 if let dueDate = task.dueDate {
                     detailRow(
-                        title: "Due",
+                        title: L("tasks.detail.due"),
                         value: dueDate.formatted(date: .abbreviated, time: task.hasDueTime ? .shortened : .omitted),
                         systemImage: "calendar"
                     )
                 }
 
                 if task.priority != .none {
-                    detailRow(title: "Priority", value: task.priority.displayName, systemImage: "flag")
+                    detailRow(title: L("tasks.editor.priority"), value: task.priority.displayName, systemImage: "flag")
                 }
 
                 if let durationMinutes = task.durationMinutes {
-                    detailRow(title: "Duration", value: "\(durationMinutes)m", systemImage: "timer")
+                    detailRow(title: L("tasks.detail.duration"), value: L("common.minutes_short", durationMinutes), systemImage: "timer")
                 }
 
                 if let locationName {
-                    detailRow(title: "Location", value: locationName, systemImage: "mappin.and.ellipse")
+                    detailRow(title: L("common.location"), value: locationName, systemImage: "mappin.and.ellipse")
                 }
 
                 if !task.tags.isEmpty {
-                    detailRow(title: "Tags", value: task.tags.joined(separator: ", "), systemImage: "tag")
+                    detailRow(title: L("workspace.location.tags"), value: task.tags.joined(separator: ", "), systemImage: "tag")
                 }
 
                 if !task.subtasks.isEmpty {
                     detailRow(
-                        title: "Subtasks",
-                        value: "\(completedSubtaskCount) / \(task.subtasks.count) complete",
+                        title: L("tasks.subtasks.title"),
+                        value: L("tasks.subtasks.completed_count", completedSubtaskCount, task.subtasks.count),
                         systemImage: "checklist"
                     )
                 }

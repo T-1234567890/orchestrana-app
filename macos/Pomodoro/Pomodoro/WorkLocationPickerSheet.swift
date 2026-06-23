@@ -48,12 +48,12 @@ struct WorkLocationPickerSheet: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(.title3.weight(.semibold))
-                    Text("Use your current location or search for a place.")
+                    Text(L("workspace.location.picker.subtitle"))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Cancel", action: onCancel)
+                Button(L("common.cancel"), action: onCancel)
                     .buttonStyle(.bordered)
             }
 
@@ -70,7 +70,7 @@ struct WorkLocationPickerSheet: View {
 
             HStack {
                 Spacer()
-                Button("Save and Pin") {
+                Button(L("workspace.location.save_and_pin")) {
                     Task { await saveAndPin() }
                 }
                 .buttonStyle(.borderedProminent)
@@ -100,7 +100,7 @@ struct WorkLocationPickerSheet: View {
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
             if selectedCandidate == nil {
-                Text("Select a place")
+                Text(L("workspace.location.select_place"))
                     .font(.callout.weight(.medium))
                     .foregroundStyle(.secondary)
                     .padding(10)
@@ -127,16 +127,16 @@ struct WorkLocationPickerSheet: View {
                 if isResolvingCurrentLocation {
                     ProgressView()
                         .controlSize(.small)
-                    Text("Finding current location")
+                    Text(L("workspace.location.finding_current"))
                 } else {
-                    Label("Use Current Location", systemImage: "location.fill")
+                    Label(L("workspace.location.use_current"), systemImage: "location.fill")
                 }
             }
             .buttonStyle(.bordered)
             .disabled(isResolvingCurrentLocation)
 
             VStack(alignment: .leading, spacing: 6) {
-                TextField("Search location", text: $searchText)
+                TextField(L("workspace.location.search_location"), text: $searchText)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit {
                         Task { await searchPlaces() }
@@ -152,7 +152,7 @@ struct WorkLocationPickerSheet: View {
                                 selectMapItem(item)
                             } label: {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.name ?? "Untitled Place")
+                                    Text(item.name ?? L("workspace.location.untitled_place"))
                                         .lineLimit(1)
                                     Text(address(for: item.placemark))
                                         .font(.caption)
@@ -170,7 +170,7 @@ struct WorkLocationPickerSheet: View {
 
             if !locationStore.locations.isEmpty {
                 Divider()
-                Text("Saved places")
+                Text(L("workspace.location.saved_places"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                 ScrollView {
@@ -191,11 +191,11 @@ struct WorkLocationPickerSheet: View {
 
             Divider()
 
-            TextField("Place name", text: $placeName)
+            TextField(L("workspace.location.place_name"), text: $placeName)
                 .textFieldStyle(.roundedBorder)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Notification radius \(Int(radiusMeters))m")
+                Text(L("workspace.location.notification_radius", Int(radiusMeters)))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Slider(value: $radiusMeters, in: 50...1_000, step: 25)
@@ -205,19 +205,19 @@ struct WorkLocationPickerSheet: View {
                 Toggle(isOn: notifyWhenCloseBinding) {
                     if isRequestingAlwaysLocation {
                         HStack(spacing: 6) {
-                            Text("Notify when close")
+                            Text(L("workspace.location.notify_when_close"))
                             ProgressView()
                                 .controlSize(.small)
                         }
                     } else {
-                        Text("Notify when close")
+                        Text(L("workspace.location.notify_when_close"))
                     }
                 }
                 .disabled(isRequestingAlwaysLocation)
             }
 
             if canUseLocationNotifications {
-                TextField("Location tags", text: $tagField, prompt: Text("Near Home, Downtown"))
+                TextField(L("workspace.location.tags"), text: $tagField, prompt: Text(L("workspace.location.tags_example")))
                     .textFieldStyle(.roundedBorder)
             }
         }
@@ -323,7 +323,7 @@ struct WorkLocationPickerSheet: View {
             radiusMeters: radiusMeters,
             tags: tags
         ) else {
-            errorMessage = "Enter a valid place name."
+            errorMessage = L("workspace.location.invalid_place_name")
             return
         }
 

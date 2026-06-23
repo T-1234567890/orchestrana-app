@@ -260,8 +260,8 @@ struct TodoListView: View {
                         guard !featureGate.canUseEisenhowerMatrix else { return }
                         taskViewMode = .list
                         presentLockedFeatureInfo(
-                            featureName: "Eisenhower Matrix",
-                            description: "Organize tasks by urgency and importance in a matrix view.",
+                            featureName: localizationManager.text("tasks.eisenhower_matrix.title"),
+                            description: localizationManager.text("tasks.eisenhower_matrix.description"),
                             requiredTier: .pro
                         )
                     }
@@ -297,7 +297,7 @@ struct TodoListView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
-                            Text("Not synced yet")
+                            Text(localizationManager.text("tasks.not_synced_yet"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -543,10 +543,10 @@ struct TodoListView: View {
                 .foregroundStyle(.blue)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Apple Reminders sync is paused")
+                Text(localizationManager.text("tasks.apple_reminders_sync_paused.title"))
                     .font(.headline)
 
-                Text("Google services are connected. To prevent duplicate tasks and merge conflicts, Apple Reminders sync will resume after you disconnect Google in Settings.")
+                Text(localizationManager.text("tasks.apple_reminders_sync_paused.body"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -873,7 +873,7 @@ struct TodoListView: View {
         if goalStore.goals.isEmpty {
             Button {
             } label: {
-                Label("Link to Goal", systemImage: "target")
+                Label(localizationManager.text("workspace.action.link_to_goal"), systemImage: "target")
             }
             .disabled(true)
         } else {
@@ -885,7 +885,7 @@ struct TodoListView: View {
                     .disabled(goalStore.hasLink(goalID: goal.id, kind: .task, targetID: item.id.uuidString))
                 }
             } label: {
-                Label("Link to Goal", systemImage: "target")
+                Label(localizationManager.text("workspace.action.link_to_goal"), systemImage: "target")
             }
         }
     }
@@ -896,24 +896,24 @@ struct TodoListView: View {
             Button {
                 locationPickerTask = item
             } label: {
-                Label(item.locationID == nil ? "Pin to Location" : "Change Location", systemImage: "mappin.and.ellipse")
+                Label(item.locationID == nil ? localizationManager.text("workspace.location.pin") : localizationManager.text("workspace.location.change"), systemImage: "mappin.and.ellipse")
             }
 
             Button {
                 todoStore.setLocation(itemID: item.id, locationID: nil)
             } label: {
-                Label("Clear Location", systemImage: "mappin.slash")
+                Label(localizationManager.text("workspace.location.clear"), systemImage: "mappin.slash")
             }
             .disabled(item.locationID == nil)
 
             Button {
                 NotificationCenter.default.post(name: .navigateToWorkspaceMap, object: item.locationID)
             } label: {
-                Label("Show on Map", systemImage: "map")
+                Label(localizationManager.text("workspace.location.show_on_map"), systemImage: "map")
             }
             .disabled(item.locationID == nil)
         } label: {
-            Label("Location", systemImage: "location")
+            Label(localizationManager.text("common.location"), systemImage: "location")
         }
     }
 
@@ -934,8 +934,8 @@ struct TodoListView: View {
     private func presentTaskLocationLimitPaywall() {
         presentUpgradePaywall(
             requiredTier: .plus,
-            title: "Unlimited task locations require Plus",
-            message: "Free supports up to \(LocationStore.freeTaskLocationLimit) saved task locations. Upgrade to Plus for unlimited locations, tags, and location notifications."
+            title: localizationManager.text("location.paywall.unlimited_task_locations_title"),
+            message: localizationManager.format("location.paywall.unlimited_task_locations_message", LocationStore.freeTaskLocationLimit)
         )
     }
 
@@ -1024,12 +1024,12 @@ struct TodoListView: View {
             } else {
                 Button {
                     presentLockedFeatureInfo(
-                        featureName: "Subtasks",
-                        description: "Break a task into smaller checklist items and track progress.",
+                        featureName: localizationManager.text("tasks.subtasks.title"),
+                        description: localizationManager.text("tasks.subtasks.description"),
                         requiredTier: .plus
                     )
                 } label: {
-                    Label("Subtasks", systemImage: "lock.fill")
+                    Label(localizationManager.text("tasks.subtasks.title"), systemImage: "lock.fill")
                 }
                 .buttonStyle(.bordered)
             }
@@ -1057,8 +1057,8 @@ struct TodoListView: View {
             Button {
                 guard featureGate.canUseSubtasks else {
                     presentLockedFeatureInfo(
-                        featureName: "Subtasks",
-                        description: "Break a task into smaller checklist items and track progress.",
+                        featureName: localizationManager.text("tasks.subtasks.title"),
+                        description: localizationManager.text("tasks.subtasks.description"),
                         requiredTier: .plus
                     )
                     return
@@ -1656,18 +1656,18 @@ struct TodoListView: View {
                                 HStack(spacing: 8) {
                                     ProgressView()
                                         .controlSize(.small)
-                                    Text("Working…")
+                                    Text(localizationManager.text("common.working"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
                             } else {
                                 Menu {
-                                    Button("Improve Task Details") {
+                                    Button(localizationManager.text("tasks.ai_description.button")) {
                                         handleImproveTaskDraftTapped()
                                     }
                                     .disabled(titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && descriptionField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
-                                    Button("Draft From Idea") {
+                                    Button(localizationManager.text("tasks.ai_assistant.draft_from_idea_title")) {
                                         handleDraftFromIdeaTapped()
                                     }
 
@@ -1678,7 +1678,7 @@ struct TodoListView: View {
                                     }
                                     .disabled(titleField.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                                 } label: {
-                                    Label("Task AI", systemImage: "sparkles")
+                                    Label(localizationManager.text("tasks.ai_assistant.title"), systemImage: "sparkles")
                                 }
                                 .menuStyle(.borderlessButton)
                             }
@@ -1699,12 +1699,12 @@ struct TodoListView: View {
                     } else {
                         Button {
                             presentLockedFeatureInfo(
-                                featureName: "Markdown Descriptions",
-                                description: "Format task notes with headings, lists, and richer structure.",
+                                featureName: localizationManager.text("tasks.editor.description_markdown_feature"),
+                                description: localizationManager.text("tasks.editor.description_markdown_feature_description"),
                                 requiredTier: .plus
                             )
                         } label: {
-                            Label("Markdown Descriptions", systemImage: "lock.fill")
+                            Label(localizationManager.text("tasks.editor.description_markdown_feature"), systemImage: "lock.fill")
                         }
                         .buttonStyle(.bordered)
                     }
@@ -1852,7 +1852,7 @@ struct TodoListView: View {
 
     private var editorLocationPickerRow: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Location")
+            Text(localizationManager.text("common.location"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -1862,12 +1862,12 @@ struct TodoListView: View {
                     .foregroundStyle(locationIDField == nil ? .secondary : .primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                Button(locationIDField == nil ? "Choose" : "Change") {
+                Button(locationIDField == nil ? localizationManager.text("common.choose") : localizationManager.text("common.change")) {
                     showingEditorLocationPicker = true
                 }
                 .buttonStyle(.bordered)
 
-                Button("Clear") {
+                Button(localizationManager.text("common.clear")) {
                     locationIDField = nil
                 }
                 .buttonStyle(.bordered)
@@ -1877,7 +1877,7 @@ struct TodoListView: View {
     }
 
     private var selectedEditorLocationName: String {
-        locationStore.location(id: locationIDField)?.name ?? "No location"
+        locationStore.location(id: locationIDField)?.name ?? localizationManager.text("workspace.location.none")
     }
 
     private var canAssignEditorLocation: Bool {
@@ -1889,10 +1889,10 @@ struct TodoListView: View {
 
     private var taskDraftPromptSheet: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Draft Task From Idea")
+            Text(localizationManager.text("tasks.ai_assistant.draft_from_idea_title"))
                 .font(.title3.weight(.semibold))
 
-            Text("Paste a rough idea, project note, or messy thought. AI will turn it into a clearer task draft without saving anything automatically.")
+            Text(localizationManager.text("tasks.ai_assistant.draft_from_idea_sheet_description"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -1925,10 +1925,10 @@ struct TodoListView: View {
                         HStack(spacing: 8) {
                             ProgressView()
                                 .controlSize(.small)
-                            Text("Drafting…")
+                            Text(localizationManager.text("tasks.ai_assistant.drafting"))
                         }
                     } else {
-                        Text("Generate Draft")
+                        Text(localizationManager.text("tasks.ai_assistant.generate_draft"))
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -2036,8 +2036,8 @@ struct TodoListView: View {
            todoStore.items.filter({ $0.locationID != nil }).count >= LocationStore.freeTaskLocationLimit {
             presentUpgradePaywall(
                 requiredTier: .plus,
-                title: "Unlimited task locations require Plus",
-                message: "Free supports up to \(LocationStore.freeTaskLocationLimit) saved task locations. Upgrade to Plus for unlimited locations, tags, and location notifications."
+                title: localizationManager.text("location.paywall.unlimited_task_locations_title"),
+                message: localizationManager.format("location.paywall.unlimited_task_locations_message", LocationStore.freeTaskLocationLimit)
             )
             return
         }

@@ -117,81 +117,81 @@ struct OrchestranaApp: App {
         .commands {
             AppInfoCommands()
 
-            CommandMenu("Timer") {
-                Button("Start Session") {
+            CommandMenu(L("commands.timer")) {
+                Button(L("commands.start_session")) {
                     startSession()
                 }
                 .keyboardShortcut(.space, modifiers: [])
 
-                Button("Pause Session") {
+                Button(L("commands.pause_session")) {
                     pauseSession()
                 }
                 .keyboardShortcut("p", modifiers: [.command, .shift])
 
-                Button("Reset Session") {
+                Button(L("commands.reset_session")) {
                     appState.resetPomodoro()
                 }
                 .keyboardShortcut("r", modifiers: [])
 
                 Divider()
 
-                Button("Skip Break") {
+                Button(L("commands.skip_break")) {
                     appState.skipBreak()
                 }
                 .keyboardShortcut("k", modifiers: [.command, .shift])
             }
 
-            CommandMenu("Tasks") {
-                Button("New Task") {
+            CommandMenu(L("commands.tasks")) {
+                Button(L("commands.new_task")) {
                     openNewTaskComposer()
                 }
                 .keyboardShortcut("n", modifiers: [.command])
 
-                Button("Open Task List") {
+                Button(L("commands.open_task_list")) {
                     navigateTo(.navigateToTasks)
                 }
                 .keyboardShortcut("0", modifiers: [.command, .shift])
 
                 Divider()
 
-                Button("Toggle Task Done") {
+                Button(L("commands.toggle_task_done")) {
                     NotificationCenter.default.post(name: .taskToggleSelectedCompletion, object: nil)
                 }
                 .keyboardShortcut("d", modifiers: [.command])
 
-                Button("Delete Task") {
+                Button(L("commands.delete_task")) {
                     NotificationCenter.default.post(name: .taskDeleteSelection, object: nil)
                 }
                 .keyboardShortcut(.delete, modifiers: [.command])
             }
 
-            CommandMenu("Calendar") {
-                Button("Open Calendar") {
+            CommandMenu(L("commands.calendar")) {
+                Button(L("commands.open_calendar")) {
                     navigateTo(.navigateToCalendar)
                 }
                 .keyboardShortcut("4", modifiers: [.command, .shift])
 
-                Button("Today View") {
+                Button(L("commands.today_view")) {
                     openCalendarToday()
                 }
                 .keyboardShortcut("t", modifiers: [.command, .option])
             }
 
-            CommandMenu("Audio") {
-                Button("White Noise") {
+            CommandMenu(L("commands.audio")) {
+                Button(L("commands.white_noise")) {
                     audioSourceStore.selectAmbient(.white)
                 }
-                Button("Brown Noise") {
+                Button(L("commands.brown_noise")) {
                     audioSourceStore.selectAmbient(.brown)
                 }
-                Button("Rain") {
+                Button(L("commands.rain")) {
                     audioSourceStore.selectAmbient(.rain)
                 }
-                Button("Wind") {
+                Button(L("commands.wind")) {
                     audioSourceStore.selectAmbient(.wind)
                 }
-                Menu("Volume") {
-                    Button("Mute") { audioSourceStore.setVolume(0.0) }
+                Menu(L("commands.volume")) {
+                    Button(L("commands.mute")) { audioSourceStore.setVolume(0.0) }
                     Button("25%") { audioSourceStore.setVolume(0.25) }
                     Button("50%") { audioSourceStore.setVolume(0.5) }
                     Button("75%") { audioSourceStore.setVolume(0.75) }
@@ -200,24 +200,24 @@ struct OrchestranaApp: App {
             }
 
             CommandGroup(after: .newItem) {
-                Button("New Task") {
+                Button(L("commands.new_task")) {
                     openNewTaskComposer()
                 }
             }
 
             CommandGroup(after: .toolbar) {
                 Divider()
-                Button("Show Pomodoro") {
+                Button(L("commands.show_pomodoro")) {
                     navigateTo(.navigateToPomodoro)
                 }
                 .keyboardShortcut("1", modifiers: [.command, .option])
 
-                Button("Show Flow Mode") {
+                Button(L("commands.show_flow_mode")) {
                     navigateTo(.navigateToFlow)
                 }
                 .keyboardShortcut("2", modifiers: [.command, .option])
 
-                Button("Show Countdown Mode") {
+                Button(L("commands.show_countdown_mode")) {
                     navigateTo(.navigateToCountdown)
                 }
                 .keyboardShortcut("3", modifiers: [.command, .option])
@@ -266,7 +266,7 @@ struct OrchestranaApp: App {
     private struct AppInfoCommands: Commands {
         var body: some Commands {
             CommandGroup(replacing: .appInfo) {
-                Button("About Orchestrana") {
+                Button(L("commands.about_orchestrana")) {
                     AboutWindowPresenter.open()
                 }
             }

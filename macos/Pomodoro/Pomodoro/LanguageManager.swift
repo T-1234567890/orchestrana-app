@@ -69,10 +69,7 @@ final class LanguageManager: ObservableObject {
         currentLanguage = initialLanguage
         locale = Self.locale(for: initialLanguage)
 
-        englishDictionary = loadDictionary(resourceCode: "en")
-        if englishDictionary.isEmpty {
-            englishDictionary = loadFromStringsFile(localeIdentifier: "en")
-        }
+        englishDictionary = loadLocalizedDictionary(resourceCode: "en")
         applyCurrentLanguage(persistSelection: false)
 
         localeObserver = NotificationCenter.default.addObserver(
@@ -130,16 +127,27 @@ final class LanguageManager: ObservableObject {
 
     private func reloadActiveDictionary() {
         let code = currentLanguage.resourceCode
-        var dictionary = loadDictionary(resourceCode: code)
-        if dictionary.isEmpty, code == "zh" {
-            dictionary = loadFromStringsFile(localeIdentifier: "zh-Hans")
-        } else if dictionary.isEmpty, code == "en" {
-            dictionary = loadFromStringsFile(localeIdentifier: "en")
-        }
+        var dictionary = englishDictionary
+        dictionary.merge(loadLocalizedDictionary(resourceCode: code)) { _, localized in localized }
         if dictionary.isEmpty {
             dictionary = englishDictionary
         }
         activeDictionary = dictionary
+    }
+
+    private func loadLocalizedDictionary(resourceCode: String) -> [String: String] {
+        let stringsDictionary = loadFromStringsFile(localeIdentifier: stringsLocaleIdentifier(for: resourceCode))
+        let jsonDictionary = loadDictionary(resourceCode: resourceCode)
+        return stringsDictionary.merging(jsonDictionary) { _, jsonValue in jsonValue }
+    }
+
+    private func stringsLocaleIdentifier(for resourceCode: String) -> String {
+        switch resourceCode {
+        case "zh":
+            return "zh-Hans"
+        default:
+            return resourceCode
+        }
     }
 
     private func loadDictionary(resourceCode: String) -> [String: String] {

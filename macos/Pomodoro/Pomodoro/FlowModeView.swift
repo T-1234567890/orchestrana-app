@@ -103,7 +103,7 @@ struct FlowModeView: View {
             Image(systemName: "circle.dotted")
                 .font(.subheadline.weight(.semibold))
             if !compact {
-                Text("Flow")
+                Text(localizationManager.text("sidebar.flow"))
                     .font(.subheadline.weight(.semibold))
             }
         }
@@ -229,7 +229,7 @@ struct FlowModeView: View {
                 Button {
                     fullscreenFocusBackdropStore.clearBackground()
                 } label: {
-                    SwiftUI.Label("Remove Background", systemImage: "xmark.circle")
+                    SwiftUI.Label(localizationManager.text("focus.fullscreen.remove_background"), systemImage: "xmark.circle")
                 }
             }
 
@@ -237,11 +237,11 @@ struct FlowModeView: View {
                 Divider()
 
                 Toggle(isOn: customLayoutBinding) {
-                    SwiftUI.Label("Customize Layout", systemImage: "hand.draw")
+                    SwiftUI.Label(localizationManager.text("focus.layout.customize"), systemImage: "hand.draw")
                 }
 
                 if layoutStore.configuration.customLayoutEnabled {
-                    Button("Reset Layout") {
+                    Button(localizationManager.text("focus.layout.reset")) {
                         layoutStore.resetLayout(for: currentLayoutUserID)
                     }
                 }
@@ -1567,7 +1567,7 @@ private struct FlowAudioMixerPopover: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     if renamingPackID == pack.id {
-                        TextField("Pack name", text: $draftPackName)
+                        TextField(localizationManager.text("audio.pack.name"), text: $draftPackName)
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 150)
                     } else {
@@ -1575,7 +1575,7 @@ private struct FlowAudioMixerPopover: View {
                             .font(.system(.subheadline, design: .rounded).weight(.semibold))
                     }
 
-                    Text("\(pack.tracks.count) track\(pack.tracks.count == 1 ? "" : "s")")
+                    Text(localizationManager.format("audio.pack.track_count", pack.tracks.count))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -1583,13 +1583,13 @@ private struct FlowAudioMixerPopover: View {
                 Spacer()
 
                 if renamingPackID == pack.id {
-                    Button("Save") {
+                    Button(localizationManager.text("common.save")) {
                         mixerStore.renameCustomPack(pack, to: draftPackName)
                         renamingPackID = nil
                     }
                     .controlSize(.small)
 
-                    Button("Cancel") {
+                    Button(localizationManager.text("common.cancel")) {
                         renamingPackID = nil
                     }
                     .controlSize(.small)
@@ -1603,11 +1603,11 @@ private struct FlowAudioMixerPopover: View {
 
                     if pack.isCustom {
                         Menu {
-                            Button("Rename") {
+                            Button(localizationManager.text("common.rename")) {
                                 draftPackName = pack.name
                                 renamingPackID = pack.id
                             }
-                            Button("Remove", role: .destructive) {
+                            Button(localizationManager.text("common.remove"), role: .destructive) {
                                 mixerStore.removeCustomPack(pack)
                             }
                         } label: {

@@ -7,12 +7,12 @@ struct AcknowledgementsLicensesView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(alignment: .center) {
-                Text("Acknowledgements & Licenses")
+                Text(L("acknowledgements.title"))
                     .font(.largeTitle.weight(.semibold))
 
                 Spacer()
 
-                Button("Close") {
+                Button(L("common.close")) {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
@@ -25,7 +25,7 @@ struct AcknowledgementsLicensesView: View {
 
             ScrollView(.vertical, showsIndicators: true) {
                 VStack(alignment: .leading, spacing: 24) {
-                    Text("Orchestrana includes third-party resources and open-source components. The notices below are provided for attribution and license compliance.")
+                    Text(L("acknowledgements.intro"))
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -64,7 +64,7 @@ struct AcknowledgementsLicensesView: View {
                     Divider()
 
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("License Links")
+                        Text(L("acknowledgements.license_links"))
                             .font(.title3.weight(.semibold))
 
                         HStack(spacing: 10) {
@@ -86,33 +86,37 @@ struct AcknowledgementsLicensesView: View {
         .frame(minWidth: 620, minHeight: 560)
     }
 
-    static let shortAttribution = "Orchestrana includes third-party resources under open-source licenses. Full license details are available in Settings."
+    static var shortAttribution: String {
+        L("acknowledgements.short_attribution")
+    }
 
-    private static let licenseSections: [LicenseSection] = [
+    private static var licenseSections: [LicenseSection] {
+        [
         LicenseSection(
-            title: "Orchestrana macOS Client",
-            note: "The public client application is distributed under the MIT License.",
+            title: L("acknowledgements.client.title"),
+            note: L("acknowledgements.client.note"),
             paragraphs: Self.mitLicenseParagraphs(copyright: "Copyright (c) 2026 Tony and contributors")
         ),
         LicenseSection(
-            title: "Orchestrana Cloud Services",
-            note: "The server-side implementation is not part of the open-source client license.",
+            title: L("acknowledgements.cloud.title"),
+            note: L("acknowledgements.cloud.note"),
             paragraphs: ["© 2026 Orchestrana. All rights reserved."]
         ),
         LicenseSection(
-            title: "Audio Pack Resources",
-            note: "Bundled focus audio resources are provided under the Creative Commons CC0 public domain dedication from Freesound.org.",
+            title: L("acknowledgements.audio.title"),
+            note: L("acknowledgements.audio.note"),
             paragraphs: [
-                "The bundled ambient audio packs include edited and compressed sound resources sourced from Freesound.org. These resources are marked as Creative Commons CC0/public domain by their original uploaders, allowing use, modification, and redistribution without attribution requirements.",
-                "Orchestrana still provides this acknowledgement as a courtesy to the creators and the Freesound community. The audio resources are included only as optional focus ambience and are provided as-is, without warranty, endorsement, or guarantee of fitness for any particular purpose."
+                L("acknowledgements.audio.paragraph_1"),
+                L("acknowledgements.audio.paragraph_2")
             ]
         ),
         LicenseSection(
-            title: "App Icon Attribution",
-            note: "Portions of the app icon include MIT-licensed Microsoft design resources.",
+            title: L("acknowledgements.icon.title"),
+            note: L("acknowledgements.icon.note"),
             paragraphs: Self.mitLicenseParagraphs(copyright: "Copyright (c) 2020 Microsoft Corporation")
         )
-    ]
+        ]
+    }
 
     private static func mitLicenseParagraphs(copyright: String) -> [String] {
         [
@@ -170,7 +174,7 @@ struct AboutOrchestranaView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack {
-                Button("View Acknowledgements & Licenses") {
+                Button(L("acknowledgements.view")) {
                     showAcknowledgements = true
                 }
                 .buttonStyle(.bordered)

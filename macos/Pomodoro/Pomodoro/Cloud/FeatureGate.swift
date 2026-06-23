@@ -362,12 +362,12 @@ final class FeatureGate: ObservableObject {
     var aiUsageProgressItems: [AIUsageProgress] {
         [
             usageProgress(
-                title: "Standard Models",
+                title: L("feature_gate.standard_models"),
                 remaining: deepSeekRemainingTokens,
                 limit: deepSeekMonthlyLimit
             ),
             usageProgress(
-                title: "Frontier Models",
+                title: L("feature_gate.frontier_models"),
                 remaining: frontierRemainingTokens,
                 limit: frontierMonthlyLimit
             )

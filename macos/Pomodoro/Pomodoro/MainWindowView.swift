@@ -139,7 +139,7 @@ struct MainWindowView: View {
                 }
             )
         }
-        .alert("Your Plans", isPresented: Binding(
+        .alert(languageManager.text("plans.title"), isPresented: Binding(
             get: { plansErrorMessage != nil },
             set: { isPresented in
                 if !isPresented {
@@ -147,26 +147,26 @@ struct MainWindowView: View {
                 }
             }
         )) {
-            Button("OK", role: .cancel) {
+            Button(languageManager.text("common.ok"), role: .cancel) {
                 plansErrorMessage = nil
             }
         } message: {
             Text(plansErrorMessage ?? "")
         }
-        .confirmationDialog("Your Plans", isPresented: $showPlansModePicker, titleVisibility: .visible) {
+        .confirmationDialog(languageManager.text("plans.title"), isPresented: $showPlansModePicker, titleVisibility: .visible) {
             if availablePlanModes.contains(.plannedTasks) {
-                Button("Run Planned Tasks") {
+                Button(languageManager.text("plans.run_planned_tasks")) {
                     runYourPlans(.plannedTasks)
                 }
             }
             if availablePlanModes.contains(.todayCalendarPlan) {
-                Button("Run Today's Schedule") {
+                Button(languageManager.text("plans.run_today_schedule")) {
                     runYourPlans(.todayCalendarPlan)
                 }
             }
-            Button("Cancel", role: .cancel) { }
+            Button(languageManager.text("common.cancel"), role: .cancel) { }
         } message: {
-            Text("Choose which AI-generated plan to run.")
+            Text(languageManager.text("plans.choose_run_mode"))
         }
         .animation(reduceMotion ? .linear(duration: 0.2) : .easeInOut(duration: 0.25),
                    value: appState.transitionPopup?.id)
@@ -337,8 +337,8 @@ struct MainWindowView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 SectionHeaderView(
-                    title: "Dashboard",
-                    subtitle: "Your timer, daily progress, and focus controls in one place."
+                    title: languageManager.text("dashboard.title"),
+                    subtitle: languageManager.text("dashboard.subtitle")
                 )
 
                 GlassCardView {
@@ -399,17 +399,17 @@ struct MainWindowView: View {
                     MetricCard(
                         title: languageManager.text("summary.today_focus"),
                         value: languageManager.format("summary.today_focus_minutes_short", todayFocusMinutes),
-                        caption: "\(weeklyFocusPoints.reduce(0) { $0 + $1.minutes }) min this week"
+                        caption: languageManager.format("summary.minutes_this_week", weeklyFocusPoints.reduce(0) { $0 + $1.minutes })
                     )
                     MetricCard(
                         title: languageManager.text("summary.completion"),
                         value: "\(Int((completionRate * 100).rounded()))%",
-                        caption: "Task completion"
+                        caption: languageManager.text("summary.task_completion")
                     )
                     MetricCard(
-                        title: "Sessions",
+                        title: languageManager.text("summary.sessions"),
                         value: "\(summarySnapshot?.dailyAggregates.reduce(0) { $0 + $1.totalSessions } ?? 0)",
-                        caption: "Tracked in analytics",
+                        caption: languageManager.text("summary.tracked_in_analytics"),
                         tint: .green
                     )
                 }
@@ -419,7 +419,7 @@ struct MainWindowView: View {
                         VStack(alignment: .leading, spacing: 16) {
                             SectionHeaderView(
                                 title: languageManager.text("main.sidebar.countdown"),
-                                subtitle: "Use one timer surface for countdowns or open-ended stopwatch sessions."
+                                subtitle: languageManager.text("dashboard.timer.subtitle")
                             )
 
                             Picker("", selection: $dashboardTimerMode) {
@@ -455,8 +455,8 @@ struct MainWindowView: View {
                     DashboardPanel {
                         VStack(alignment: .leading, spacing: 16) {
                             SectionHeaderView(
-                                title: "Audio",
-                                subtitle: "Ambient sound and now-playing controls stay available here."
+                                title: languageManager.text("audio.title"),
+                                subtitle: languageManager.text("dashboard.audio.subtitle")
                             )
                             nowPlayingSection
                             Divider()
@@ -795,14 +795,14 @@ struct MainWindowView: View {
         AdaptivePageGrid(minimumWidth: 260) {
             AIActionCard(
                 icon: "list.bullet.rectangle.portrait",
-                title: "Task AI",
-                description: "Break down work, draft task details, and build focused plans without scattering AI actions across the app."
+                title: languageManager.text("tasks.ai_assistant.title"),
+                description: languageManager.text("dashboard.task_ai.description")
             ) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Includes task breakdown, task planning, and description generation.")
+                    Text(languageManager.text("dashboard.task_ai.includes"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Button("Open Tasks") {
+                    Button(languageManager.text("commands.open_task_list")) {
                         withAnimation {
                             sidebarSelection = .tasks
                         }
@@ -813,14 +813,14 @@ struct MainWindowView: View {
 
             AIActionCard(
                 icon: "calendar.badge.clock",
-                title: "Schedule AI",
-                description: "Use one scheduling surface for calendar-based planning and rescheduling instead of separate scattered entry points."
+                title: languageManager.text("dashboard.schedule_ai.title"),
+                description: languageManager.text("dashboard.schedule_ai.description")
             ) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Includes calendar scheduling and rescheduling.")
+                    Text(languageManager.text("dashboard.schedule_ai.includes"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Button("Open Calendar") {
+                    Button(languageManager.text("commands.open_calendar")) {
                         withAnimation {
                             sidebarSelection = .calendar
                         }
@@ -1035,7 +1035,7 @@ struct MainWindowView: View {
 
     private var settingsSidebar: some View {
         VStack(alignment: .leading, spacing: 16) {
-            TextField("Search Settings", text: $settingsSearchText)
+            TextField(languageManager.text("settings.search"), text: $settingsSearchText)
                 .textFieldStyle(.roundedBorder)
 
             VStack(alignment: .leading, spacing: 8) {
@@ -1127,11 +1127,11 @@ struct MainWindowView: View {
 
     private var settingsGeneralModule: some View {
         SettingsModuleCard(
-            title: "General",
-            description: "Core app behavior and defaults that affect everyday use."
+            title: languageManager.text("settings.general.title"),
+            description: languageManager.text("settings.general.description")
         ) {
             VStack(alignment: .leading, spacing: 18) {
-                settingsLabeledControl(title: "Language", description: "Choose how the app should present text.") {
+                settingsLabeledControl(title: languageManager.text("settings.language.title"), description: languageManager.text("settings.language.description")) {
                     Picker(languageManager.text("settings.language.picker.label"), selection: $languageManager.currentLanguage) {
                         Text(languageManager.text("settings.language.system"))
                             .tag(LanguageManager.AppLanguage.auto)
@@ -1159,8 +1159,8 @@ struct MainWindowView: View {
 
     private var settingsAppearanceModule: some View {
         SettingsModuleCard(
-            title: "Appearance",
-            description: "Keep the interface clean, readable, and consistent with macOS."
+            title: languageManager.text("settings.appearance.title"),
+            description: languageManager.text("settings.appearance.description")
         ) {
             VStack(alignment: .leading, spacing: 18) {
                 settingsLabeledControl(
@@ -1232,10 +1232,10 @@ struct MainWindowView: View {
 
     private var settingsTimerPresetModule: some View {
         SettingsModuleCard(
-            title: "Timer & Focus",
-            description: "Set the default Pomodoro rhythm used when the dashboard is not overriding the current session."
+            title: languageManager.text("settings.timer_focus.title"),
+            description: languageManager.text("settings.timer_focus.description")
         ) {
-            settingsLabeledControl(title: languageManager.text("timer.preset"), description: "Switch between built-in focus presets or a custom schedule.") {
+            settingsLabeledControl(title: languageManager.text("timer.preset"), description: languageManager.text("settings.timer_preset.description")) {
                 Picker(languageManager.text("timer.preset"), selection: presetSelectionBinding) {
                     ForEach(Preset.builtIn) { preset in
                         Text(preset.name)
@@ -1251,8 +1251,8 @@ struct MainWindowView: View {
 
     private var settingsTimerDurationsModule: some View {
         SettingsModuleCard(
-            title: "Pomodoro Durations",
-            description: "Adjust the default work and break lengths saved for the app."
+            title: languageManager.text("settings.pomodoro_durations.title"),
+            description: languageManager.text("settings.pomodoro_durations.description")
         ) {
             VStack(alignment: .leading, spacing: 14) {
                 DurationInputRow(
@@ -1302,8 +1302,8 @@ struct MainWindowView: View {
 
     private var settingsCountdownModule: some View {
         SettingsModuleCard(
-            title: "Countdown Default",
-            description: "Set the default countdown used across the app, with quick preset shortcuts."
+            title: languageManager.text("settings.countdown_default.title"),
+            description: languageManager.text("settings.countdown_default.description")
         ) {
             countdownConfigurationPanel
         }
@@ -1311,11 +1311,11 @@ struct MainWindowView: View {
 
     private var settingsNotificationPreferencesModule: some View {
         SettingsModuleCard(
-            title: "Notifications",
-            description: "Choose how reminders are delivered and when the app should surface them."
+            title: languageManager.text("settings.notifications.title"),
+            description: languageManager.text("settings.notifications.description")
         ) {
             VStack(alignment: .leading, spacing: 14) {
-                settingsLabeledControl(title: languageManager.text("main.delivery"), description: "Decide how timer alerts should reach you.") {
+                settingsLabeledControl(title: languageManager.text("main.delivery"), description: languageManager.text("settings.notifications.delivery_description")) {
                     Picker(languageManager.text("main.delivery"), selection: $appState.notificationDeliveryStyle) {
                         ForEach(NotificationDeliveryStyle.allCases) { style in
                             Text(style.title).tag(style)
@@ -1326,7 +1326,7 @@ struct MainWindowView: View {
 
                 Divider()
 
-                settingsLabeledControl(title: languageManager.text("settings.notifications.title"), description: "Control whether focus notifications are shown.") {
+                settingsLabeledControl(title: languageManager.text("settings.notifications.title"), description: languageManager.text("settings.notifications.preference_description")) {
                     Picker(languageManager.text("settings.notifications.title"), selection: $appState.notificationPreference) {
                         ForEach(NotificationPreference.allCases) { preference in
                             Text(preference.title).tag(preference)
@@ -1337,7 +1337,7 @@ struct MainWindowView: View {
 
                 Divider()
 
-                settingsLabeledControl(title: languageManager.text("main.reminder"), description: "Choose how reminder follow-ups should behave.") {
+                settingsLabeledControl(title: languageManager.text("main.reminder"), description: languageManager.text("settings.notifications.reminder_description")) {
                     Picker(languageManager.text("main.reminder"), selection: $appState.reminderPreference) {
                         ForEach(ReminderPreference.allCases) { preference in
                             Text(preference.title).tag(preference)
@@ -1351,35 +1351,35 @@ struct MainWindowView: View {
 
     private var settingsPermissionsModule: some View {
         SettingsModuleCard(
-            title: "Permissions & Sync",
-            description: "Review system access for notifications, calendar, and reminders."
+            title: languageManager.text("settings.permissions_sync.title"),
+            description: languageManager.text("settings.permissions_sync.description")
         ) {
             VStack(alignment: .leading, spacing: 14) {
                 settingsPermissionRow(
-                    title: "Notifications",
+                    title: languageManager.text("permissions.notifications"),
                     status: notificationStatusText(notificationStatus),
                     statusColor: notificationStatusColor(notificationStatus),
-                    buttonTitle: notificationStatus == .authorized ? "Open Settings" : "Enable",
+                    buttonTitle: notificationStatus == .authorized ? languageManager.text("permissions.open_settings") : languageManager.text("common.enable"),
                     action: handleNotificationAccessRequest
                 )
 
                 Divider()
 
                 settingsPermissionRow(
-                    title: "Calendar",
+                    title: languageManager.text("permissions.calendar"),
                     status: eventStatusText(calendarStatus),
                     statusColor: eventStatusColor(calendarStatus),
-                    buttonTitle: eventStatusColor(calendarStatus) == .green ? "Open Settings" : "Enable",
+                    buttonTitle: eventStatusColor(calendarStatus) == .green ? languageManager.text("permissions.open_settings") : languageManager.text("common.enable"),
                     action: handleCalendarAccessRequest
                 )
 
                 Divider()
 
                 settingsPermissionRow(
-                    title: "Reminders",
+                    title: languageManager.text("permissions.reminders"),
                     status: eventStatusText(remindersStatus),
                     statusColor: eventStatusColor(remindersStatus),
-                    buttonTitle: eventStatusColor(remindersStatus) == .green ? "Open Settings" : "Enable",
+                    buttonTitle: eventStatusColor(remindersStatus) == .green ? languageManager.text("permissions.open_settings") : languageManager.text("common.enable"),
                     action: handleRemindersAccessRequest
                 )
 
@@ -1389,7 +1389,7 @@ struct MainWindowView: View {
                     title: languageManager.text("permissions.location"),
                     status: permissionsManager.locationStatusText,
                     statusColor: locationStatusColor(permissionsManager.locationStatus),
-                    buttonTitle: permissionsManager.isLocationAuthorized ? "Open Settings" : "Enable",
+                    buttonTitle: permissionsManager.isLocationAuthorized ? languageManager.text("permissions.open_settings") : languageManager.text("common.enable"),
                     action: handleLocationAccessRequest
                 )
             }
@@ -1398,23 +1398,23 @@ struct MainWindowView: View {
 
     private var settingsAISubscriptionModule: some View {
         SettingsModuleCard(
-            title: "AI & Subscription",
-            description: "Review your current plan, usage window, and restore purchases when needed."
+            title: languageManager.text("settings.ai_subscription.title"),
+            description: languageManager.text("settings.ai_subscription.description")
         ) {
             VStack(alignment: .leading, spacing: 14) {
-                settingsInfoRow(title: "Current Plan", value: currentPlanLabel)
+                settingsInfoRow(title: languageManager.text("settings.ai_subscription.current_plan"), value: currentPlanLabel)
 
                 if let resetAt = featureGate.allowanceResetAt {
-                    settingsInfoRow(title: "Usage Resets", value: formattedSettingsDate(resetAt))
+                    settingsInfoRow(title: languageManager.text("settings.ai_subscription.usage_resets"), value: formattedSettingsDate(resetAt))
                 }
 
                 if let subscriptionEndAt = featureGate.subscriptionEndAt,
                    featureGate.tier == .plus || featureGate.tier == .pro {
-                    settingsInfoRow(title: "Subscription Ends", value: formattedSettingsDate(subscriptionEndAt))
+                    settingsInfoRow(title: languageManager.text("settings.ai_subscription.subscription_ends"), value: formattedSettingsDate(subscriptionEndAt))
                 }
 
                 if subscriptionStore.isServerVerificationPending {
-                    Text("App Store subscription found. Server verification is still required before AI and premium server features unlock.")
+                    Text(languageManager.text("settings.subscription.server_verification_pending"))
                         .font(.caption)
                         .foregroundStyle(.orange)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1429,13 +1429,13 @@ struct MainWindowView: View {
                         ProgressView()
                             .controlSize(.small)
                     } else {
-                        Text("Restore & Sync Subscription")
+                        Text(languageManager.text("settings.subscription.restore_sync"))
                     }
                 }
                 .buttonStyle(.bordered)
                 .disabled(subscriptionStore.isRestoring)
 
-                Button("Manage Subscription") {
+                Button(languageManager.text("settings.subscription.manage")) {
                     showSettingsPlansSheet = true
                 }
                 .buttonStyle(.borderedProminent)
@@ -1458,8 +1458,8 @@ struct MainWindowView: View {
 
     private var settingsAIFeaturesModule: some View {
         SettingsModuleCard(
-            title: "AI Access & Features",
-            description: "See what your tier unlocks, then open the subscription sheet when you need full plan details."
+            title: languageManager.text("settings.ai_features.title"),
+            description: languageManager.text("settings.ai_features.description")
         ) {
             VStack(alignment: .leading, spacing: 16) {
                 if !featureGate.aiUsageProgressItems.isEmpty {
@@ -1470,7 +1470,7 @@ struct MainWindowView: View {
                                     Text(item.title)
                                         .font(.subheadline.weight(.medium))
                                     Spacer()
-                                    Text("\(item.usedPercentage)% used")
+                                    Text(languageManager.format("settings.ai_usage.used_percentage", item.usedPercentage))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -1483,14 +1483,14 @@ struct MainWindowView: View {
 
                 HStack(alignment: .center, spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Plan Comparison")
+                        Text(languageManager.text("settings.plan_comparison.title"))
                             .font(.subheadline.weight(.semibold))
-                        Text("Open the subscription pop-up to compare Free, Plus, and Pro in detail.")
+                        Text(languageManager.text("settings.plan_comparison.description"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Button("Compare Plans") {
+                    Button(languageManager.text("settings.plan_comparison.compare")) {
                         showSettingsPlansSheet = true
                     }
                     .buttonStyle(.bordered)
@@ -1501,8 +1501,8 @@ struct MainWindowView: View {
 
     private var settingsAccountModule: some View {
         SettingsModuleCard(
-            title: "Account",
-            description: "Manage sign-in state and cloud-connected access from one place."
+            title: languageManager.text("settings.account.title"),
+            description: languageManager.text("settings.account.description")
         ) {
             CloudSettingsSection()
                 .environmentObject(authViewModel)
@@ -1512,15 +1512,15 @@ struct MainWindowView: View {
 
     private var settingsGoogleIntegrationsModule: some View {
         SettingsModuleCard(
-            title: "Google Integrations",
-            description: "Connect Google Calendar and Google Tasks for task and event synchronization."
+            title: languageManager.text("settings.google_integrations.title"),
+            description: languageManager.text("settings.google_integrations.description")
         ) {
             VStack(alignment: .leading, spacing: 14) {
                 if googleIntegrationManager.isAnyGoogleServiceConnected {
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: "exclamationmark.triangle")
                             .foregroundStyle(.orange)
-                        Text("Google is connected, so Apple Calendar and Reminders sync are paused to prevent duplicate items and merge conflicts. Disconnect Google to resume Apple sync.")
+                        Text(languageManager.text("settings.google_integrations.apple_sync_paused"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -1531,9 +1531,9 @@ struct MainWindowView: View {
 
                 HStack(alignment: .center, spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Google Calendar & Tasks")
+                        Text(languageManager.text("settings.google_integrations.calendar_tasks"))
                             .font(.subheadline.weight(.semibold))
-                        Text("Sync scheduled tasks with Google Calendar and tasks with Google Tasks.")
+                        Text(languageManager.text("settings.google_integrations.calendar_tasks_description"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Text(googleConnectionStatusText)
@@ -1543,7 +1543,7 @@ struct MainWindowView: View {
 
                     Spacer()
 
-                    Button(googleIntegrationManager.isAnyGoogleServiceConnected ? "Disconnect Google" : "Connect Google") {
+                    Button(googleIntegrationManager.isAnyGoogleServiceConnected ? languageManager.text("settings.google_integrations.disconnect") : languageManager.text("settings.google_integrations.connect")) {
                         if googleIntegrationManager.isAnyGoogleServiceConnected {
                             googleIntegrationManager.disconnectAllServices()
                         } else {
@@ -1557,10 +1557,10 @@ struct MainWindowView: View {
                     Divider()
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Last Sync")
+                        Text(languageManager.text("settings.google_integrations.last_sync"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        Text(googleIntegrationManager.lastSyncDate.map(formattedSettingsDateTime) ?? "Not synced yet")
+                        Text(googleIntegrationManager.lastSyncDate.map(formattedSettingsDateTime) ?? languageManager.text("tasks.not_synced_yet"))
                             .font(.subheadline.weight(.medium))
                     }
                 }
@@ -1579,16 +1579,16 @@ struct MainWindowView: View {
         DisclosureGroup(isExpanded: $isDeveloperDebugExpanded) {
             VStack(alignment: .leading, spacing: 14) {
                 settingsLabeledControl(
-                    title: "Google Video Demo Mode",
-                    description: "Clear existing tasks and events from the demo view when the mode starts, then show only new items created or synced after enabling it. This is reversible and does not delete stored data."
+                    title: languageManager.text("settings.developer.google_video_demo_mode.title"),
+                    description: languageManager.text("settings.developer.google_video_demo_mode.description")
                 ) {
-                    Toggle("Google Video Demo Mode", isOn: googleVideoDemoModeBinding)
+                    Toggle(languageManager.text("settings.developer.google_video_demo_mode.title"), isOn: googleVideoDemoModeBinding)
                         .toggleStyle(.switch)
                         .disabled(featureGate.tier != .developer)
                 }
 
                 if googleVideoDemoMode {
-                    Label("Existing tasks and events are hidden for this demo session. New items created after enabling the mode remain visible.", systemImage: "eye.slash")
+                    Label(languageManager.text("settings.developer.google_video_demo_mode.active_note"), systemImage: "eye.slash")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1597,9 +1597,9 @@ struct MainWindowView: View {
             .padding(.top, 14)
         } label: {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Developer & Debug")
+                Text(languageManager.text("settings.developer_debug.title"))
                     .font(appTypography.cardTitleFont())
-                Text("Developer-only recording and diagnostics controls.")
+                Text(languageManager.text("settings.developer_debug.description"))
                     .font(.subheadline)
                     .foregroundStyle(currentAppearanceMode.secondaryTextColor(for: colorScheme))
                     .fixedSize(horizontal: false, vertical: true)
@@ -1680,8 +1680,8 @@ struct MainWindowView: View {
 
     private var settingsPoliciesModule: some View {
         SettingsModuleCard(
-            title: "Privacy & Policies",
-            description: "Review product policies and local third-party acknowledgements."
+            title: languageManager.text("settings.privacy_policies"),
+            description: languageManager.text("settings.privacy_policies.description")
         ) {
             VStack(alignment: .leading, spacing: 12) {
                 Button {
@@ -1690,7 +1690,7 @@ struct MainWindowView: View {
                     HStack(spacing: 12) {
                         Image(systemName: "text.book.closed")
                             .foregroundStyle(.secondary)
-                        Text("View Acknowledgements & Licenses")
+                        Text(languageManager.text("acknowledgements.view"))
                         Spacer()
                         Image(systemName: "chevron.right")
                             .foregroundStyle(.secondary)
@@ -1708,7 +1708,7 @@ struct MainWindowView: View {
                     HStack(spacing: 12) {
                         Image(systemName: "doc.text")
                             .foregroundStyle(.secondary)
-                        Text("Open Privacy & Policies")
+                        Text(languageManager.text("settings.open_privacy_policies"))
                         Spacer()
                         Image(systemName: "arrow.up.right.square")
                             .foregroundStyle(.secondary)
@@ -1726,7 +1726,7 @@ struct MainWindowView: View {
                     HStack(spacing: 12) {
                         Image(systemName: "doc.plaintext")
                             .foregroundStyle(.secondary)
-                        Text("Apple Standard EULA")
+                        Text(languageManager.text("settings.apple_standard_eula"))
                         Spacer()
                         Image(systemName: "arrow.up.right.square")
                             .foregroundStyle(.secondary)
@@ -2103,7 +2103,7 @@ struct MainWindowView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("No media playing")
+                            Text(languageManager.text("audio.no_media_playing"))
                                 .font(.system(.title3, design: .rounded).weight(.semibold))
                                 .lineLimit(1)
                             Text(languageManager.text("audio.start_external_hint"))
@@ -2292,14 +2292,14 @@ struct MainWindowView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
                 countdownDurationField(
-                    title: "Minutes",
+                    title: languageManager.text("timer.minutes"),
                     text: $countdownMinutesText,
                     field: .countdown,
                     width: 72
                 )
 
                 countdownDurationField(
-                    title: "Seconds",
+                    title: languageManager.text("timer.seconds"),
                     text: $countdownSecondsText,
                     field: .countdownSeconds,
                     width: 72
@@ -2349,7 +2349,7 @@ struct MainWindowView: View {
             ActionButton(languageManager.text("common.resume"), isEnabled: actions.canResume) {
                 appState.stopwatch.resume()
             }
-            ActionButton("Lap", isEnabled: appState.stopwatch.elapsedSeconds > 0) {
+            ActionButton(languageManager.text("timer.lap"), isEnabled: appState.stopwatch.elapsedSeconds > 0) {
                 appState.stopwatch.lap()
             }
             ActionButton(languageManager.text("common.reset")) {
@@ -2362,7 +2362,7 @@ struct MainWindowView: View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(Array(appState.stopwatch.laps.prefix(8).enumerated()), id: \.offset) { index, lap in
                 HStack {
-                    Text("Lap \(appState.stopwatch.laps.count - index)")
+                    Text(languageManager.format("timer.lap_number", appState.stopwatch.laps.count - index))
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -3621,8 +3621,8 @@ struct MainWindowView: View {
         guard featureGate.canUseAIPlanning else {
             plansPaywallContext = SubscriptionPaywallContext(
                 requiredTier: .plus,
-                title: "Your Plans requires Plus",
-                message: "Upgrade to Plus or Pro to start Pomodoro sessions from your planned tasks."
+                title: languageManager.text("plans.paywall.title"),
+                message: languageManager.text("plans.paywall.message")
             )
             return
         }
@@ -3736,7 +3736,7 @@ struct MainWindowView: View {
                 Image(systemName: "play.circle.fill")
             }
             VStack(alignment: .leading, spacing: 1) {
-                Text("Your Plans")
+                Text(languageManager.text("plans.title"))
                     .font(.subheadline.weight(.semibold))
             }
         }
@@ -3817,7 +3817,7 @@ struct MainWindowView: View {
         VStack(alignment: .leading, spacing: 12) {
             Divider()
 
-            Text("Session Setup")
+            Text(languageManager.text("timer.session_setup"))
                 .font(.headline)
                 .foregroundStyle(.secondary)
 
@@ -3858,7 +3858,7 @@ struct MainWindowView: View {
                 }
             }
 
-            Text("These controls affect the current dashboard session only. Change Settings to update the default Pomodoro setup.")
+            Text(languageManager.text("timer.session_setup.note"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -4074,15 +4074,15 @@ private struct PlanTaskSelectionSheet: View {
         let appearanceMode = AppearanceMode.resolved(from: appearanceModeRawValue)
 
         VStack(alignment: .leading, spacing: 18) {
-            Text("Choose a Planned Task")
+            Text(L("plans.choose_task.title"))
                 .font(.title3.weight(.semibold))
 
-            Text("Pick the task you want to work on first. Pomodoro will start with that task's saved estimate.")
+            Text(L("plans.choose_task.description"))
                 .font(.subheadline)
                 .foregroundStyle(appearanceMode.secondaryTextColor(for: colorScheme))
 
             if entries.isEmpty {
-                Text("No planned tasks available.")
+                Text(L("plans.choose_task.empty"))
                     .font(.subheadline)
                     .foregroundStyle(appearanceMode.secondaryTextColor(for: colorScheme))
             } else {
@@ -4126,7 +4126,7 @@ private struct PlanTaskSelectionSheet: View {
 
             HStack {
                 Spacer()
-                Button("Cancel") {
+                Button(L("common.cancel")) {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
@@ -4424,16 +4424,16 @@ private struct SettingsPlansSheet: View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Subscription")
+                    Text(L("subscription.title"))
                         .font(.system(.title2, design: .rounded).weight(.semibold))
-                    Text("Compare plans, review upgrades, and restore purchases in a focused pop-up.")
+                    Text(L("subscription.sheet.description"))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
-                Button("Done") {
+                Button(L("common.done")) {
                     dismiss()
                 }
                 .buttonStyle(.bordered)
@@ -4602,7 +4602,7 @@ private struct AudioMixerPopover: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     if renamingPackID == pack.id {
-                        TextField("Pack name", text: $draftPackName)
+                        TextField(languageManager.text("audio.pack.name"), text: $draftPackName)
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 150)
                     } else {
@@ -4610,7 +4610,7 @@ private struct AudioMixerPopover: View {
                             .font(.system(.subheadline, design: .rounded).weight(.semibold))
                     }
 
-                    Text("\(pack.tracks.count) track\(pack.tracks.count == 1 ? "" : "s")")
+                    Text(languageManager.format("audio.pack.track_count", pack.tracks.count))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -4618,13 +4618,13 @@ private struct AudioMixerPopover: View {
                 Spacer()
 
                 if renamingPackID == pack.id {
-                    Button("Save") {
+                    Button(languageManager.text("common.save")) {
                         mixerStore.renameCustomPack(pack, to: draftPackName)
                         renamingPackID = nil
                     }
                     .controlSize(.small)
 
-                    Button("Cancel") {
+                    Button(languageManager.text("common.cancel")) {
                         renamingPackID = nil
                     }
                     .controlSize(.small)
@@ -4638,11 +4638,11 @@ private struct AudioMixerPopover: View {
 
                     if pack.isCustom {
                         Menu {
-                            Button("Rename") {
+                            Button(languageManager.text("common.rename")) {
                                 draftPackName = pack.name
                                 renamingPackID = pack.id
                             }
-                            Button("Remove", role: .destructive) {
+                            Button(languageManager.text("common.remove"), role: .destructive) {
                                 mixerStore.removeCustomPack(pack)
                             }
                         } label: {

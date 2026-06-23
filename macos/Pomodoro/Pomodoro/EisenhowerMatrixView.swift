@@ -10,8 +10,8 @@ struct EisenhowerMatrixView: View {
         VStack(spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
                 quadrantCard(
-                    title: "Do First",
-                    subtitle: "Important • Urgent",
+                    title: L("tasks.matrix.do_first.title"),
+                    subtitle: L("tasks.matrix.do_first.subtitle"),
                     color: .red,
                     tasks: tasks.filter { $0.matrixQuadrant == .doFirst }
                 )
@@ -19,8 +19,8 @@ struct EisenhowerMatrixView: View {
                 .frame(height: topRowHeight)
 
                 quadrantCard(
-                    title: "Schedule",
-                    subtitle: "Important • Not Urgent",
+                    title: L("tasks.matrix.schedule.title"),
+                    subtitle: L("tasks.matrix.schedule.subtitle"),
                     color: .blue,
                     tasks: tasks.filter { $0.matrixQuadrant == .schedule }
                 )
@@ -30,8 +30,8 @@ struct EisenhowerMatrixView: View {
 
             HStack(alignment: .top, spacing: 12) {
                 quadrantCard(
-                    title: "Delegate",
-                    subtitle: "Not Important • Urgent",
+                    title: L("tasks.matrix.delegate.title"),
+                    subtitle: L("tasks.matrix.delegate.subtitle"),
                     color: .orange,
                     tasks: tasks.filter { $0.matrixQuadrant == .delegate }
                 )
@@ -39,8 +39,8 @@ struct EisenhowerMatrixView: View {
                 .frame(height: bottomRowHeight)
 
                 quadrantCard(
-                    title: "Eliminate",
-                    subtitle: "Not Important • Not Urgent",
+                    title: L("tasks.matrix.eliminate.title"),
+                    subtitle: L("tasks.matrix.eliminate.subtitle"),
                     color: .gray,
                     tasks: tasks.filter { $0.matrixQuadrant == .eliminate }
                 )
@@ -65,7 +65,7 @@ struct EisenhowerMatrixView: View {
             }
 
             if tasks.isEmpty {
-                Text("No tasks")
+                Text(L("tasks.empty.no_tasks"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, minHeight: 70, alignment: .center)

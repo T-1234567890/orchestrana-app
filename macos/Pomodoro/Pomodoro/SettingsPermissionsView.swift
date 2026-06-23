@@ -160,7 +160,7 @@ struct SettingsPermissionsView: View {
                     Image(systemName: "text.book.closed")
                         .foregroundStyle(.secondary)
 
-                    Text("View Acknowledgements & Licenses")
+                    Text(localizationManager.text("acknowledgements.view"))
                         .foregroundStyle(.primary)
 
                     Spacer()
@@ -186,7 +186,7 @@ struct SettingsPermissionsView: View {
                     Image(systemName: "doc.text")
                         .foregroundStyle(.secondary)
 
-                    Text("Privacy & Policies")
+                    Text(localizationManager.text("settings.privacy_policies"))
                         .foregroundStyle(.primary)
 
                     Spacer()
@@ -212,7 +212,7 @@ struct SettingsPermissionsView: View {
                     Image(systemName: "doc.plaintext")
                         .foregroundStyle(.secondary)
 
-                    Text("Apple Standard EULA")
+                    Text(localizationManager.text("settings.apple_standard_eula"))
                         .foregroundStyle(.primary)
 
                     Spacer()
@@ -264,7 +264,7 @@ struct SettingsPermissionsView: View {
                 }
 
                 if subscriptionStore.isServerVerificationPending {
-                    Text("App Store subscription found. Server verification is still required before AI and premium server features unlock.")
+                    Text(localizationManager.text("settings.subscription.server_verification_pending"))
                         .font(.caption)
                         .foregroundStyle(.orange)
                         .fixedSize(horizontal: false, vertical: true)
@@ -298,7 +298,7 @@ struct SettingsPermissionsView: View {
     private var subscriptionManagementContent: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Compare Plans")
+                Text(localizationManager.text("settings.plan_comparison.title"))
                     .font(.subheadline.weight(.semibold))
 
                 Spacer()
@@ -312,7 +312,7 @@ struct SettingsPermissionsView: View {
                         ProgressView()
                             .controlSize(.small)
                     } else {
-                        Text("Restore & Sync Subscription")
+                        Text(localizationManager.text("settings.subscription.restore_sync"))
                     }
                 }
                 .buttonStyle(.bordered)
@@ -709,7 +709,7 @@ struct PlansComparisonView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center, spacing: 10) {
-                Picker("Billing", selection: selectedBillingCycle) {
+                Picker(L("pricing.billing"), selection: selectedBillingCycle) {
                     ForEach(PlanBillingCycle.allCases) { cycle in
                         Text(cycle.title).tag(cycle)
                     }
@@ -753,7 +753,7 @@ struct PlansComparisonView: View {
                         ProgressView()
                             .controlSize(.small)
                     } else {
-                        Text("Restore & Sync Subscription")
+                        Text(L("settings.subscription.restore_sync"))
                     }
                 }
                 .buttonStyle(.bordered)
@@ -768,13 +768,13 @@ struct PlansComparisonView: View {
                         ProgressView()
                             .controlSize(.small)
                     } else {
-                        Text("Have an offer code?")
+                        Text(L("pricing.offer_code"))
                     }
                 }
                 .buttonStyle(.bordered)
                 .disabled(subscriptionStore.isRedeemingOfferCode)
 
-                Button("View Full Comparison") {
+                Button(L("pricing.view_full_comparison")) {
                     guard let url = URL(string: "https://orchestrana.app/comparison.html") else { return }
                     openURL(url)
                 }
@@ -821,7 +821,7 @@ struct PlansComparisonView: View {
 
     private var billingNotice: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Subscriptions are billed through the Apple App Store and renew automatically unless canceled at least 24 hours before the current period ends. Manage or cancel in your App Store account settings.")
+            Text(L("pricing.billing_notice"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -845,7 +845,7 @@ struct PlansComparisonView: View {
 
     private var keyComparisonSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Key comparison")
+            Text(L("pricing.key_comparison"))
                 .font(.subheadline.weight(.semibold))
 
             ForEach(keyComparisonRows) { row in
@@ -868,11 +868,11 @@ struct PlansComparisonView: View {
 
     private var keyComparisonRows: [PlanFeatureRow] {
         [
-            PlanFeatureRow(title: "Core timer and tasks", freeAvailability: .available, plusAvailability: .available, proAvailability: .available),
-            PlanFeatureRow(title: "AI task drafting", freeAvailability: .unavailable, plusAvailability: .available, proAvailability: .available),
-            PlanFeatureRow(title: "Insight summaries", freeAvailability: .unavailable, plusAvailability: .limited("Standard Models"), proAvailability: .limited("Frontier Models")),
-            PlanFeatureRow(title: "Deep analysis", freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available),
-            PlanFeatureRow(title: "AI scheduling", freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available)
+            PlanFeatureRow(title: L("pricing.feature.core_timer_tasks"), freeAvailability: .available, plusAvailability: .available, proAvailability: .available),
+            PlanFeatureRow(title: L("pricing.feature.ai_task_drafting"), freeAvailability: .unavailable, plusAvailability: .available, proAvailability: .available),
+            PlanFeatureRow(title: L("pricing.feature.insight_summaries"), freeAvailability: .unavailable, plusAvailability: .limited(L("feature_gate.standard_models")), proAvailability: .limited(L("feature_gate.frontier_models"))),
+            PlanFeatureRow(title: L("pricing.feature.deep_analysis"), freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available),
+            PlanFeatureRow(title: L("pricing.feature.ai_scheduling"), freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available)
         ]
     }
 
@@ -933,25 +933,25 @@ struct PlansComparisonView: View {
         switch section {
         case .core:
             return [
-                PlanFeatureRow(title: "Pomodoro timer", freeAvailability: .available, plusAvailability: .available, proAvailability: .available),
-                PlanFeatureRow(title: "Tasks", freeAvailability: .available, plusAvailability: .available, proAvailability: .available),
-                PlanFeatureRow(title: "Calendar read", freeAvailability: .available, plusAvailability: .available, proAvailability: .available),
-                PlanFeatureRow(title: "Reminders", freeAvailability: .available, plusAvailability: .available, proAvailability: .available)
+                PlanFeatureRow(title: L("pricing.feature.pomodoro_timer"), freeAvailability: .available, plusAvailability: .available, proAvailability: .available),
+                PlanFeatureRow(title: L("pricing.feature.tasks"), freeAvailability: .available, plusAvailability: .available, proAvailability: .available),
+                PlanFeatureRow(title: L("pricing.feature.calendar_read"), freeAvailability: .available, plusAvailability: .available, proAvailability: .available),
+                PlanFeatureRow(title: L("pricing.feature.reminders"), freeAvailability: .available, plusAvailability: .available, proAvailability: .available)
             ]
         case .ai:
             return [
-                PlanFeatureRow(title: "AI task drafting", freeAvailability: .unavailable, plusAvailability: .available, proAvailability: .available),
-                PlanFeatureRow(title: "AI summaries", freeAvailability: .unavailable, plusAvailability: .available, proAvailability: .available),
-                PlanFeatureRow(title: "AI scheduling suggestions", freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available)
+                PlanFeatureRow(title: L("pricing.feature.ai_task_drafting"), freeAvailability: .unavailable, plusAvailability: .available, proAvailability: .available),
+                PlanFeatureRow(title: L("pricing.feature.ai_summaries"), freeAvailability: .unavailable, plusAvailability: .available, proAvailability: .available),
+                PlanFeatureRow(title: L("pricing.feature.ai_scheduling_suggestions"), freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available)
             ]
         case .advanced:
             return [
-                PlanFeatureRow(title: "Flow mode customization", freeAvailability: .available, plusAvailability: .available, proAvailability: .available),
-                PlanFeatureRow(title: "Custom Flow backgrounds", freeAvailability: .unavailable, plusAvailability: .available, proAvailability: .available),
-                PlanFeatureRow(title: "Advanced analytics", freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available),
-                PlanFeatureRow(title: "Markdown tasks & subtasks", freeAvailability: .unavailable, plusAvailability: .available, proAvailability: .available),
-                PlanFeatureRow(title: "Advanced AI models", freeAvailability: .unavailable, plusAvailability: .limited("Standard Models"), proAvailability: .available),
-                PlanFeatureRow(title: "Eisenhower Matrix", freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available)
+                PlanFeatureRow(title: L("pricing.feature.flow_customization"), freeAvailability: .available, plusAvailability: .available, proAvailability: .available),
+                PlanFeatureRow(title: L("pricing.feature.custom_flow_backgrounds"), freeAvailability: .unavailable, plusAvailability: .available, proAvailability: .available),
+                PlanFeatureRow(title: L("pricing.feature.advanced_analytics"), freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available),
+                PlanFeatureRow(title: L("pricing.feature.markdown_tasks_subtasks"), freeAvailability: .unavailable, plusAvailability: .available, proAvailability: .available),
+                PlanFeatureRow(title: L("pricing.feature.advanced_ai_models"), freeAvailability: .unavailable, plusAvailability: .limited(L("feature_gate.standard_models")), proAvailability: .available),
+                PlanFeatureRow(title: L("tasks.eisenhower_matrix.title"), freeAvailability: .unavailable, plusAvailability: .unavailable, proAvailability: .available)
             ]
         }
     }
@@ -1007,11 +1007,11 @@ struct PlansComparisonView: View {
         HStack(spacing: 12) {
             Color.clear
                 .frame(maxWidth: .infinity)
-            Text("Free")
+            Text(L("settings.ai_subscription.plan.free"))
                 .frame(width: 72)
-            Text("Plus")
+            Text(L("settings.ai_subscription.plan.plus"))
                 .frame(width: 72)
-            Text("Pro")
+            Text(L("settings.ai_subscription.plan.pro"))
                 .frame(width: 72)
         }
         .font(.caption.weight(.semibold))
@@ -1073,7 +1073,7 @@ struct PlanCardView: View {
             }
 
             if shouldCallOutUnlock {
-                Label("Unlocks this feature", systemImage: "lock.fill")
+                Label(L("pricing.unlocks_this_feature"), systemImage: "lock.fill")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
             }
@@ -1102,7 +1102,7 @@ struct PlanCardView: View {
                 Spacer()
 
                 if showBestValueBadge {
-                    Text("Best Value")
+                    Text(L("pricing.best_value"))
                         .font(.caption.weight(.semibold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -1144,9 +1144,9 @@ struct PlanCardView: View {
                         ProgressView()
                             .controlSize(.small)
                     } else if productLoadErrorMessage != nil {
-                        Text("Price unavailable")
+                        Text(L("pricing.price_unavailable"))
                     } else {
-                        Text("Loading…")
+                        Text(L("common.loading"))
                     }
                 }
                 .buttonStyle(.bordered)
@@ -1399,14 +1399,14 @@ struct PurchaseAccountRecommendationSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Recommended to sign in before purchase")
+            Text(L("pricing.sign_in_recommended"))
                 .font(.title3.weight(.semibold))
 
             LoginView()
                 .transition(.move(edge: .top).combined(with: .opacity))
 
             HStack(spacing: 10) {
-                Button("Cancel", role: .cancel) {
+                Button(L("common.cancel"), role: .cancel) {
                     dismiss()
                 }
                 .buttonStyle(.bordered)

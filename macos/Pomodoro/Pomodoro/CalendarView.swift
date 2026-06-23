@@ -280,8 +280,8 @@ struct CalendarView: View {
         }
         .alert(item: $pendingDeleteAction) { action in
             Alert(
-                title: Text("Delete \(action.title)?"),
-                message: Text("This cannot be undone."),
+                title: Text(localizationManager.format("calendar.delete_item.confirmation", action.title)),
+                message: Text(localizationManager.text("common.cannot_undo")),
                 primaryButton: .destructive(Text(localizationManager.text("common.delete"))) {
                     Task { await confirmPendingDelete(action) }
                 },
@@ -445,9 +445,9 @@ struct CalendarView: View {
                 .foregroundStyle(.blue)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Apple Calendar sync is paused")
+                Text(localizationManager.text("calendar.apple_sync_paused.title"))
                     .font(.subheadline.weight(.semibold))
-                Text("Google services are connected. To prevent duplicate events and merge conflicts, Apple Calendar sync will resume after you disconnect Google in Settings.")
+                Text(localizationManager.text("calendar.apple_sync_paused.body"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1523,13 +1523,13 @@ struct CalendarView: View {
             Button {
                 openSystemEventDetails(event)
             } label: {
-                Label("Open Details", systemImage: "info.circle")
+                Label(localizationManager.text("common.open_details"), systemImage: "info.circle")
             }
 
             Button {
                 createTask(from: event)
             } label: {
-                Label("Create Task from Event", systemImage: "checklist")
+                Label(localizationManager.text("calendar.action.create_task_from_event"), systemImage: "checklist")
             }
 
             systemGoalLinkMenu(for: event)
@@ -1540,20 +1540,20 @@ struct CalendarView: View {
                     enableEventTasks(for: item)
                 }
             } label: {
-                Label("Enable Event Tasks", systemImage: "checklist.checked")
+                Label(localizationManager.text("calendar.event_tasks.enable_toggle"), systemImage: "checklist.checked")
             }
 
             Button {
                 beginMoveSystemEvent(event)
             } label: {
-                Label("Move", systemImage: "calendar.badge.clock")
+                Label(localizationManager.text("common.move"), systemImage: "calendar.badge.clock")
             }
             .disabled(!canModify(event))
 
             Button(role: .destructive) {
                 beginDeleteSystemEvent(event)
             } label: {
-                Label("Delete", systemImage: "trash")
+                Label(localizationManager.text("common.delete"), systemImage: "trash")
             }
             .disabled(!canModify(event))
         } label: {
@@ -1569,13 +1569,13 @@ struct CalendarView: View {
             Button {
                 selectedLocalEventID = item.id
             } label: {
-                Label("Open Details", systemImage: "info.circle")
+                Label(localizationManager.text("common.open_details"), systemImage: "info.circle")
             }
 
             Button {
                 createTask(from: item)
             } label: {
-                Label("Create Task from Event", systemImage: "checklist")
+                Label(localizationManager.text("calendar.action.create_task_from_event"), systemImage: "checklist")
             }
 
             goalLinkMenu(for: item)
@@ -1584,26 +1584,26 @@ struct CalendarView: View {
             Button {
                 enableEventTasks(for: item)
             } label: {
-                Label("Enable Event Tasks", systemImage: "checklist.checked")
+                Label(localizationManager.text("calendar.event_tasks.enable_toggle"), systemImage: "checklist.checked")
             }
 
             Button {
                 beginMoveLocalEvent(item)
             } label: {
-                Label("Move", systemImage: "calendar.badge.clock")
+                Label(localizationManager.text("common.move"), systemImage: "calendar.badge.clock")
             }
 
             Button {
                 duplicateLocalEvent(item)
             } label: {
-                Label("Duplicate", systemImage: "plus.square.on.square")
+                Label(localizationManager.text("common.duplicate"), systemImage: "plus.square.on.square")
             }
             .disabled(item.source != .local)
 
             Button(role: .destructive) {
                 beginDeleteLocalEvent(item)
             } label: {
-                Label("Delete", systemImage: "trash")
+                Label(localizationManager.text("common.delete"), systemImage: "trash")
             }
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -1618,7 +1618,7 @@ struct CalendarView: View {
             Button {
                 selectedTaskDetailID = item.id
             } label: {
-                Label("Open Details", systemImage: "info.circle")
+                Label(localizationManager.text("common.open_details"), systemImage: "info.circle")
             }
 
             taskGoalLinkMenu(for: item)
@@ -1627,13 +1627,13 @@ struct CalendarView: View {
             Button {
                 beginMoveTask(item)
             } label: {
-                Label("Move", systemImage: "calendar.badge.clock")
+                Label(localizationManager.text("common.move"), systemImage: "calendar.badge.clock")
             }
 
             Button {
                 createLocalEvent(from: item)
             } label: {
-                Label("Create Event from Task", systemImage: "calendar.badge.plus")
+                Label(localizationManager.text("calendar.action.create_event_from_task"), systemImage: "calendar.badge.plus")
             }
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -1654,12 +1654,12 @@ struct CalendarView: View {
                     .disabled(goalStore.hasLink(goalID: goal.id, kind: .event, targetID: item.id.uuidString))
                 }
             } label: {
-                Label("Link to Goal", systemImage: "target")
+                Label(localizationManager.text("workspace.action.link_to_goal"), systemImage: "target")
             }
         } else {
             Button {
             } label: {
-                Label("Link to Goal", systemImage: "target")
+                Label(localizationManager.text("workspace.action.link_to_goal"), systemImage: "target")
             }
             .disabled(true)
         }
@@ -1677,12 +1677,12 @@ struct CalendarView: View {
                     .disabled(isSystemEventLinked(event, to: goal))
                 }
             } label: {
-                Label("Link to Goal", systemImage: "target")
+                Label(localizationManager.text("workspace.action.link_to_goal"), systemImage: "target")
             }
         } else {
             Button {
             } label: {
-                Label("Link to Goal", systemImage: "target")
+                Label(localizationManager.text("workspace.action.link_to_goal"), systemImage: "target")
             }
             .disabled(true)
         }
@@ -1699,12 +1699,12 @@ struct CalendarView: View {
                     .disabled(goalStore.hasLink(goalID: goal.id, kind: .task, targetID: item.id.uuidString))
                 }
             } label: {
-                Label("Link to Goal", systemImage: "target")
+                Label(localizationManager.text("workspace.action.link_to_goal"), systemImage: "target")
             }
         } else {
             Button {
             } label: {
-                Label("Link to Goal", systemImage: "target")
+                Label(localizationManager.text("workspace.action.link_to_goal"), systemImage: "target")
             }
             .disabled(true)
         }
@@ -1717,13 +1717,13 @@ struct CalendarView: View {
         }
         locationMenu(
             currentLocationID: snapshot?.locationID,
-            assignTitle: snapshot?.locationID == nil ? "Pin to Location" : "Change Location",
+            assignTitle: snapshot?.locationID == nil ? localizationManager.text("workspace.location.pin") : localizationManager.text("workspace.location.change"),
             onPickLocation: {
                 guard let identifier = event.eventIdentifier else { return }
                 locationPickerContext = CalendarLocationPickerContext(
                     kind: .systemEvent(identifier),
                     currentLocationID: snapshot?.locationID,
-                    title: snapshot?.locationID == nil ? "Pin to Location" : "Change Location"
+                    title: snapshot?.locationID == nil ? localizationManager.text("workspace.location.pin") : localizationManager.text("workspace.location.change")
                 )
             },
             onClear: {
@@ -1737,12 +1737,12 @@ struct CalendarView: View {
     private func eventLocationMenu(for item: PlanningItem) -> some View {
         locationMenu(
             currentLocationID: item.locationID,
-            assignTitle: item.locationID == nil ? "Pin to Location" : "Change Location",
+            assignTitle: item.locationID == nil ? localizationManager.text("workspace.location.pin") : localizationManager.text("workspace.location.change"),
             onPickLocation: {
                 locationPickerContext = CalendarLocationPickerContext(
                     kind: .localEvent(item.id),
                     currentLocationID: item.locationID,
-                    title: item.locationID == nil ? "Pin to Location" : "Change Location"
+                    title: item.locationID == nil ? localizationManager.text("workspace.location.pin") : localizationManager.text("workspace.location.change")
                 )
             },
             onClear: {
@@ -1755,12 +1755,12 @@ struct CalendarView: View {
     private func calendarTaskLocationMenu(for item: TodoItem) -> some View {
         locationMenu(
             currentLocationID: item.locationID,
-            assignTitle: item.locationID == nil ? "Pin to Location" : "Change Location",
+            assignTitle: item.locationID == nil ? localizationManager.text("workspace.location.pin") : localizationManager.text("workspace.location.change"),
             onPickLocation: {
                 locationPickerContext = CalendarLocationPickerContext(
                     kind: .task(item.id),
                     currentLocationID: item.locationID,
-                    title: item.locationID == nil ? "Pin to Location" : "Change Location"
+                    title: item.locationID == nil ? localizationManager.text("workspace.location.pin") : localizationManager.text("workspace.location.change")
                 )
             },
             onClear: {
@@ -1786,18 +1786,18 @@ struct CalendarView: View {
             Button {
                 onClear()
             } label: {
-                Label("Clear Location", systemImage: "mappin.slash")
+                Label(localizationManager.text("workspace.location.clear"), systemImage: "mappin.slash")
             }
             .disabled(currentLocationID == nil)
 
             Button {
                 NotificationCenter.default.post(name: .navigateToWorkspaceMap, object: currentLocationID)
             } label: {
-                Label("Show on Map", systemImage: "map")
+                Label(localizationManager.text("workspace.location.show_on_map"), systemImage: "map")
             }
             .disabled(currentLocationID == nil)
         } label: {
-            Label("Location", systemImage: "location")
+            Label(localizationManager.text("common.location"), systemImage: "location")
         }
     }
 
@@ -1840,8 +1840,8 @@ struct CalendarView: View {
     private func presentCalendarTaskLocationLimitPaywall() {
         presentUpgradePaywall(
             requiredTier: .plus,
-            title: "Unlimited task locations require Plus",
-            message: "Free supports up to \(LocationStore.freeTaskLocationLimit) saved task locations. Upgrade to Plus for unlimited locations, tags, and location notifications."
+            title: localizationManager.text("location.paywall.unlimited_task_locations_title"),
+            message: localizationManager.format("location.paywall.unlimited_task_locations_message", LocationStore.freeTaskLocationLimit)
         )
     }
 
@@ -2622,7 +2622,7 @@ private struct AddEventSheet: View {
 
     private var locationPickerRow: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Location")
+            Text(L("common.location"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -2632,12 +2632,12 @@ private struct AddEventSheet: View {
                     .foregroundStyle(locationID == nil ? .secondary : .primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                Button(locationID == nil ? "Choose" : "Change") {
+                Button(locationID == nil ? L("common.choose") : L("common.change")) {
                     showingLocationPicker = true
                 }
                 .buttonStyle(.bordered)
 
-                Button("Clear") {
+                Button(L("common.clear")) {
                     locationID = nil
                 }
                 .buttonStyle(.bordered)
@@ -2647,7 +2647,7 @@ private struct AddEventSheet: View {
     }
 
     private var selectedLocationName: String {
-        locationStore.location(id: locationID)?.name ?? "No location"
+        locationStore.location(id: locationID)?.name ?? L("workspace.location.none")
     }
 }
 
@@ -2661,7 +2661,7 @@ private struct CalendarMoveSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Move")
+                Text(localizationManager.text("common.move"))
                     .font(.title3.weight(.semibold))
                 Text(title)
                     .font(.subheadline)
