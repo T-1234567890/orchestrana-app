@@ -1,7 +1,7 @@
 # Privacy Policy
 
 **Effective Date:** May 31, 2026
-**Last Updated:** May 31, 2026
+**Last Updated:** June 23, 2026
 
 ---
 
@@ -343,7 +343,13 @@ These safeguards are intended to protect account access, cloud-backed requests, 
 
 ## Children's Privacy
 
-The Service is intended for users who are at least 9 years old and legally allowed to use the Service in their location. If a higher minimum age or parental consent requirement applies under local law, that requirement controls. We do not knowingly collect personal information from anyone who is not legally allowed to use the Service. If you believe a child has provided personal information to us without the required legal permission, contact us and we will investigate and take appropriate action.
+The locally installed Orchestrana macOS application is intended for users who are legally allowed to use it under applicable law, platform rules, and any applicable App Store age rating.
+
+Cloud, online, account-based, subscription, AI, backend, provider integration, and website services are intended only for users who are at least 13 years old. If you are under 18, or under the age of majority or other legally required age in your location, you may use cloud or online services only with the approval and supervision of your parent or legal guardian.
+
+We do not knowingly collect personal information through cloud or online services from anyone under 13, or from anyone who lacks legally required parent or guardian approval. Do not create an account, use cloud-backed features, connect third-party providers, purchase subscriptions, or use online services if you are not legally allowed to do so or do not have any required parent or guardian approval.
+
+If you believe a child has provided personal information to us without the required legal permission, contact us and we will investigate and take appropriate action.
 
 ---
 

@@ -1,7 +1,7 @@
 # Terms of Service
 
 **Effective Date:** May 31, 2026
-**Last Updated:** June 13, 2026
+**Last Updated:** June 23, 2026
 
 ---
 
@@ -35,6 +35,12 @@ We may add, change, limit, suspend, or remove features at any time for product, 
 ## 3. Eligibility and Accounts
 
 You must be legally able to use the Service under applicable law. If you create or use an account, you are responsible for maintaining the security of your credentials and for activity that occurs under your account.
+
+The locally installed Orchestrana macOS application may be used only where you are legally allowed to use it under applicable law, platform rules, and any applicable App Store age rating. Cloud, online, account-based, subscription, AI, backend, provider integration, and website services are intended only for users who are at least 13 years old.
+
+If you are under 18, or under the age of majority or other legally required age in your location, you may use cloud or online services only with the approval and supervision of your parent or legal guardian. Your parent or legal guardian is responsible for your use of those services and for ensuring that your use complies with these Terms and applicable law.
+
+Do not create an account, use cloud-backed features, connect third-party providers, purchase subscriptions, or use online services if you are not legally allowed to do so or do not have any required parent or guardian approval.
 
 You are responsible for providing accurate account information, keeping your sign-in credentials secure, maintaining access to your Apple ID and App Store account where needed, all activity that occurs through your account, and promptly notifying us if you believe your account has been compromised.
 
