@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="index, follow" />
+  <meta name="description" content="Current service status for Orchestrana." />
+  <title>Orchestrana Status</title>
+  <link rel="icon" type="image/png" href="screenshots/Orchestrana%20icon%201.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="status.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="topbar-link" href="index.html">Home</a>
+    <a class="brand-icon" href="index.html" aria-label="Back to Orchestrana home">
+      <img src="screenshots/Orchestrana%20icon%201.png" alt="Orchestrana" />
+    </a>
+    <a class="topbar-link" href="https://github.com/T-1234567890/orchestrana-app" target="_blank" rel="noreferrer">GitHub</a>
+  </header>
+
+  <main class="status-shell">
+    <section class="status-hero" aria-label="Orchestrana status">
+      <div id="overall-banner" class="overall-banner banner-working">
+        <span class="banner-icon" aria-hidden="true">✓</span>
+        <span id="overall-text">All core services are operational</span>
+      </div>
+      <section id="advisory-banner" class="advisory-banner" hidden></section>
+    </section>
+
+    <section id="status-message" class="status-message" hidden></section>
+
+    <section id="current-notices-section" class="current-notices" aria-labelledby="current-notices-title" hidden>
+      <div class="section-title-row">
+        <h2 id="current-notices-title">Current Incidents</h2>
+      </div>
+      <div id="notices-list" class="notice-list" aria-live="polite"></div>
+    </section>
+
+    <section class="daily-section" aria-labelledby="uptime-status-title">
+      <div class="section-title-row">
+        <div class="section-title-copy">
+          <h2 id="uptime-status-title">Uptime Status</h2>
+          <p class="last-updated">Last checked: <span id="hero-updated">Checking...</span></p>
+        </div>
+      </div>
+      <div id="daily-status" class="daily-grid" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <footer class="status-footer">
+    Orchestrana status is updated as notices change.
+  </footer>
+
+  <script src="status.js" defer></script>
+</body>
+</html>
