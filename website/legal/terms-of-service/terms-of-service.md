@@ -101,9 +101,15 @@ When you use these features, relevant User Content may be transmitted to our bac
 
 This may include task titles, notes, deadlines, estimated hours, calendar events, availability constraints, plan context, prompts, and similar workflow inputs needed to fulfill the request.
 
-AI requests may be routed through backend-controlled services and supported AI providers or routing providers. AI features may depend on model categories, quota, allowance, and usage enforcement.
+Some AI features may use third-party AI model providers, routing services, or infrastructure providers, including providers such as Google, xAI, DeepSeek, and other model or infrastructure providers. AI requests may also be routed through services such as OpenRouter or similar routing services.
 
-Some AI-dependent features rely on third-party AI providers, routing providers, or related infrastructure. Those providers may change, fail, become unavailable, return delayed responses, or alter model behavior over time, and the Service does not guarantee continuous availability of AI features.
+Model availability, routing, speed, cost, retention controls, caching behavior, and provider behavior may vary by model, provider, region, account configuration, endpoint, selected settings, and applicable provider terms.
+
+We configure production AI routing to use paid/API model endpoints and privacy-conscious controls where reasonably available. According to the applicable third-party provider documentation, terms, or settings available to us, paid/API model requests are configured by us to avoid endpoints identified as using submitted request data for generalized AI model training or product-improvement training, where such controls are available. We do not claim that all third-party providers provide zero data retention unless a specific feature or configuration clearly says so.
+
+Third-party providers are responsible for operating their own services in accordance with their own terms, policies, security practices, retention controls, caching behavior, and no-training commitments. We are responsible for how Orchestrana selects, configures, and uses those providers within the Service. We are not responsible for third-party providers' independent acts or failures outside our reasonable control.
+
+Unless we clearly state otherwise for a specific feature, you should not submit information to AI features that you are not authorized to provide to third-party AI services.
 
 AI output may be incomplete, inaccurate, inconsistent, misleading, or otherwise unsuitable for your situation. You are responsible for reviewing, verifying, and independently evaluating AI-generated suggestions, plans, schedules, summaries, or text before acting on them.
 
@@ -118,6 +124,8 @@ AI features may also be subject to usage limits, quotas, rate limits, plan restr
 The Service may integrate with Calendar, Reminders, notifications, music, or other local/system services when you enable them. Some integrations operate locally; others may involve cloud-backed requests when you explicitly invoke planning, scheduling, or account-based features.
 
 The Service may also offer optional third-party integrations, including Google Calendar and Google Tasks. If you connect Google services, you authorize Orchestrana to access, display, synchronize, create, update, and delete the connected Google Calendar events or Google Tasks as needed to provide the integration and reflect actions you take in the app.
+
+Google Calendar and Google Tasks integrations may be limited, unavailable, disabled, or not publicly released while Orchestrana completes compliance review, platform requirements, or related data-handling updates.
 
 When Google services are connected, Apple Calendar or Apple Reminders sync may be paused to reduce duplicate items and merge conflicts. Disconnecting Google may stop future Google synchronization, but it may not automatically remove items that were already created or changed in Google unless the app provides and completes a specific deletion action.
 
@@ -168,13 +176,12 @@ The Service may depend on third-party services, including:
 - GitHub
 - Firebase / Google Cloud
 - Google Calendar and Google Tasks
-- OpenRouter
-- AI providers and model routing services
+- AI providers, model routing services such as OpenRouter, and related infrastructure providers
 - Calendar, reminders, music, or other optional integrations
 
 Your use of those third-party services may also be governed by their separate terms and privacy policies. We are not responsible for third-party services we do not control.
 
-We are not responsible for outages, latency, degraded responses, policy changes, pricing changes, feature removals, or other failures of third-party providers or third-party infrastructure, including providers such as Google, OpenRouter, Apple, GitHub, Firebase, or underlying AI model providers.
+We are not responsible for outages, latency, degraded responses, policy changes, pricing changes, feature removals, or other failures of third-party providers or third-party infrastructure, including providers such as Google, Apple, GitHub, Firebase, AI routing services, or underlying AI model providers.
 
 This includes sign-in providers such as Google Sign-In, GitHub sign-in, Apple Sign-In, and email/password authentication handled through Firebase Authentication or related providers.
 
