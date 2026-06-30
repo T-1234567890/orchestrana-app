@@ -402,6 +402,10 @@ h3 {
   backdrop-filter: blur(12px);
 }
 
+.service-group-wide {
+  grid-column: 1 / -1;
+}
+
 .service-group h3 {
   margin-bottom: 8px;
 }

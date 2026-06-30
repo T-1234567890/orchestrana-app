@@ -5,7 +5,7 @@ const STATUS_LABELS = {
 };
 
 const BANNER_LABELS = {
-  operational: 'All core services are operational',
+  operational: 'All services are operational',
   limited: 'Some features are limited',
   outage: 'Service disruption'
 };
@@ -47,11 +47,8 @@ const SERVICE_DEFINITIONS = [
     services: ['Cloud functionality', 'Networking']
   },
   {
-    title: 'Integrations',
-    services: ['Google Calendar', 'Google Tasks']
-  },
-  {
     title: 'AI',
+    wide: true,
     services: ['AI features', 'Advanced AI features']
   }
 ];
@@ -77,12 +74,6 @@ const SERVICE_ALIASES = new Map([
   ['network', ['Networking']],
   ['cloud networking', ['Networking']],
   ['regional networking', ['Networking']],
-  ['google', ['Google Calendar', 'Google Tasks']],
-  ['integrations', ['Google Calendar', 'Google Tasks']],
-  ['google calendar and tasks', ['Google Calendar', 'Google Tasks']],
-  ['calendar and tasks', ['Google Calendar', 'Google Tasks']],
-  ['google calendar', ['Google Calendar']],
-  ['google tasks', ['Google Tasks']],
   ['ai', ['AI features', 'Advanced AI features']],
   ['ai features', ['AI features']],
   ['advanced ai', ['Advanced AI features']],
@@ -141,21 +132,12 @@ const SIGN_IN_PATTERNS = [
   'authentication'
 ];
 
-const GOOGLE_INTEGRATION_PATTERNS = [
-  'google calendar',
-  'google tasks',
-  'google apis',
-  'oauth'
-];
-
 const PRIMARY_SERVICES = new Set([
   'Local Mac app',
   'Website',
   'Sign-in',
   'Subscription access',
   'Cloud functionality',
-  'Google Calendar',
-  'Google Tasks',
   'AI features',
   'Advanced AI features'
 ]);
@@ -164,8 +146,6 @@ const NON_APP_WEBSITE_CORE_SERVICES = [
   'Sign-in',
   'Subscription access',
   'Cloud functionality',
-  'Google Calendar',
-  'Google Tasks',
   'AI features',
   'Advanced AI features'
 ];
@@ -398,7 +378,9 @@ function updateHero() {
   const overall = overallStatus();
   elements.overallBanner.className = `overall-banner banner-${overall}`;
   elements.overallBanner.querySelector('.banner-icon').textContent = BANNER_ICONS[overall];
-  elements.overallText.textContent = BANNER_LABELS[overall];
+  elements.overallText.textContent = overall === 'operational' && hasAdvisoryImpact()
+    ? 'All core services are operational'
+    : BANNER_LABELS[overall];
   elements.heroUpdated.textContent = appState.lastChecked || 'Checking...';
 }
 
@@ -413,10 +395,7 @@ function renderStatusMessage() {
 }
 
 function renderAdvisoryBanner() {
-  const statuses = visibleServiceStatuses();
-  const hasAdvisoryImpact = appState.advisories.length > 0 || statuses.get('Networking') !== 'operational';
-
-  if (!hasAdvisoryImpact || overallStatus() !== 'operational') {
+  if (!hasAdvisoryImpact() || overallStatus() !== 'operational') {
     elements.advisoryBanner.hidden = true;
     elements.advisoryBanner.textContent = '';
     return;
@@ -490,7 +469,7 @@ function renderNotices() {
 function renderDailyStatus() {
   const statuses = visibleServiceStatuses();
   elements.dailyStatus.innerHTML = SERVICE_DEFINITIONS.map((group) => `
-    <article class="service-group">
+    <article class="service-group${group.wide ? ' service-group-wide' : ''}">
       <h3>${escapeHTML(group.title)}</h3>
       ${group.services.map((service) => `
         <div class="service-row">
@@ -535,6 +514,11 @@ function incidentSeverityFromText(text) {
 
 function incidentMentions(text, patterns) {
   return patterns.some((pattern) => text.includes(pattern));
+}
+
+function hasAdvisoryImpact() {
+  const statuses = visibleServiceStatuses();
+  return appState.advisories.length > 0 || statuses.get('Networking') !== 'operational';
 }
 
 function isRegionalAdvisoryText(text) {
@@ -612,7 +596,6 @@ async function checkCloudStatus(url) {
     const cloudFunctionalityStates = [];
     const networkingStates = [];
     const signInStates = [];
-    const googleIntegrationStates = [];
 
     incidentsFromJSON(data).filter(isActiveStatusIncident).forEach((incident) => {
       const text = activeTextFromIncident(incident);
@@ -632,9 +615,6 @@ async function checkCloudStatus(url) {
       if (incidentMentions(text, SIGN_IN_PATTERNS)) {
         signInStates.push(severity);
       }
-      if (incidentMentions(text, GOOGLE_INTEGRATION_PATTERNS)) {
-        googleIntegrationStates.push(severity);
-      }
     });
 
     if (cloudFunctionalityStates.length > 0) {
@@ -649,17 +629,10 @@ async function checkCloudStatus(url) {
       setHiddenStatus('Sign-in', signInStates);
     }
 
-    if (googleIntegrationStates.length > 0) {
-      const status = worstStatus(googleIntegrationStates);
-      setHiddenStatus('Google Calendar', [status]);
-      setHiddenStatus('Google Tasks', [status]);
-    }
-
     if (
       cloudFunctionalityStates.length > 0 ||
       networkingStates.length > 0 ||
-      signInStates.length > 0 ||
-      googleIntegrationStates.length > 0
+      signInStates.length > 0
     ) {
       renderPage();
     }
