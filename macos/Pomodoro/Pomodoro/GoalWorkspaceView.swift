@@ -1,13 +1,8 @@
+import EventKit
 import SwiftUI
 
-private enum WorkspaceFeatureFlags {
-    static let notesEnabled = false
-    static let knowledgeEnabled = false
-    static let mapEnabled = true
-    static let locationContextEnabled = false
-}
-
-private enum WorkspaceSection: CaseIterable, Identifiable {
+enum WorkspaceSection: CaseIterable, Identifiable {
+    case search
     case notes
     case goals
     case knowledge
@@ -17,6 +12,8 @@ private enum WorkspaceSection: CaseIterable, Identifiable {
 
     func title(languageManager: LanguageManager) -> String {
         switch self {
+        case .search:
+            return languageManager.text("workspace.section.search")
         case .notes:
             return languageManager.text("workspace.section.notes")
         case .goals:
@@ -30,6 +27,8 @@ private enum WorkspaceSection: CaseIterable, Identifiable {
 
     var systemImage: String {
         switch self {
+        case .search:
+            return "magnifyingglass"
         case .notes:
             return "note.text"
         case .goals:
@@ -60,8 +59,175 @@ private struct GoalSmartLinkSuggestion: Identifiable, Hashable {
     let reason: String
 }
 
+private enum WorkspaceSearchResultKind: String, CaseIterable, Identifiable {
+    case goal
+    case task
+    case event
+    case location
+    case session
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .goal:
+            return "target"
+        case .task:
+            return "checklist"
+        case .event:
+            return "calendar"
+        case .location:
+            return "mappin.and.ellipse"
+        case .session:
+            return "timer"
+        }
+    }
+
+    func title(languageManager: LanguageManager) -> String {
+        languageManager.text("workspace.search.kind.\(rawValue)")
+    }
+}
+
+private enum WorkspaceSearchTypeFilter: String, CaseIterable, Identifiable {
+    case all
+    case goal
+    case task
+    case event
+    case location
+    case session
+
+    var id: String { rawValue }
+
+    func title(languageManager: LanguageManager) -> String {
+        languageManager.text("workspace.search.filter.type.\(rawValue)")
+    }
+
+    func includes(_ kind: WorkspaceSearchResultKind) -> Bool {
+        switch self {
+        case .all:
+            return true
+        case .goal:
+            return kind == .goal
+        case .task:
+            return kind == .task
+        case .event:
+            return kind == .event
+        case .location:
+            return kind == .location
+        case .session:
+            return kind == .session
+        }
+    }
+}
+
+private enum WorkspaceSearchStatus: String {
+    case active
+    case completed
+    case paused
+}
+
+private enum WorkspaceSearchStatusFilter: String, CaseIterable, Identifiable {
+    case all
+    case active
+    case completed
+    case paused
+
+    var id: String { rawValue }
+
+    func title(languageManager: LanguageManager) -> String {
+        languageManager.text("workspace.search.filter.status.\(rawValue)")
+    }
+
+    func includes(_ status: WorkspaceSearchStatus) -> Bool {
+        switch self {
+        case .all:
+            return true
+        case .active:
+            return status == .active
+        case .completed:
+            return status == .completed
+        case .paused:
+            return status == .paused
+        }
+    }
+}
+
+private enum WorkspaceSearchDifficulty: String, CaseIterable, Identifiable {
+    case easy
+    case medium
+    case hard
+
+    var id: String { rawValue }
+
+    func title(languageManager: LanguageManager) -> String {
+        languageManager.text("workspace.search.filter.difficulty.\(rawValue)")
+    }
+}
+
+private enum WorkspaceSearchDifficultyFilter: String, CaseIterable, Identifiable {
+    case all
+    case easy
+    case medium
+    case hard
+
+    var id: String { rawValue }
+
+    func title(languageManager: LanguageManager) -> String {
+        languageManager.text("workspace.search.filter.difficulty.\(rawValue)")
+    }
+
+    func includes(_ difficulty: WorkspaceSearchDifficulty?) -> Bool {
+        switch self {
+        case .all:
+            return true
+        case .easy:
+            return difficulty == .easy
+        case .medium:
+            return difficulty == .medium
+        case .hard:
+            return difficulty == .hard
+        }
+    }
+}
+
+private struct WorkspaceSearchResult: Identifiable {
+    let id: String
+    let kind: WorkspaceSearchResultKind
+    let title: String
+    let subtitle: String
+    let searchableText: String
+    let status: WorkspaceSearchStatus
+    let difficulty: WorkspaceSearchDifficulty?
+    let destination: WorkspaceSearchDestination
+}
+
+private enum WorkspaceSearchDestination {
+    case goal(UUID)
+    case task(UUID, locationID: UUID?)
+    case planningTask(UUID, locationID: UUID?)
+    case planningEvent(UUID, locationID: UUID?, date: Date?)
+    case systemEvent(String?, locationID: UUID?, date: Date?)
+    case location(UUID)
+    case session(UUID)
+}
+
+private enum WorkspaceCleanupTarget {
+    case goal(UUID)
+    case task(UUID)
+    case planningTask(UUID)
+}
+
+private struct WorkspaceCleanupCandidate: Identifiable {
+    let id: String
+    let kind: WorkspaceSearchResultKind
+    let title: String
+    let subtitle: String
+    let target: WorkspaceCleanupTarget
+}
+
 @MainActor
 struct GoalWorkspaceView: View {
+    let selectedWorkspaceSection: WorkspaceSection
     @ObservedObject var goalStore: GoalStore
     @ObservedObject var todoStore: TodoStore
     @ObservedObject var planningStore: PlanningStore
@@ -79,7 +245,11 @@ struct GoalWorkspaceView: View {
     @AppStorage("com.pomodoro.workspace.lastGoalAdjustmentTimestamp") private var lastGoalAdjustmentTimestamp = 0.0
 
     @State private var selectedGoalID: UUID?
-    @State private var selectedWorkspaceSection: WorkspaceSection = .goals
+    @State private var workspaceSearchText = ""
+    @State private var workspaceSearchTypeFilter = WorkspaceSearchTypeFilter.all
+    @State private var workspaceSearchStatusFilter = WorkspaceSearchStatusFilter.active
+    @State private var workspaceSearchDifficultyFilter = WorkspaceSearchDifficultyFilter.all
+    @State private var workspaceSearchListsEverything = false
     @State private var goalDraft = GoalDraft()
     @State private var aiGoalPrompt = ""
     @State private var aiGoalDraftReady = false
@@ -95,9 +265,10 @@ struct GoalWorkspaceView: View {
     @State private var showingAICreateGoalSheet = false
     @State private var showingSmartLinkSheet = false
     @State private var upgradePaywallContext: SubscriptionPaywallContext?
-    @State private var isNavigationVisible = true
-    @State private var previousScrollOffset: CGFloat = 0
-    @State private var hasScrollPosition = false
+    @State private var showingWorkspaceCleanupSheet = false
+    @State private var isWorkspaceCleanupSelecting = false
+    @State private var selectedWorkspaceCleanupIDs: Set<String> = []
+    @State private var workspaceCleanupMessage: String?
     @State private var isAdjustingGoals = false
 
     private var selectedGoal: GoalRecord? {
@@ -161,54 +332,20 @@ struct GoalWorkspaceView: View {
         isPaidGoalTier ? nil : 8
     }
 
-    private var appearanceMode: AppearanceMode {
-        AppearanceMode.resolved(from: appearanceModeRawValue)
-    }
-
     var body: some View {
-        ZStack(alignment: .top) {
-            ScrollView {
-                GeometryReader { proxy in
-                    Color.clear
-                        .preference(
-                            key: WorkspaceScrollOffsetPreferenceKey.self,
-                            value: proxy.frame(in: .named("workspaceScroll")).minY
-                        )
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                if let limitMessage {
+                    Text(limitMessage)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .padding(.horizontal, 2)
                 }
-                .frame(height: 0)
 
-                VStack(alignment: .leading, spacing: 18) {
-                    if let limitMessage {
-                        Text(limitMessage)
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                            .padding(.horizontal, 2)
-                    }
-
-                    workspaceContent
-                }
-                .padding(.top, 82)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                workspaceContent
             }
-            .coordinateSpace(name: "workspaceScroll")
-
-            workspaceNavigation
-                .padding(.horizontal, 24)
-                .padding(.top, 24)
-                .opacity(isNavigationVisible ? 1 : 0)
-                .offset(y: isNavigationVisible ? 0 : -28)
-                .allowsHitTesting(isNavigationVisible)
-                .animation(.spring(response: 0.24, dampingFraction: 0.9), value: isNavigationVisible)
-        }
-        .onPreferenceChange(WorkspaceScrollOffsetPreferenceKey.self) { offset in
-            updateNavigationVisibility(for: offset)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .workspaceShowMap)) { _ in
-            if WorkspaceFeatureFlags.mapEnabled {
-                selectedWorkspaceSection = .map
-            }
+            .padding(24)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .onAppear {
             if selectedGoalID == nil {
@@ -217,6 +354,14 @@ struct GoalWorkspaceView: View {
             Task {
                 await runDynamicGoalAdaptIfNeeded()
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .workspaceGoalFocusItem)) { notification in
+            guard let goalIDString = notification.userInfo?["goalID"] as? String,
+                  let goalID = UUID(uuidString: goalIDString),
+                  goalStore.goals.contains(where: { $0.id == goalID }) else {
+                return
+            }
+            selectedGoalID = goalID
         }
         .onChange(of: isDynamicGoalAdaptEnabled) { _, isEnabled in
             if isEnabled {
@@ -260,11 +405,16 @@ struct GoalWorkspaceView: View {
                 subscriptionStore: SubscriptionStore.shared
             )
         }
+        .sheet(isPresented: $showingWorkspaceCleanupSheet) {
+            workspaceCleanupSheet
+        }
     }
 
     @ViewBuilder
     private var workspaceContent: some View {
         switch selectedWorkspaceSection {
+        case .search:
+            workspaceSearchPage
         case .goals, .notes, .knowledge:
             goalsOverviewLayout
         case .map:
@@ -274,127 +424,1194 @@ struct GoalWorkspaceView: View {
                 planningStore: planningStore,
                 calendarManager: calendarManager,
                 goalStore: goalStore,
-                featureGate: featureGate,
-                onScrollOffsetChange: updateNavigationVisibility(for:)
+                featureGate: featureGate
             )
         }
     }
 
-    private func updateNavigationVisibility(for offset: CGFloat) {
-        guard hasScrollPosition else {
-            hasScrollPosition = true
-            previousScrollOffset = offset
-            return
-        }
+    private var workspaceSearchPage: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(languageManager.text("workspace.search.page.title"))
+                    .font(.title2.weight(.semibold))
+                Text(languageManager.text("workspace.search.page.subtitle"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
 
-        let delta = offset - previousScrollOffset
-        previousScrollOffset = offset
+            workspaceSearchField
+            workspaceSearchFilterBar
 
-        if abs(delta) < 1.5 {
-            return
-        }
-
-        if offset > -6 {
-            isNavigationVisible = true
-        } else if delta < 0 {
-            isNavigationVisible = false
-        } else if delta > 0 {
-            isNavigationVisible = true
+            if shouldShowWorkspaceSearchResults {
+                workspaceSearchResultsCard
+            } else {
+                workspaceSearchIdleState
+            }
         }
     }
 
-    @ViewBuilder
-    private var workspaceNavigation: some View {
-        if #available(macOS 26.0, *) {
-            GlassEffectContainer(spacing: 8) {
-                workspaceNavigationContent
-                    .glassEffect(
-                        .regular,
-                        in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    )
-            }
-        } else {
-            workspaceNavigationContent
-                .appRoundedSurface(
-                    mode: appearanceMode,
-                    cornerRadius: 16,
-                    glassMaterial: .ultraThinMaterial,
-                    standardLevel: .panel,
-                    showsShadow: appearanceMode == .standard
-                )
-        }
+    private var shouldShowWorkspaceSearchResults: Bool {
+        workspaceSearchListsEverything || !normalizedWorkspaceSearchQuery.isEmpty
     }
 
-    private var workspaceNavigationContent: some View {
-        HStack(spacing: 8) {
-            ForEach(visibleWorkspaceSections) { section in
-                workspaceNavigationItem(for: section)
-            }
+    private var normalizedWorkspaceSearchQuery: String {
+        workspaceSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
-            Spacer(minLength: 0)
+    private var workspaceSearchField: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField(languageManager.text("workspace.search.placeholder"), text: $workspaceSearchText)
+                .textFieldStyle(.plain)
+            if !workspaceSearchText.isEmpty {
+                Button {
+                    workspaceSearchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help(languageManager.text("common.clear"))
+            }
         }
-        .padding(10)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .appRoundedSurface(
+            mode: AppearanceMode.resolved(from: appearanceModeRawValue),
+            cornerRadius: 12,
+            glassMaterial: .ultraThinMaterial,
+            standardLevel: .panel,
+            showsShadow: false
+        )
+    }
+
+    private var workspaceSearchFilterBar: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 0) {
+                    HStack(spacing: 10) {
+                        workspaceTypeFilterControl
+                        workspaceStatusFilterControl
+                        workspaceDifficultyFilterControl
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
+
+                    Spacer(minLength: 24)
+
+                    HStack(spacing: 10) {
+                        workspaceListEverythingButton
+                        if isWorkspaceCleanupSelecting {
+                            workspaceChooseEverythingCleanupButton
+                        }
+                        workspaceCleanupButton
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 10) {
+                        workspaceTypeFilterControl
+                        workspaceStatusFilterControl
+                        workspaceDifficultyFilterControl
+                    }
+
+                    HStack(spacing: 0) {
+                        Spacer(minLength: 0)
+
+                        HStack(spacing: 10) {
+                            workspaceListEverythingButton
+                            if isWorkspaceCleanupSelecting {
+                                workspaceChooseEverythingCleanupButton
+                            }
+                            workspaceCleanupButton
+                        }
+                        .fixedSize(horizontal: true, vertical: false)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            }
+            .controlSize(.small)
+            .animation(.easeInOut(duration: 0.18), value: isWorkspaceCleanupSelecting)
+
+            if let workspaceCleanupMessage {
+                Text(workspaceCleanupMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .animation(.easeInOut(duration: 0.18), value: workspaceCleanupMessage)
+    }
+
+    private var workspaceTypeFilterControl: some View {
+        Picker(languageManager.text("workspace.search.filter.type.label"), selection: $workspaceSearchTypeFilter) {
+            ForEach(WorkspaceSearchTypeFilter.allCases) { filter in
+                Text(filter.title(languageManager: languageManager)).tag(filter)
+            }
+        }
+        .labelsHidden()
+        .frame(width: 138, height: 32)
+    }
+
+    private var workspaceStatusFilterControl: some View {
+        Picker(languageManager.text("workspace.search.filter.status.label"), selection: $workspaceSearchStatusFilter) {
+            ForEach(WorkspaceSearchStatusFilter.allCases) { filter in
+                Text(filter.title(languageManager: languageManager)).tag(filter)
+            }
+        }
+        .labelsHidden()
+        .frame(width: 138, height: 32)
+    }
+
+    private var workspaceDifficultyFilterControl: some View {
+        Picker(languageManager.text("workspace.search.filter.difficulty.label"), selection: $workspaceSearchDifficultyFilter) {
+            ForEach(WorkspaceSearchDifficultyFilter.allCases) { filter in
+                Text(filter.title(languageManager: languageManager)).tag(filter)
+            }
+        }
+        .labelsHidden()
+        .frame(width: 148, height: 32)
+    }
+
+    private var workspaceListEverythingButton: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                workspaceSearchListsEverything.toggle()
+            }
+        } label: {
+            Label(
+                languageManager.text("workspace.search.filter.list_all"),
+                systemImage: workspaceSearchListsEverything ? "tray.full.fill" : "tray.full"
+            )
+        }
+        .buttonStyle(.bordered)
+        .tint(workspaceSearchListsEverything ? .accentColor : .secondary)
+        .frame(height: 32)
+        .fixedSize()
+    }
+
+    private var workspaceChooseEverythingCleanupButton: some View {
+        Button {
+            chooseVisibleWorkspaceCleanupItems()
+        } label: {
+            Label(languageManager.text("workspace.search.cleanup.choose_everything"), systemImage: "plus.circle")
+        }
+        .disabled(visibleWorkspaceCleanupCandidateIDs.isEmpty)
+        .buttonStyle(.bordered)
+        .tint(.orange)
+        .frame(height: 32)
+        .fixedSize()
+    }
+
+    private var workspaceCleanupButton: some View {
+        Button {
+            handleWorkspaceCleanupButtonPress()
+        } label: {
+            Label(workspaceCleanupButtonTitle, systemImage: isWorkspaceCleanupSelecting ? "list.bullet.rectangle" : "sparkles")
+        }
+        .disabled(workspaceCleanupCandidates.isEmpty)
+        .help(languageManager.format("workspace.search.cleanup.help", workspaceCleanupCandidates.count))
+        .buttonStyle(.bordered)
+        .tint(isWorkspaceCleanupSelecting ? .orange : .secondary)
+        .frame(height: 32)
+        .fixedSize()
+        .animation(.easeInOut(duration: 0.18), value: selectedWorkspaceCleanupIDs.count)
+    }
+
+    private var workspaceCleanupButtonTitle: String {
+        if isWorkspaceCleanupSelecting {
+            return languageManager.format("workspace.search.cleanup.review_selected", selectedWorkspaceCleanupIDs.count)
+        }
+        return languageManager.text("workspace.search.cleanup.button")
+    }
+
+    private var workspaceCleanupSheet: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(languageManager.text("workspace.search.cleanup.title"))
+                    .font(.title2.weight(.semibold))
+                Text(languageManager.text("workspace.search.cleanup.sheet.subtitle"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            if selectedWorkspaceCleanupCandidates.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "tray")
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    Text(languageManager.text("workspace.search.cleanup.empty_selection"))
+                        .font(.headline)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(selectedWorkspaceCleanupCandidates) { candidate in
+                    HStack {
+                        workspaceCleanupCandidateRow(candidate)
+                        Spacer()
+                        Button {
+                            selectedWorkspaceCleanupIDs.remove(candidate.id)
+                        } label: {
+                            Image(systemName: "minus.circle")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .listStyle(.inset)
+                .frame(minHeight: 260)
+            }
+
+            HStack {
+                Button(languageManager.text("workspace.search.cleanup.back_to_selection")) {
+                    showingWorkspaceCleanupSheet = false
+                }
+
+                Spacer()
+
+                Text(languageManager.format("workspace.search.cleanup.selected_count", selectedWorkspaceCleanupIDs.count))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Button(languageManager.text("common.cancel")) {
+                    showingWorkspaceCleanupSheet = false
+                }
+
+                Button(languageManager.text("workspace.search.cleanup.confirm"), role: .destructive) {
+                    runWorkspaceCleanup()
+                }
+                .disabled(selectedWorkspaceCleanupIDs.isEmpty)
+            }
+        }
+        .padding(20)
+        .frame(minWidth: 620, idealWidth: 620, maxWidth: 620, minHeight: 460)
+    }
+
+    private func workspaceCleanupCandidateRow(_ candidate: WorkspaceCleanupCandidate) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: candidate.kind.icon)
+                .foregroundStyle(.secondary)
+                .frame(width: 20)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(candidate.title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Text(candidate.subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.vertical, 3)
+    }
+
+    private func cleanupSelectionBinding(for id: String) -> Binding<Bool> {
+        Binding(
+            get: { selectedWorkspaceCleanupIDs.contains(id) },
+            set: { isSelected in
+                if isSelected {
+                    selectedWorkspaceCleanupIDs.insert(id)
+                } else {
+                    selectedWorkspaceCleanupIDs.remove(id)
+                }
+            }
+        )
+    }
+
+    private var workspaceSearchResultsCard: some View {
+        GoalWorkspaceCard {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(languageManager.text("workspace.search.results.title"))
+                            .font(.headline)
+                        Text(languageManager.format("workspace.search.results.count", workspaceSearchResults.count))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+
+                if workspaceSearchResults.isEmpty {
+                    workspaceSearchEmptyState
+                } else {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(workspaceSearchGroupedResults, id: \.kind.id) { group in
+                            workspaceSearchResultGroup(group)
+                        }
+                    }
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.18), value: isWorkspaceCleanupSelecting)
+        .animation(.easeInOut(duration: 0.16), value: selectedWorkspaceCleanupIDs)
+    }
+
+    private var workspaceSearchEmptyState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Text(languageManager.text("workspace.search.empty.title"))
+                .font(.subheadline.weight(.semibold))
+            Text(languageManager.text("workspace.search.empty.subtitle"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.vertical, 18)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var workspaceSearchIdleState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 30, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Text(languageManager.text("workspace.search.idle.title"))
+                .font(.headline)
+            Text(languageManager.text("workspace.search.idle.subtitle"))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, 28)
+        .frame(maxWidth: .infinity, minHeight: 360, alignment: .center)
+    }
+
+    private var workspaceSearchResults: [WorkspaceSearchResult] {
+        let query = normalizedWorkspaceSearchQuery
+        let filteredResults = filteredWorkspaceSearchResults
+
+        guard !query.isEmpty else {
+            return workspaceSearchListsEverything ? Array(filteredResults.prefix(120)) : []
+        }
+
+        return filteredResults
+            .compactMap { result -> (WorkspaceSearchResult, Int)? in
+                let score = fuzzySearchScore(query: query, candidate: result.searchableText)
+                return score > 0 ? (result, score) : nil
+            }
+            .sorted { lhs, rhs in
+                if lhs.1 == rhs.1 {
+                    return lhs.0.title.localizedCaseInsensitiveCompare(rhs.0.title) == .orderedAscending
+                }
+                return lhs.1 > rhs.1
+            }
+            .prefix(60)
+            .map(\.0)
+    }
+
+    private var workspaceSearchGroupedResults: [(kind: WorkspaceSearchResultKind, results: [WorkspaceSearchResult])] {
+        WorkspaceSearchResultKind.allCases.compactMap { kind in
+            let results = workspaceSearchResults.filter { $0.kind == kind }
+            return results.isEmpty ? nil : (kind, results)
+        }
+    }
+
+    private var filteredWorkspaceSearchResults: [WorkspaceSearchResult] {
+        let results = allWorkspaceSearchResults.filter { result in
+            workspaceSearchTypeFilter.includes(result.kind)
+                && workspaceSearchStatusFilter.includes(result.status)
+                && workspaceSearchDifficultyFilter.includes(result.difficulty)
+        }
+
+        guard isWorkspaceCleanupSelecting else {
+            return results
+        }
+
+        return results.filter { workspaceCleanupCandidateIDs.contains($0.id) }
+    }
+
+    private var allWorkspaceSearchResults: [WorkspaceSearchResult] {
+        goalSearchResults
+            + taskSearchResults
+            + planningEventSearchResults
+            + systemEventSearchResults
+            + locationSearchResults
+            + sessionSearchResults
+    }
+
+    private var goalSearchResults: [WorkspaceSearchResult] {
+        goalStore.goals.map { goal in
+            WorkspaceSearchResult(
+                id: "goal-\(goal.id.uuidString)",
+                kind: .goal,
+                title: goal.outcome,
+                subtitle: [
+                    localizedStatusTitle(goal.status),
+                    goal.targetDate.map { $0.formatted(date: .abbreviated, time: .omitted) }
+                ].compactMap { $0 }.joined(separator: " - "),
+                searchableText: [
+                    goal.outcome,
+                    goal.successCriteria,
+                    goal.nextAction,
+                    goal.notes,
+                    goal.status.rawValue,
+                    localizedStatusTitle(goal.status)
+                ].joined(separator: " "),
+                status: workspaceStatus(for: goal.status),
+                difficulty: nil,
+                destination: .goal(goal.id)
+            )
+        }
+    }
+
+    private var taskSearchResults: [WorkspaceSearchResult] {
+        visibleTodoItems.map { task in
+            WorkspaceSearchResult(
+                id: "task-\(task.id.uuidString)",
+                kind: .task,
+                title: task.title,
+                subtitle: taskSearchSubtitle(task),
+                searchableText: [
+                    task.title,
+                    task.descriptionMarkdown ?? "",
+                    task.tags.joined(separator: " "),
+                    task.priority.displayName,
+                    taskDifficulty(task).title(languageManager: languageManager),
+                    task.isCompleted ? languageManager.text("workspace.item.completed_task") : languageManager.text("workspace.item.task")
+                ].joined(separator: " "),
+                status: task.isCompleted ? .completed : .active,
+                difficulty: taskDifficulty(task),
+                destination: .task(task.id, locationID: task.locationID)
+            )
+        }
+    }
+
+    private var planningEventSearchResults: [WorkspaceSearchResult] {
+        visiblePlanningItems.map { item in
+            let destination: WorkspaceSearchDestination = if item.isCalendarEvent {
+                .planningEvent(item.id, locationID: item.locationID, date: item.startDate)
+            } else if let sourceID = item.sourceID,
+                      let taskID = UUID(uuidString: sourceID) {
+                .task(taskID, locationID: item.locationID)
+            } else {
+                .planningTask(item.id, locationID: item.locationID)
+            }
+
+            return WorkspaceSearchResult(
+                id: "planning-\(item.id.uuidString)",
+                kind: item.isCalendarEvent ? .event : .task,
+                title: item.title,
+                subtitle: planningItemSearchSubtitle(item),
+                searchableText: [
+                    item.title,
+                    item.notes ?? "",
+                    item.source.rawValue,
+                    planningDifficulty(item)?.title(languageManager: languageManager) ?? "",
+                    item.completed ? languageManager.text("workspace.item.completed_task") : ""
+                ].joined(separator: " "),
+                status: planningStatus(item),
+                difficulty: planningDifficulty(item),
+                destination: destination
+            )
+        }
+    }
+
+    private var systemEventSearchResults: [WorkspaceSearchResult] {
+        calendarManager.events.map { event in
+            let identifier = event.eventIdentifier ?? "\(event.title ?? "event")-\(event.startDate?.timeIntervalSince1970 ?? 0)"
+            return WorkspaceSearchResult(
+                id: "system-event-\(identifier)",
+                kind: .event,
+                title: event.title ?? languageManager.text("workspace.item.event"),
+                subtitle: event.startDate?.formatted(date: .abbreviated, time: .shortened) ?? languageManager.text("workspace.item.event"),
+                searchableText: [
+                    event.title ?? "",
+                    event.notes ?? "",
+                    event.location ?? "",
+                    event.calendar.title,
+                    eventStatus(event).rawValue
+                ].joined(separator: " "),
+                status: eventStatus(event),
+                difficulty: nil,
+                destination: .systemEvent(event.eventIdentifier, locationID: systemEventLocationID(event), date: event.startDate)
+            )
+        }
+    }
+
+    private var locationSearchResults: [WorkspaceSearchResult] {
+        locationStore.locations.map { location in
+            WorkspaceSearchResult(
+                id: "location-\(location.id.uuidString)",
+                kind: .location,
+                title: location.name,
+                subtitle: location.address.isEmpty ? location.tags.joined(separator: ", ") : location.address,
+                searchableText: [
+                    location.name,
+                    location.address,
+                    location.tags.joined(separator: " ")
+                ].joined(separator: " "),
+                status: .active,
+                difficulty: nil,
+                destination: .location(location.id)
+            )
+        }
+    }
+
+    private var sessionSearchResults: [WorkspaceSearchResult] {
+        sessionRecordStore.records
+            .sorted { $0.endTime > $1.endTime }
+            .map { session in
+                WorkspaceSearchResult(
+                    id: "session-\(session.id.uuidString)",
+                    kind: .session,
+                    title: sessionTitle(session),
+                    subtitle: session.endTime.formatted(date: .abbreviated, time: .shortened),
+                    searchableText: [
+                        sessionTitle(session),
+                        session.sessionType.rawValue,
+                        session.completed ? "completed" : "incomplete",
+                        session.endTime.formatted(date: .abbreviated, time: .shortened)
+                    ].joined(separator: " "),
+                    status: session.completed ? .completed : .active,
+                    difficulty: nil,
+                    destination: .session(session.id)
+                )
+            }
+    }
+
+    private var workspaceCleanupCandidateCount: Int {
+        workspaceCleanupCandidates.count
+    }
+
+    private var selectedWorkspaceCleanupCandidates: [WorkspaceCleanupCandidate] {
+        workspaceCleanupCandidates.filter { selectedWorkspaceCleanupIDs.contains($0.id) }
+    }
+
+    private var workspaceCleanupCandidateIDs: Set<String> {
+        Set(workspaceCleanupCandidates.map(\.id))
+    }
+
+    private var visibleWorkspaceCleanupCandidateIDs: Set<String> {
+        Set(workspaceSearchResults.map(\.id).filter { workspaceCleanupCandidateIDs.contains($0) })
+    }
+
+    private var workspaceCleanupCandidates: [WorkspaceCleanupCandidate] {
+        let goals = completedCleanupGoals.map { goal in
+            WorkspaceCleanupCandidate(
+                id: "goal-\(goal.id.uuidString)",
+                kind: .goal,
+                title: goal.outcome,
+                subtitle: languageManager.text("workspace.search.cleanup.item.completed_goal"),
+                target: .goal(goal.id)
+            )
+        }
+
+        let tasks = completedCleanupTasks.map { task in
+            WorkspaceCleanupCandidate(
+                id: "task-\(task.id.uuidString)",
+                kind: .task,
+                title: task.title,
+                subtitle: taskSearchSubtitle(task),
+                target: .task(task.id)
+            )
+        }
+
+        let planningTasks = completedCleanupPlanningTasks.map { item in
+            WorkspaceCleanupCandidate(
+                id: "planning-\(item.id.uuidString)",
+                kind: .task,
+                title: item.title,
+                subtitle: planningItemSearchSubtitle(item),
+                target: .planningTask(item.id)
+            )
+        }
+
+        return goals + tasks + planningTasks
+    }
+
+    private var completedCleanupGoals: [GoalRecord] {
+        goalStore.goals.filter { $0.status == .completed }
+    }
+
+    private var completedCleanupTasks: [TodoItem] {
+        todoStore.items.filter(\.isCompleted)
+    }
+
+    private var completedCleanupPlanningTasks: [PlanningItem] {
+        planningStore.items.filter { item in
+            item.isTask
+                && item.completed
+                && item.sourceID.flatMap(UUID.init(uuidString:)).map { taskID in
+                    !todoStore.items.contains { $0.id == taskID }
+                } ?? true
+        }
+    }
+
+    private func handleWorkspaceCleanupButtonPress() {
+        if isWorkspaceCleanupSelecting {
+            guard !selectedWorkspaceCleanupIDs.isEmpty else {
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    isWorkspaceCleanupSelecting = false
+                    workspaceCleanupMessage = nil
+                }
+                return
+            }
+            showingWorkspaceCleanupSheet = true
+            return
+        }
+
+        withAnimation(.easeInOut(duration: 0.18)) {
+            isWorkspaceCleanupSelecting = true
+            workspaceSearchListsEverything = true
+            workspaceSearchStatusFilter = .completed
+            workspaceCleanupMessage = languageManager.text("workspace.search.cleanup.selection_mode")
+        }
+    }
+
+    private func isWorkspaceCleanupCandidate(_ id: String) -> Bool {
+        workspaceCleanupCandidateIDs.contains(id)
+    }
+
+    private func toggleWorkspaceCleanupSelection(for result: WorkspaceSearchResult) {
+        guard isWorkspaceCleanupCandidate(result.id) else { return }
+        withAnimation(.easeInOut(duration: 0.16)) {
+            if selectedWorkspaceCleanupIDs.contains(result.id) {
+                selectedWorkspaceCleanupIDs.remove(result.id)
+            } else {
+                selectedWorkspaceCleanupIDs.insert(result.id)
+            }
+        }
+    }
+
+    private func chooseVisibleWorkspaceCleanupItems() {
+        withAnimation(.easeInOut(duration: 0.16)) {
+            selectedWorkspaceCleanupIDs.formUnion(visibleWorkspaceCleanupCandidateIDs)
+        }
+    }
+
+    private func runWorkspaceCleanup() {
+        let selectedCandidates = workspaceCleanupCandidates.filter { selectedWorkspaceCleanupIDs.contains($0.id) }
+
+        for candidate in selectedCandidates {
+            switch candidate.target {
+            case .goal(let goalID):
+                deleteGoal(goalID)
+            case .task(let taskID):
+                deleteTodo(taskID)
+            case .planningTask(let itemID):
+                deletePlanningTask(itemID)
+            }
+        }
+
+        workspaceCleanupMessage = languageManager.format("workspace.search.cleanup.done", selectedCandidates.count)
+        selectedWorkspaceCleanupIDs.removeAll()
+        isWorkspaceCleanupSelecting = false
+        showingWorkspaceCleanupSheet = false
+        workspaceSearchListsEverything = true
+        workspaceSearchStatusFilter = .all
+    }
+
+    private func workspaceSearchStatusColor(_ status: WorkspaceSearchStatus) -> Color {
+        switch status {
+        case .active:
+            return .green
+        case .completed:
+            return .blue
+        case .paused:
+            return .orange
+        }
+    }
+
+    private func workspaceSearchStatusSymbol(_ status: WorkspaceSearchStatus) -> String {
+        switch status {
+        case .active:
+            return "bolt.fill"
+        case .completed:
+            return "flag.checkered"
+        case .paused:
+            return "pause.circle.fill"
+        }
+    }
+
+    private func workspaceSearchDifficultySymbol(_ difficulty: WorkspaceSearchDifficulty) -> String {
+        switch difficulty {
+        case .easy:
+            return "leaf"
+        case .medium:
+            return "gauge.medium"
+        case .hard:
+            return "flame"
+        }
+    }
+
+    private func workspaceStatus(for status: GoalRecord.Status) -> WorkspaceSearchStatus {
+        switch status {
+        case .active:
+            return .active
+        case .paused:
+            return .paused
+        case .completed:
+            return .completed
+        }
+    }
+
+    private func planningStatus(_ item: PlanningItem) -> WorkspaceSearchStatus {
+        if item.completed {
+            return .completed
+        }
+        if item.isCalendarEvent,
+           let endDate = item.endDate ?? item.startDate,
+           endDate < Date() {
+            return .completed
+        }
+        return .active
+    }
+
+    private func eventStatus(_ event: EKEvent) -> WorkspaceSearchStatus {
+        if let endDate = event.endDate,
+           endDate < Date() {
+            return .completed
+        }
+        return .active
+    }
+
+    private func taskDifficulty(_ task: TodoItem) -> WorkspaceSearchDifficulty {
+        let estimate = task.pomodoroEstimate ?? 0
+        let duration = task.durationMinutes ?? 0
+
+        if task.priority == .high || estimate >= 4 || duration >= 90 {
+            return .hard
+        }
+        if task.priority == .medium || estimate >= 2 || duration >= 50 {
+            return .medium
+        }
+        return .easy
+    }
+
+    private func planningDifficulty(_ item: PlanningItem) -> WorkspaceSearchDifficulty? {
+        if let sourceID = item.sourceID,
+           let taskID = UUID(uuidString: sourceID),
+           let task = todoStore.items.first(where: { $0.id == taskID }) {
+            return taskDifficulty(task)
+        }
+
+        guard item.isTask else { return nil }
+        guard let start = item.startDate,
+              let end = item.endDate else {
+            return .easy
+        }
+
+        let duration = end.timeIntervalSince(start) / 60
+        if duration >= 90 {
+            return .hard
+        }
+        if duration >= 50 {
+            return .medium
+        }
+        return .easy
+    }
+
+    private func fuzzySearchScore(query: String, candidate: String) -> Int {
+        let normalizedQuery = normalizedSearchText(query)
+        let normalizedCandidate = normalizedSearchText(candidate)
+
+        guard !normalizedQuery.isEmpty,
+              !normalizedCandidate.isEmpty else {
+            return 0
+        }
+
+        if normalizedCandidate.contains(normalizedQuery) {
+            return 10_000 - min(normalizedCandidate.count, 9_000)
+        }
+
+        let queryTokens = normalizedQuery.split(separator: " ")
+        let candidateTokens = normalizedCandidate.split(separator: " ")
+        if !queryTokens.isEmpty,
+           queryTokens.allSatisfy({ queryToken in
+               candidateTokens.contains { candidateToken in
+                   candidateToken.hasPrefix(queryToken) || candidateToken.contains(queryToken)
+               }
+           }) {
+            return 7_500 - normalizedCandidate.count
+        }
+
+        var queryIndex = normalizedQuery.startIndex
+        var score = 0
+        var gapPenalty = 0
+        var lastMatchIndex: String.Index?
+        var candidateIndex = normalizedCandidate.startIndex
+
+        while queryIndex < normalizedQuery.endIndex,
+              candidateIndex < normalizedCandidate.endIndex {
+            if normalizedQuery[queryIndex] == normalizedCandidate[candidateIndex] {
+                score += 120
+                if let lastMatchIndex {
+                    gapPenalty += normalizedCandidate.distance(from: lastMatchIndex, to: candidateIndex) - 1
+                }
+                lastMatchIndex = candidateIndex
+                queryIndex = normalizedQuery.index(after: queryIndex)
+            }
+            candidateIndex = normalizedCandidate.index(after: candidateIndex)
+        }
+
+        guard queryIndex == normalizedQuery.endIndex else {
+            return 0
+        }
+
+        return max(1, score - gapPenalty)
+    }
+
+    private func normalizedSearchText(_ text: String) -> String {
+        text
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+            .lowercased()
+            .map { character in
+                character.isLetter || character.isNumber ? character : " "
+            }
+            .reduce(into: "") { result, character in
+                if character == " ",
+                   result.last == " " {
+                    return
+                }
+                result.append(character)
+            }
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func workspaceSearchResultGroup(_ group: (kind: WorkspaceSearchResultKind, results: [WorkspaceSearchResult])) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(group.kind.title(languageManager: languageManager))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(group.results) { result in
+                    workspaceSearchResultRow(result)
+                }
+            }
+        }
+    }
+
+    private func workspaceSearchResultRow(_ result: WorkspaceSearchResult) -> some View {
+        HStack(spacing: 8) {
+            Button {
+                if isWorkspaceCleanupSelecting {
+                    toggleWorkspaceCleanupSelection(for: result)
+                } else {
+                    openSearchResult(result)
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: result.kind.icon)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 20)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(result.title)
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(1)
+                        HStack(spacing: 6) {
+                            workspaceSearchStatusBadge(result.status)
+                            if let difficulty = result.difficulty {
+                                workspaceSearchDifficultyBadge(difficulty)
+                            }
+                            if !result.subtitle.isEmpty {
+                                Text(result.subtitle)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                    Spacer()
+                }
+            }
+            .buttonStyle(.plain)
+            .help(languageManager.text("workspace.search.action.open_original"))
+
+            if isWorkspaceCleanupSelecting {
+                workspaceCleanupSelectionControl(for: result)
+            } else {
+                Menu {
+                    workspaceSearchOperations(for: result)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundStyle(.secondary)
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+            }
+        }
+        .padding(8)
+        .background(
+            workspaceCleanupSelectionBackground(for: result),
+            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+        )
+    }
+
+    private func workspaceSearchStatusBadge(_ status: WorkspaceSearchStatus) -> some View {
+        Label {
+            Text(languageManager.text("workspace.search.status.\(status.rawValue)"))
+        } icon: {
+            Image(systemName: workspaceSearchStatusSymbol(status))
+        }
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(workspaceSearchStatusColor(status))
+        .labelStyle(.titleAndIcon)
+    }
+
+    private func workspaceSearchDifficultyBadge(_ difficulty: WorkspaceSearchDifficulty) -> some View {
+        Label {
+            Text(difficulty.title(languageManager: languageManager))
+        } icon: {
+            Image(systemName: workspaceSearchDifficultySymbol(difficulty))
+        }
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .labelStyle(.titleAndIcon)
+    }
+
+    private func workspaceCleanupSelectionControl(for result: WorkspaceSearchResult) -> some View {
+        let isEligible = isWorkspaceCleanupCandidate(result.id)
+        let isSelected = selectedWorkspaceCleanupIDs.contains(result.id)
+
+        return Button {
+            toggleWorkspaceCleanupSelection(for: result)
+        } label: {
+            Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(isSelected ? Color.orange : (isEligible ? Color.secondary : Color.secondary.opacity(0.35)))
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEligible)
+        .help(isEligible ? languageManager.text("workspace.search.cleanup.select_item") : languageManager.text("workspace.search.cleanup.not_cleanable"))
+    }
+
+    private func workspaceCleanupSelectionBackground(for result: WorkspaceSearchResult) -> Color {
+        guard isWorkspaceCleanupSelecting else {
+            return Color.primary.opacity(0.035)
+        }
+        if selectedWorkspaceCleanupIDs.contains(result.id) {
+            return Color.orange.opacity(0.12)
+        }
+        return isWorkspaceCleanupCandidate(result.id) ? Color.primary.opacity(0.035) : Color.primary.opacity(0.018)
     }
 
     @ViewBuilder
-    private func workspaceNavigationItem(for section: WorkspaceSection) -> some View {
-        let isEnabled = section == .goals || section == .map
-        let isSelected = section == selectedWorkspaceSection
-        let foreground = isSelected ? Color.accentColor : Color.primary
-        let label = HStack(spacing: 7) {
-            Image(systemName: section.systemImage)
-                .symbolRenderingMode(.monochrome)
-                .foregroundStyle(foreground)
-                .frame(width: 16)
-            Text(section.title(languageManager: languageManager))
-                .foregroundStyle(foreground)
+    private func workspaceSearchOperations(for result: WorkspaceSearchResult) -> some View {
+        Button(languageManager.text("workspace.search.action.open_original")) {
+            openSearchResult(result)
         }
-        .font(.subheadline.weight(.semibold))
-        .padding(.horizontal, 16)
-        .frame(height: 36)
-        .contentShape(Capsule())
-        .opacity(isEnabled ? 1 : 0.5)
 
-        if #available(macOS 26.0, *) {
-            Button {
-                selectedWorkspaceSection = section
-            } label: {
-                label
+        switch result.destination {
+        case .goal(let goalID):
+            Button(languageManager.text("workspace.search.action.mark_goal_active")) {
+                goalStore.setStatus(goalID: goalID, status: .active)
             }
-            .buttonStyle(.plain)
-            .disabled(!isEnabled)
-            .glassEffect(
-                .regular.interactive(isEnabled),
-                in: Capsule()
-            )
-        } else {
-            Button {
-                selectedWorkspaceSection = section
-            } label: {
-                label
-                    .background(isSelected ? Color.accentColor.opacity(0.16) : Color.primary.opacity(0.04))
-                    .clipShape(Capsule())
-                    .contentShape(Capsule())
+            Button(languageManager.text("workspace.search.action.mark_goal_completed")) {
+                goalStore.setStatus(goalID: goalID, status: .completed)
             }
-            .buttonStyle(.plain)
-            .disabled(!isEnabled)
+            Button(languageManager.text("workspace.search.action.mark_goal_paused")) {
+                goalStore.setStatus(goalID: goalID, status: .paused)
+            }
+            Button(languageManager.text("workspace.search.action.delete"), role: .destructive) {
+                deleteGoal(goalID)
+            }
+        case .task(let taskID, let locationID):
+            Button(languageManager.text("workspace.search.action.toggle_task_completion")) {
+                toggleTodoCompletion(taskID)
+            }
+            Button(languageManager.text("workspace.search.action.mark_task_active")) {
+                setTodoCompletion(taskID, isCompleted: false)
+            }
+            Button(languageManager.text("workspace.search.action.mark_task_completed")) {
+                setTodoCompletion(taskID, isCompleted: true)
+            }
+            if let locationID {
+                Button(languageManager.text("workspace.search.action.show_on_map")) {
+                    openMap(locationID: locationID, workItemID: "task-\(taskID.uuidString)")
+                }
+            }
+            Button(languageManager.text("workspace.search.action.delete"), role: .destructive) {
+                deleteTodo(taskID)
+            }
+        case .planningTask(let itemID, let locationID):
+            Button(languageManager.text("workspace.search.action.toggle_task_completion")) {
+                togglePlanningTaskCompletion(itemID)
+            }
+            Button(languageManager.text("workspace.search.action.mark_task_active")) {
+                setPlanningTaskCompletion(itemID, isCompleted: false)
+            }
+            Button(languageManager.text("workspace.search.action.mark_task_completed")) {
+                setPlanningTaskCompletion(itemID, isCompleted: true)
+            }
+            if let locationID {
+                Button(languageManager.text("workspace.search.action.show_on_map")) {
+                    openMap(locationID: locationID, workItemID: "planning-\(itemID.uuidString)")
+                }
+            }
+            Button(languageManager.text("workspace.search.action.delete"), role: .destructive) {
+                deletePlanningTask(itemID)
+            }
+        case .planningEvent(let itemID, let locationID, _):
+            if let locationID {
+                Button(languageManager.text("workspace.search.action.show_on_map")) {
+                    openMap(locationID: locationID, workItemID: "event-\(itemID.uuidString)")
+                }
+            }
+            Button(languageManager.text("workspace.search.action.open_calendar")) {
+                openCalendar(localEventID: itemID, systemEventID: nil, taskID: nil, date: nil)
+            }
+        case .systemEvent(_, let locationID, _):
+            if let locationID {
+                Button(languageManager.text("workspace.search.action.show_on_map")) {
+                    openMap(locationID: locationID, workItemID: nil)
+                }
+            }
+            Button(languageManager.text("workspace.search.action.open_calendar")) {
+                openSearchResult(result)
+            }
+        case .location:
+            Button(languageManager.text("workspace.search.action.delete"), role: .destructive) {
+                deleteLocation(result)
+            }
+        case .session:
+            Button(languageManager.text("workspace.search.action.open_insights")) {
+                NotificationCenter.default.post(name: .navigateToInsights, object: nil)
+            }
         }
     }
 
-    private var visibleWorkspaceSections: [WorkspaceSection] {
-        WorkspaceSection.allCases.filter { section in
-            switch section {
-            case .notes:
-                return WorkspaceFeatureFlags.notesEnabled
-            case .goals:
-                return true
-            case .knowledge:
-                return WorkspaceFeatureFlags.knowledgeEnabled
-            case .map:
-                return WorkspaceFeatureFlags.mapEnabled
+    private func openSearchResult(_ result: WorkspaceSearchResult) {
+        switch result.destination {
+        case .goal(let goalID):
+            selectedGoalID = goalID
+            NotificationCenter.default.post(name: .navigateToWorkspaceGoals, object: nil)
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: .workspaceGoalFocusItem,
+                    object: nil,
+                    userInfo: ["goalID": goalID.uuidString]
+                )
             }
+        case .task(let taskID, _):
+            openTask(taskID)
+        case .planningTask(let itemID, _):
+            NotificationCenter.default.post(name: .navigateToTasks, object: nil)
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: .taskFocusItem,
+                    object: nil,
+                    userInfo: ["planningItemID": itemID.uuidString]
+                )
+            }
+        case .planningEvent(let itemID, _, let date):
+            openCalendar(localEventID: itemID, systemEventID: nil, taskID: nil, date: date)
+        case .systemEvent(let eventID, _, let date):
+            openCalendar(localEventID: nil, systemEventID: eventID, taskID: nil, date: date)
+        case .location(let locationID):
+            openMap(locationID: locationID, workItemID: nil)
+        case .session:
+            NotificationCenter.default.post(name: .navigateToInsights, object: nil)
         }
+    }
+
+    private func openTask(_ taskID: UUID) {
+        NotificationCenter.default.post(name: .navigateToTasks, object: nil)
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .taskFocusItem,
+                object: nil,
+                userInfo: ["taskID": taskID.uuidString]
+            )
+        }
+    }
+
+    private func openCalendar(localEventID: UUID?, systemEventID: String?, taskID: UUID?, date: Date?) {
+        NotificationCenter.default.post(name: .navigateToCalendar, object: nil)
+        DispatchQueue.main.async {
+            var userInfo: [String: Any] = [:]
+            if let localEventID {
+                userInfo["localEventID"] = localEventID.uuidString
+            }
+            if let systemEventID {
+                userInfo["systemEventID"] = systemEventID
+            }
+            if let taskID {
+                userInfo["taskID"] = taskID.uuidString
+            }
+            if let date {
+                userInfo["date"] = date
+            }
+            NotificationCenter.default.post(name: .calendarFocusItem, object: nil, userInfo: userInfo)
+        }
+    }
+
+    private func openMap(locationID: UUID?, workItemID: String?) {
+        NotificationCenter.default.post(name: .navigateToWorkspaceMap, object: nil)
+        DispatchQueue.main.async {
+            var userInfo: [String: Any] = [:]
+            if let locationID {
+                userInfo["locationID"] = locationID.uuidString
+            }
+            if let workItemID {
+                userInfo["workItemID"] = workItemID
+            }
+            NotificationCenter.default.post(name: .workspaceMapFocusItem, object: nil, userInfo: userInfo)
+        }
+    }
+
+    private func toggleTodoCompletion(_ taskID: UUID) {
+        guard let task = todoStore.items.first(where: { $0.id == taskID }) else { return }
+        todoStore.toggleCompletion(task)
+    }
+
+    private func setTodoCompletion(_ taskID: UUID, isCompleted: Bool) {
+        todoStore.setCompletion(itemID: taskID, isCompleted: isCompleted)
+    }
+
+    private func deleteTodo(_ taskID: UUID) {
+        guard let task = todoStore.items.first(where: { $0.id == taskID }) else { return }
+        todoStore.deleteItem(task)
+    }
+
+    private func togglePlanningTaskCompletion(_ itemID: UUID) {
+        guard let item = planningStore.items.first(where: { $0.id == itemID }) else { return }
+        planningStore.toggleComplete(item)
+    }
+
+    private func setPlanningTaskCompletion(_ itemID: UUID, isCompleted: Bool) {
+        guard let item = planningStore.items.first(where: { $0.id == itemID }),
+              item.completed != isCompleted else {
+            return
+        }
+        planningStore.toggleComplete(item)
+    }
+
+    private func deletePlanningTask(_ itemID: UUID) {
+        guard let item = planningStore.items.first(where: { $0.id == itemID }) else { return }
+        planningStore.deleteTask(item)
+    }
+
+    private func deleteGoal(_ goalID: UUID) {
+        guard let goal = goalStore.goals.first(where: { $0.id == goalID }) else { return }
+        goalStore.deleteGoal(goal)
+    }
+
+    private func deleteLocation(_ result: WorkspaceSearchResult) {
+        guard case .location(let locationID) = result.destination,
+              let location = locationStore.location(id: locationID) else {
+            return
+        }
+        locationStore.deleteLocation(location)
+    }
+
+    private func systemEventLocationID(_ event: EKEvent) -> UUID? {
+        guard let eventLocation = event.location?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !eventLocation.isEmpty else {
+            return nil
+        }
+        return locationStore.locations.first { location in
+            eventLocation.localizedCaseInsensitiveContains(location.name)
+                || (!location.address.isEmpty && eventLocation.localizedCaseInsensitiveContains(location.address))
+        }?.id
     }
 
     private func goalCreationSheet(
@@ -1104,6 +2321,34 @@ struct GoalWorkspaceView: View {
         DeveloperDemoMode.visiblePlanningItems(planningStore.items, tier: featureGate.tier, storedValue: googleVideoDemoMode)
     }
 
+    private func taskSearchSubtitle(_ task: TodoItem) -> String {
+        var parts = [
+            task.isCompleted ? languageManager.text("workspace.item.completed_task") : languageManager.text("workspace.item.task")
+        ]
+        if let dueDate = task.dueDate {
+            parts.append(dueDate.formatted(date: .abbreviated, time: task.hasDueTime ? .shortened : .omitted))
+        }
+        if let locationID = task.locationID,
+           let location = locationStore.location(id: locationID) {
+            parts.append(location.name)
+        }
+        return parts.joined(separator: " - ")
+    }
+
+    private func planningItemSearchSubtitle(_ item: PlanningItem) -> String {
+        var parts = [
+            item.isCalendarEvent ? languageManager.text("workspace.item.event") : languageManager.text("workspace.item.task")
+        ]
+        if let startDate = item.startDate {
+            parts.append(startDate.formatted(date: .abbreviated, time: .shortened))
+        }
+        if let locationID = item.locationID,
+           let location = locationStore.location(id: locationID) {
+            parts.append(location.name)
+        }
+        return parts.joined(separator: " - ")
+    }
+
     private func draftGoal(from prompt: String) -> GoalDraft {
         let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return GoalDraft() }
@@ -1794,14 +3039,6 @@ struct GoalWorkspaceView: View {
         case .completed:
             return languageManager.text("workspace.status.completed")
         }
-    }
-}
-
-private struct WorkspaceScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }
 

@@ -253,6 +253,9 @@ struct MapWorkspaceView: View {
         .onReceive(featureGate.$tier) { _ in
             resetSpatialModeIfNeeded()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .workspaceMapFocusItem)) { notification in
+            focusMapItem(from: notification)
+        }
         .sheet(item: $upgradePaywallContext) { context in
             SubscriptionUpgradeSheetView(
                 context: context,
@@ -383,6 +386,7 @@ struct MapWorkspaceView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
@@ -463,19 +467,23 @@ struct MapWorkspaceView: View {
                 }
                 .frame(height: 0)
 
-                LazyVStack(alignment: .leading, spacing: 8) {
-                    ForEach(filteredWorkItems) { item in
-                        HStack(spacing: 8) {
-                            if filter == .spatial {
-                                spatialRouteToggle(for: item)
+                if filteredWorkItems.isEmpty {
+                    visibleWorkEmptyState
+                } else {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        ForEach(filteredWorkItems) { item in
+                            HStack(spacing: 8) {
+                                if filter == .spatial {
+                                    spatialRouteToggle(for: item)
+                                }
+                                Button {
+                                    selectedWorkItemID = item.id
+                                    centerMap(on: item.coordinate)
+                                } label: {
+                                    workItemRow(item)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            Button {
-                                selectedWorkItemID = item.id
-                                centerMap(on: item.coordinate)
-                            } label: {
-                                workItemRow(item)
-                            }
-                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -488,6 +496,24 @@ struct MapWorkspaceView: View {
         }
         .padding(12)
         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var visibleWorkEmptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "map")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Text(L("workspace.map.visible_work.empty.title"))
+                .font(.subheadline.weight(.semibold))
+                .multilineTextAlignment(.center)
+            Text(L("workspace.map.visible_work.empty.subtitle"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 28)
+        .frame(maxWidth: .infinity, minHeight: 160)
     }
 
     private var spatialRoutePanel: some View {
@@ -775,6 +801,31 @@ struct MapWorkspaceView: View {
         if filter == .spatial, !canUseSpatialWork {
             filter = .standard
             spatialRouteItemIDs = []
+        }
+    }
+
+    private func focusMapItem(from notification: Notification) {
+        filter = .standard
+        selectedTag = nil
+
+        if let locationIDString = notification.userInfo?["locationID"] as? String,
+           let locationID = UUID(uuidString: locationIDString) {
+            selectedLocationID = locationID
+            if let location = locationStore.location(id: locationID) {
+                centerMap(on: location.coordinate)
+                hasCenteredInitialMap = true
+            }
+        }
+
+        if let workItemID = notification.userInfo?["workItemID"] as? String {
+            selectedWorkItemID = workItemID
+            if let item = allWorkItems.first(where: { $0.id == workItemID }) {
+                centerMap(on: item.coordinate)
+                hasCenteredInitialMap = true
+                if let id = taskID(from: item.id) {
+                    selectedTaskDetailID = id
+                }
+            }
         }
     }
 

@@ -174,6 +174,9 @@ struct CalendarView: View {
             anchorDate = Date()
             calendarAutoSync.visibleRangeDidChange()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .calendarFocusItem)) { notification in
+            focusCalendarItem(from: notification)
+        }
         .onChange(of: googleVideoDemoMode) { _, _ in
             selectedEventIDs.removeAll()
             selectedLocalEventID = nil
@@ -334,6 +337,41 @@ struct CalendarView: View {
             )
             .environmentObject(localizationManager)
         }
+    }
+
+    private func focusCalendarItem(from notification: Notification) {
+        selectedView = .day
+
+        if let date = notification.userInfo?["date"] as? Date {
+            anchorDate = date
+        }
+
+        selectedEventIDs.removeAll()
+        selectedLocalEventID = nil
+        selectedTaskDetailID = nil
+
+        if let localEventIDString = notification.userInfo?["localEventID"] as? String,
+           let localEventID = UUID(uuidString: localEventIDString) {
+            selectedLocalEventID = localEventID
+            if notification.userInfo?["date"] == nil,
+               let event = planningStore.localEvents.first(where: { $0.id == localEventID }),
+               let startDate = event.startDate {
+                anchorDate = startDate
+            }
+        } else if let systemEventID = notification.userInfo?["systemEventID"] as? String {
+            selectedEventIDs = [systemEventID]
+            lastSelectedEventID = systemEventID
+        } else if let taskIDString = notification.userInfo?["taskID"] as? String,
+                  let taskID = UUID(uuidString: taskIDString) {
+            selectedTaskDetailID = taskID
+            if notification.userInfo?["date"] == nil,
+               let task = todoStore.items.first(where: { $0.id == taskID }),
+               let dueDate = task.dueDate {
+                anchorDate = dueDate
+            }
+        }
+
+        calendarAutoSync.visibleRangeDidChange()
     }
     
     private var calendarContent: some View {

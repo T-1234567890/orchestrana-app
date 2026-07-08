@@ -497,6 +497,9 @@ struct TodoListView: View {
         .onReceive(NotificationCenter.default.publisher(for: .taskDeleteSelection)) { _ in
             handleKeyboardDelete()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .taskFocusItem)) { notification in
+            focusTask(from: notification)
+        }
     }
     
     private var remindersBanner: some View {
@@ -1096,6 +1099,20 @@ struct TodoListView: View {
             return todoStore.items.first(where: { $0.id == selectedID })
         }
         return nil
+    }
+
+    private func focusTask(from notification: Notification) {
+        guard let taskIDString = notification.userInfo?["taskID"] as? String,
+              let taskID = UUID(uuidString: taskIDString),
+              let task = todoStore.items.first(where: { $0.id == taskID }) else {
+            return
+        }
+
+        taskViewMode = .list
+        selectedSegment = task.isCompleted ? .completed : .active
+        selectedTaskIDs = [task.id]
+        lastSelectedTaskID = task.id
+        expandedTaskIDs.insert(task.id)
     }
 
     private func handleKeyboardToggleDone() {

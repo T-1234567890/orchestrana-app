@@ -63,17 +63,25 @@ final class GoogleIntegrationManager: ObservableObject {
     private let maxBackoffDelaySeconds: TimeInterval = 300
     private let completedTaskOutboundLimit = 10
 
+    private static var isFeatureEnabled: Bool {
+        GoogleCalendarTasksIntegrationEnabled
+    }
+
+    private static let featureUnavailableMessage = "Google Calendar and Google Tasks integrations are currently unavailable."
+
     var isAnyGoogleServiceConnected: Bool {
-        isCalendarConnected || isTasksConnected
+        guard Self.isFeatureEnabled else { return false }
+        return isCalendarConnected || isTasksConnected
     }
 
     private init() {
         let defaults = UserDefaults.standard
-        self.isCalendarConnected = defaults.bool(forKey: Self.calendarConnectedKey)
-        self.isTasksConnected = defaults.bool(forKey: Self.tasksConnectedKey)
-        self.isAutoSyncEnabled = defaults.bool(forKey: Self.autoSyncKey)
+        self.isCalendarConnected = Self.isFeatureEnabled && defaults.bool(forKey: Self.calendarConnectedKey)
+        self.isTasksConnected = Self.isFeatureEnabled && defaults.bool(forKey: Self.tasksConnectedKey)
+        self.isAutoSyncEnabled = Self.isFeatureEnabled && defaults.bool(forKey: Self.autoSyncKey)
         self.lastSyncDate = defaults.object(forKey: Self.lastSyncKey) as? Date
-        if isCalendarConnected,
+        if Self.isFeatureEnabled,
+           isCalendarConnected,
            let cachedCalendarEvents = Self.cachedCalendarEvents(from: defaults) {
             self.calendarEvents = cachedCalendarEvents
         }
@@ -88,6 +96,7 @@ final class GoogleIntegrationManager: ObservableObject {
 
     func setTodoStore(_ store: TodoStore) {
         todoStore = store
+        guard Self.isFeatureEnabled else { return }
         observeLocalItemChanges()
         restoreGoogleSessionIfNeeded()
         configureAutoSync()
@@ -95,10 +104,12 @@ final class GoogleIntegrationManager: ObservableObject {
 
     func setPlanningStore(_ store: PlanningStore) {
         planningStore = store
+        guard Self.isFeatureEnabled else { return }
         observeLocalPlanningChanges()
     }
 
     func connect(_ service: GoogleService) async throws {
+        try ensureFeatureEnabled()
         try await authorize(scopes: service.scopes)
         switch service {
         case .calendar:
@@ -120,6 +131,10 @@ final class GoogleIntegrationManager: ObservableObject {
     }
 
     func connectAllServices() async {
+        guard Self.isFeatureEnabled else {
+            lastSyncError = Self.featureUnavailableMessage
+            return
+        }
         do {
             let scopes = Array(Set(GoogleService.calendar.scopes + GoogleService.tasks.scopes))
             try await authorize(scopes: scopes)
@@ -148,11 +163,13 @@ final class GoogleIntegrationManager: ObservableObject {
     }
 
     func syncNow() async {
+        guard Self.isFeatureEnabled else { return }
         await triggerSync(reason: "manual", retryOnFailure: false)
     }
 
     func deleteGoogleTaskIfNeeded(_ item: TodoItem) async {
-        guard isTasksConnected,
+        guard Self.isFeatureEnabled,
+              isTasksConnected,
               let googleID = GoogleExternalID.googleTaskID(from: item.reminderIdentifier) else {
             return
         }
@@ -169,7 +186,8 @@ final class GoogleIntegrationManager: ObservableObject {
     }
 
     func deleteGoogleCalendarEventIfNeeded(for item: TodoItem) async {
-        guard isCalendarConnected,
+        guard Self.isFeatureEnabled,
+              isCalendarConnected,
               let googleID = GoogleExternalID.googleCalendarID(from: item.calendarEventIdentifier ?? item.linkedCalendarEventId) else {
             return
         }
@@ -178,7 +196,8 @@ final class GoogleIntegrationManager: ObservableObject {
     }
 
     func deleteGoogleCalendarEventIfNeeded(_ item: PlanningItem) async {
-        guard isCalendarConnected,
+        guard Self.isFeatureEnabled,
+              isCalendarConnected,
               let googleID = GoogleExternalID.googleCalendarID(from: item.calendarEventIdentifier ?? item.linkedCalendarEventId ?? item.sourceID) else {
             return
         }
@@ -187,7 +206,8 @@ final class GoogleIntegrationManager: ObservableObject {
     }
 
     func syncLocalCalendarEvent(_ item: PlanningItem, planningStore: PlanningStore) async {
-        guard isCalendarConnected,
+        guard Self.isFeatureEnabled,
+              isCalendarConnected,
               item.isCalendarEvent,
               !item.isTask,
               DeveloperDemoMode.visiblePlanningItems(
@@ -218,7 +238,7 @@ final class GoogleIntegrationManager: ObservableObject {
     }
 
     func refreshCalendarEvents(from start: Date, to end: Date) async {
-        guard isCalendarConnected else {
+        guard Self.isFeatureEnabled, isCalendarConnected else {
             clearCachedCalendarEvents()
             return
         }
@@ -241,6 +261,7 @@ final class GoogleIntegrationManager: ObservableObject {
     }
 
     func restoreGoogleSessionIfNeeded() {
+        guard Self.isFeatureEnabled else { return }
         guard isAnyGoogleServiceConnected else { return }
         guard GIDSignIn.sharedInstance.currentUser == nil else { return }
         guard restoreSessionTask == nil else { return }
@@ -264,6 +285,12 @@ final class GoogleIntegrationManager: ObservableObject {
             lastSyncError = nil
         } catch {
             lastSyncError = error.localizedDescription
+        }
+    }
+
+    private func ensureFeatureEnabled() throws {
+        guard Self.isFeatureEnabled else {
+            throw GoogleIntegrationError.featureUnavailable(Self.featureUnavailableMessage)
         }
     }
 
@@ -895,6 +922,7 @@ final class GoogleIntegrationManager: ObservableObject {
 }
 
 enum GoogleIntegrationError: LocalizedError {
+    case featureUnavailable(String)
     case notConnected
     case missingAccessToken
     case missingRequiredScope(String)
@@ -904,6 +932,8 @@ enum GoogleIntegrationError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case let .featureUnavailable(message):
+            return message
         case .notConnected:
             return "Google service is not connected."
         case .missingAccessToken:

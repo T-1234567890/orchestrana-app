@@ -58,6 +58,7 @@ struct MainWindowView: View {
     @State private var summarySnapshot: ProductivityAnalyticsSnapshot?
     private let eventStore = SharedEventStore.shared.eventStore
     @State private var lastNonFlowSelection: SidebarItem = .dashboard
+    @State private var isWorkspaceExpanded = false
     // Slider micro-interactions
     @State private var ambientSliderEditing = false
     @State private var ambientSliderHover = false
@@ -177,9 +178,31 @@ struct MainWindowView: View {
     private var sidebar: some View {
         List(selection: $sidebarSelection) {
             ForEach(SidebarItem.visibleItems) { item in
-                Label(languageManager.text(item.localizationKey), systemImage: item.systemImage)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .tag(item)
+                if item == .workspace, SidebarItem.workspaceEnabled {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            isWorkspaceExpanded.toggle()
+                        }
+                    } label: {
+                        Label(languageManager.text(item.localizationKey), systemImage: item.systemImage)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    if isWorkspaceExpanded {
+                        ForEach(SidebarItem.workspaceChildItems) { childItem in
+                            HStack(spacing: 0) {
+                                Spacer()
+                                    .frame(width: 20)
+                                Label(languageManager.text(childItem.localizationKey), systemImage: childItem.systemImage)
+                            }
+                            .tag(childItem)
+                        }
+                    }
+                } else {
+                    Label(languageManager.text(item.localizationKey), systemImage: item.systemImage)
+                        .tag(item)
+                }
             }
         }
         .listStyle(.sidebar)
@@ -195,7 +218,25 @@ struct MainWindowView: View {
                 dashboardView
             case .workspace:
                 if SidebarItem.workspaceEnabled {
-                    workspaceView
+                    workspaceView(section: .goals)
+                } else {
+                    dashboardView
+                }
+            case .workspaceSearch:
+                if SidebarItem.workspaceEnabled {
+                    workspaceView(section: .search)
+                } else {
+                    dashboardView
+                }
+            case .workspaceGoals:
+                if SidebarItem.workspaceEnabled {
+                    workspaceView(section: .goals)
+                } else {
+                    dashboardView
+                }
+            case .workspaceMap:
+                if SidebarItem.workspaceEnabled {
+                    workspaceView(section: .map)
                 } else {
                     dashboardView
                 }
@@ -513,6 +554,16 @@ struct MainWindowView: View {
             ensureGoogleVideoDemoBaselineIfNeeded()
         }
         .onChange(of: sidebarSelection) { oldValue, newValue in
+            if newValue == .workspace {
+                isWorkspaceExpanded = true
+                sidebarSelection = .workspaceGoals
+                return
+            }
+
+            if newValue.isWorkspaceRoute {
+                isWorkspaceExpanded = true
+            }
+
             if newValue == .flow {
                 if oldValue != .flow {
                     lastNonFlowSelection = oldValue
@@ -575,13 +626,24 @@ struct MainWindowView: View {
                 sidebarSelection = .calendar
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToInsights)) { _ in
+            withAnimation {
+                splitViewVisibility = .all
+                sidebarSelection = .insights
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToWorkspaceGoals)) { _ in
+            withAnimation {
+                splitViewVisibility = .all
+                isWorkspaceExpanded = true
+                sidebarSelection = .workspaceGoals
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToWorkspaceMap)) { _ in
             withAnimation {
                 splitViewVisibility = .all
-                sidebarSelection = .workspace
-            }
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: .workspaceShowMap, object: nil)
+                isWorkspaceExpanded = true
+                sidebarSelection = .workspaceMap
             }
         }
     }
@@ -778,8 +840,9 @@ struct MainWindowView: View {
         }
     }
 
-    private var workspaceView: some View {
+    private func workspaceView(section: WorkspaceSection) -> some View {
         GoalWorkspaceView(
+            selectedWorkspaceSection: section,
             goalStore: goalStore,
             todoStore: todoStore,
             planningStore: planningStore,
@@ -870,7 +933,8 @@ struct MainWindowView: View {
                     if SidebarItem.workspaceEnabled {
                         Button(languageManager.text("insights.open_workspace")) {
                             withAnimation {
-                                sidebarSelection = .workspace
+                                isWorkspaceExpanded = true
+                                sidebarSelection = .workspaceGoals
                             }
                         }
                         .buttonStyle(.bordered)
@@ -1115,10 +1179,12 @@ struct MainWindowView: View {
         case .account:
             AdaptivePageGrid(minimumWidth: 360, spacing: 20) {
                 settingsAccountModule
-                settingsGoogleIntegrationsModule
+                if GoogleCalendarTasksIntegrationEnabled {
+                    settingsGoogleIntegrationsModule
+                }
                 settingsAccountSecurityModule
                 settingsPoliciesModule
-                if featureGate.tier == .developer {
+                if featureGate.tier == .developer && GoogleCalendarTasksIntegrationEnabled {
                     settingsDeveloperDebugModule
                 }
             }
@@ -2650,6 +2716,9 @@ struct MainWindowView: View {
     private enum SidebarItem: String, CaseIterable, Identifiable {
         case dashboard
         case workspace
+        case workspaceSearch
+        case workspaceGoals
+        case workspaceMap
         case tasks
         case calendar
         case insights
@@ -2666,12 +2735,31 @@ struct MainWindowView: View {
                 : [.dashboard, .flow, .tasks, .calendar, .insights, .settings]
         }
 
+        static var workspaceChildItems: [SidebarItem] {
+            [.workspaceSearch, .workspaceGoals, .workspaceMap]
+        }
+
+        var isWorkspaceRoute: Bool {
+            switch self {
+            case .workspace, .workspaceSearch, .workspaceGoals, .workspaceMap:
+                return true
+            case .dashboard, .tasks, .calendar, .insights, .settings, .flow:
+                return false
+            }
+        }
+
         var localizationKey: String {
             switch self {
             case .dashboard:
                 return "main.sidebar.dashboard"
             case .workspace:
                 return "main.sidebar.workspace"
+            case .workspaceSearch:
+                return "workspace.section.search"
+            case .workspaceGoals:
+                return "workspace.section.goals"
+            case .workspaceMap:
+                return "workspace.section.map"
             case .tasks:
                 return "main.sidebar.tasks"
             case .calendar:
@@ -2691,6 +2779,12 @@ struct MainWindowView: View {
                 return "square.grid.2x2"
             case .workspace:
                 return "sparkles.rectangle.stack"
+            case .workspaceSearch:
+                return "magnifyingglass"
+            case .workspaceGoals:
+                return "target"
+            case .workspaceMap:
+                return "map"
             case .tasks:
                 return "checklist"
             case .calendar:
@@ -2710,6 +2804,12 @@ struct MainWindowView: View {
                 return "Dashboard"
             case .workspace:
                 return "Workspace"
+            case .workspaceSearch:
+                return "Search"
+            case .workspaceGoals:
+                return "Goals"
+            case .workspaceMap:
+                return "Map"
             case .tasks:
                 return "Tasks"
             case .calendar:
@@ -2729,6 +2829,12 @@ struct MainWindowView: View {
                 return "Focus, timers, and today at a glance"
             case .workspace:
                 return "Outcome goals linked to tasks, events, and focus sessions"
+            case .workspaceSearch:
+                return "Search across goals, tasks, events, locations, and focus sessions"
+            case .workspaceGoals:
+                return "Outcome goals linked to tasks, events, and focus sessions"
+            case .workspaceMap:
+                return "Location-aware work and spatial routes"
             case .tasks:
                 return "Capture, organize, and plan work"
             case .calendar:
@@ -4742,8 +4848,13 @@ extension Notification.Name {
     static let navigateToCountdown = Notification.Name("navigateToCountdown")
     static let navigateToTasks = Notification.Name("navigateToTasks")
     static let navigateToCalendar = Notification.Name("navigateToCalendar")
+    static let navigateToInsights = Notification.Name("navigateToInsights")
+    static let navigateToWorkspaceGoals = Notification.Name("navigateToWorkspaceGoals")
     static let navigateToWorkspaceMap = Notification.Name("navigateToWorkspaceMap")
-    static let workspaceShowMap = Notification.Name("workspaceShowMap")
+    static let workspaceGoalFocusItem = Notification.Name("workspaceGoalFocusItem")
+    static let workspaceMapFocusItem = Notification.Name("workspaceMapFocusItem")
+    static let taskFocusItem = Notification.Name("taskFocusItem")
+    static let calendarFocusItem = Notification.Name("calendarFocusItem")
     static let openNewTaskComposer = Notification.Name("openNewTaskComposer")
     static let calendarGoToToday = Notification.Name("calendarGoToToday")
     static let taskToggleSelectedCompletion = Notification.Name("taskToggleSelectedCompletion")
