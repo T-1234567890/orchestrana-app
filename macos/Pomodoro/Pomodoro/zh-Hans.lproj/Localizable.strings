@@ -534,6 +534,7 @@
 "workspace.search.action.open_original" = "打开原位置";
 "workspace.search.action.show_on_map" = "在地图中显示";
 "workspace.search.action.toggle_task_completion" = "切换完成状态";
+"workspace.search.cleanup.back_to_selection" = "返回选择";
 "workspace.search.cleanup.button" = "选择清理";
 "workspace.search.cleanup.choose_everything" = "全部选择";
 "workspace.search.cleanup.clear_selection" = "清除";

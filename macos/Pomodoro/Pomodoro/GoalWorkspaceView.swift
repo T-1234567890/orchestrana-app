@@ -489,45 +489,21 @@ struct GoalWorkspaceView: View {
     private var workspaceSearchFilterBar: some View {
         VStack(alignment: .leading, spacing: 8) {
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: 0) {
-                    HStack(spacing: 10) {
-                        workspaceTypeFilterControl
-                        workspaceStatusFilterControl
-                        workspaceDifficultyFilterControl
-                    }
-                    .fixedSize(horizontal: true, vertical: false)
+                ZStack {
+                    workspaceSearchFilterControlsGroup
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Spacer(minLength: 24)
-
-                    HStack(spacing: 10) {
-                        workspaceListEverythingButton
-                        if isWorkspaceCleanupSelecting {
-                            workspaceChooseEverythingCleanupButton
-                        }
-                        workspaceCleanupButton
-                    }
-                    .fixedSize(horizontal: true, vertical: false)
+                    workspaceSearchActionControlsGroup
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity)
 
                 VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 10) {
-                        workspaceTypeFilterControl
-                        workspaceStatusFilterControl
-                        workspaceDifficultyFilterControl
-                    }
+                    workspaceSearchFilterControlsGroup
 
                     HStack(spacing: 0) {
                         Spacer(minLength: 0)
-
-                        HStack(spacing: 10) {
-                            workspaceListEverythingButton
-                            if isWorkspaceCleanupSelecting {
-                                workspaceChooseEverythingCleanupButton
-                            }
-                            workspaceCleanupButton
-                        }
-                        .fixedSize(horizontal: true, vertical: false)
+                        workspaceSearchActionControlsGroup
                     }
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 }
@@ -546,34 +522,86 @@ struct GoalWorkspaceView: View {
         .animation(.easeInOut(duration: 0.18), value: workspaceCleanupMessage)
     }
 
-    private var workspaceTypeFilterControl: some View {
-        Picker(languageManager.text("workspace.search.filter.type.label"), selection: $workspaceSearchTypeFilter) {
-            ForEach(WorkspaceSearchTypeFilter.allCases) { filter in
-                Text(filter.title(languageManager: languageManager)).tag(filter)
-            }
+    private var workspaceSearchFilterControlsGroup: some View {
+        HStack(spacing: 10) {
+            workspaceTypeFilterControl
+            workspaceStatusFilterControl
+            workspaceDifficultyFilterControl
         }
-        .labelsHidden()
-        .frame(width: 138, height: 32)
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var workspaceSearchActionControlsGroup: some View {
+        HStack(spacing: 10) {
+            workspaceListEverythingButton
+            if isWorkspaceCleanupSelecting {
+                workspaceChooseEverythingCleanupButton
+            }
+            workspaceCleanupButton
+        }
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var workspaceTypeFilterControl: some View {
+        workspaceFilterMenu(
+            accessibilityLabel: languageManager.text("workspace.search.filter.type.label"),
+            selection: $workspaceSearchTypeFilter,
+            width: 138,
+            title: { $0.title(languageManager: languageManager) }
+        )
     }
 
     private var workspaceStatusFilterControl: some View {
-        Picker(languageManager.text("workspace.search.filter.status.label"), selection: $workspaceSearchStatusFilter) {
-            ForEach(WorkspaceSearchStatusFilter.allCases) { filter in
-                Text(filter.title(languageManager: languageManager)).tag(filter)
-            }
-        }
-        .labelsHidden()
-        .frame(width: 138, height: 32)
+        workspaceFilterMenu(
+            accessibilityLabel: languageManager.text("workspace.search.filter.status.label"),
+            selection: $workspaceSearchStatusFilter,
+            width: 138,
+            title: { $0.title(languageManager: languageManager) }
+        )
     }
 
     private var workspaceDifficultyFilterControl: some View {
-        Picker(languageManager.text("workspace.search.filter.difficulty.label"), selection: $workspaceSearchDifficultyFilter) {
-            ForEach(WorkspaceSearchDifficultyFilter.allCases) { filter in
-                Text(filter.title(languageManager: languageManager)).tag(filter)
+        workspaceFilterMenu(
+            accessibilityLabel: languageManager.text("workspace.search.filter.difficulty.label"),
+            selection: $workspaceSearchDifficultyFilter,
+            width: 148,
+            title: { $0.title(languageManager: languageManager) }
+        )
+    }
+
+    private func workspaceFilterMenu<Filter>(
+        accessibilityLabel: String,
+        selection: Binding<Filter>,
+        width: CGFloat,
+        title: @escaping (Filter) -> String
+    ) -> some View where Filter: CaseIterable & Identifiable & Equatable, Filter.AllCases: RandomAccessCollection {
+        Menu {
+            ForEach(Array(Filter.allCases), id: \.id) { filter in
+                Button {
+                    selection.wrappedValue = filter
+                } label: {
+                    if selection.wrappedValue == filter {
+                        Label(title(filter), systemImage: "checkmark")
+                    } else {
+                        Text(title(filter))
+                    }
+                }
             }
+        } label: {
+            Text(title(selection.wrappedValue))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .frame(width: width, height: 32, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(Color.primary.opacity(0.08))
+            )
         }
-        .labelsHidden()
-        .frame(width: 148, height: 32)
+        .menuStyle(.borderlessButton)
+        .buttonStyle(.plain)
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     private var workspaceListEverythingButton: some View {
@@ -677,7 +705,7 @@ struct GoalWorkspaceView: View {
                     .foregroundStyle(.secondary)
 
                 Button(languageManager.text("common.cancel")) {
-                    showingWorkspaceCleanupSheet = false
+                    cancelWorkspaceCleanup()
                 }
 
                 Button(languageManager.text("workspace.search.cleanup.confirm"), role: .destructive) {
@@ -1082,6 +1110,17 @@ struct GoalWorkspaceView: View {
     private func chooseVisibleWorkspaceCleanupItems() {
         withAnimation(.easeInOut(duration: 0.16)) {
             selectedWorkspaceCleanupIDs.formUnion(visibleWorkspaceCleanupCandidateIDs)
+        }
+    }
+
+    private func cancelWorkspaceCleanup() {
+        withAnimation(.easeInOut(duration: 0.18)) {
+            showingWorkspaceCleanupSheet = false
+            isWorkspaceCleanupSelecting = false
+            selectedWorkspaceCleanupIDs.removeAll()
+            workspaceCleanupMessage = nil
+            workspaceSearchListsEverything = false
+            workspaceSearchStatusFilter = .active
         }
     }
 

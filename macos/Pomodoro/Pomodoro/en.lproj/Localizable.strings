@@ -534,6 +534,7 @@
 "workspace.search.action.open_original" = "Open Original";
 "workspace.search.action.show_on_map" = "Show on Map";
 "workspace.search.action.toggle_task_completion" = "Toggle Completion";
+"workspace.search.cleanup.back_to_selection" = "Back to Selection";
 "workspace.search.cleanup.button" = "Select Cleanup";
 "workspace.search.cleanup.choose_everything" = "Choose Everything";
 "workspace.search.cleanup.clear_selection" = "Clear";
