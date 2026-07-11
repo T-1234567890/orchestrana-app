@@ -293,13 +293,13 @@ Third-party trademarks, product names, and provider names belong to their respec
 
 ---
 
-## 17. Governing Law
+## 18. Governing Law
 
 These Terms are governed by applicable law. If you are a consumer, mandatory rights under the law of your place of residence may still apply.
 
 ---
 
-## 18. Contact
+## 19. Contact
 
 For questions about these Terms:
 
