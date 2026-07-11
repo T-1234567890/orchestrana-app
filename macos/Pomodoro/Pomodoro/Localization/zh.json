@@ -103,7 +103,7 @@
   "calendar.event_tasks.title_required": "请先输入事件标题。",
   "calendar.ai_assistant.reschedule_description": "仅根据今天的日历安排重新整理今天的计划。",
   "calendar.ai_assistant.reschedule_title": "重新整理今天",
-  "calendar.ai_auto_schedule.requires_pro": "AI 日历排程仅在 Pro 和 Developer 计划中提供。",
+  "calendar.ai_auto_schedule.requires_pro": "AI 日历排程仅向 Pro 用户提供。",
   "calendar.ai_auto_schedule.requires_pro_title": "此功能需要 Pro 订阅。",
   "calendar.all_day": "全天",
   "calendar.blocks": "时间块",

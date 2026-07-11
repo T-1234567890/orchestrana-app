@@ -12,6 +12,7 @@ struct CalendarView: View {
     @ObservedObject var todoStore: TodoStore
     @ObservedObject var planningStore: PlanningStore
     @ObservedObject var goalStore: GoalStore
+    @ObservedObject var noteStore: NoteStore
     @ObservedObject var locationStore: LocationStore
     @ObservedObject var calendarAutoSync: CalendarAutoSync
     @ObservedObject private var featureGate = FeatureGate.shared
@@ -1058,6 +1059,65 @@ struct CalendarView: View {
         )
     }
 
+    private func createNote(for event: EKEvent) {
+        guard canCreateAnotherNote else {
+            presentNotesPaywall()
+            return
+        }
+        guard let snapshot = planningStore.upsertCalendarEventSnapshot(event) else { return }
+        createNote(for: snapshot)
+    }
+
+    private func createNote(for item: PlanningItem) {
+        guard canCreateAnotherNote else {
+            presentNotesPaywall()
+            return
+        }
+        let note = noteStore.addNote(
+            title: localizationManager.format("workspace.notes.linked_title", item.title),
+            source: .event,
+            linkedEventID: item.id
+        )
+        openNote(note)
+    }
+
+    private func createNote(for item: TodoItem) {
+        guard canCreateAnotherNote else {
+            presentNotesPaywall()
+            return
+        }
+        let note = noteStore.addNote(
+            title: localizationManager.format("workspace.notes.linked_title", item.title),
+            source: .task,
+            linkedTaskID: item.id
+        )
+        openNote(note)
+    }
+
+    private var canCreateAnotherNote: Bool {
+        featureGate.canCreateUnlimitedNotes
+            || noteStore.notes.lazy.filter { !$0.isArchived }.count < 10
+    }
+
+    private func presentNotesPaywall() {
+        presentUpgradePaywall(
+            requiredTier: .plus,
+            title: localizationManager.text("workspace.notes.limit.title"),
+            message: localizationManager.text("workspace.notes.limit.message")
+        )
+    }
+
+    private func openNote(_ note: NoteRecord) {
+        NotificationCenter.default.post(name: .navigateToThinkingNotes, object: nil)
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .workspaceNoteFocusItem,
+                object: nil,
+                userInfo: ["noteID": note.id.uuidString]
+            )
+        }
+    }
+
     private func presentLockedFeatureInfo(
         featureName: String,
         description: String,
@@ -1570,6 +1630,12 @@ struct CalendarView: View {
                 Label(localizationManager.text("calendar.action.create_task_from_event"), systemImage: "checklist")
             }
 
+            Button {
+                createNote(for: event)
+            } label: {
+                Label(localizationManager.text("workspace.notes.add"), systemImage: "note.text.badge.plus")
+            }
+
             systemGoalLinkMenu(for: event)
             systemEventLocationMenu(for: event)
 
@@ -1616,6 +1682,12 @@ struct CalendarView: View {
                 Label(localizationManager.text("calendar.action.create_task_from_event"), systemImage: "checklist")
             }
 
+            Button {
+                createNote(for: item)
+            } label: {
+                Label(localizationManager.text("workspace.notes.add"), systemImage: "note.text.badge.plus")
+            }
+
             goalLinkMenu(for: item)
             eventLocationMenu(for: item)
 
@@ -1657,6 +1729,12 @@ struct CalendarView: View {
                 selectedTaskDetailID = item.id
             } label: {
                 Label(localizationManager.text("common.open_details"), systemImage: "info.circle")
+            }
+
+            Button {
+                createNote(for: item)
+            } label: {
+                Label(localizationManager.text("workspace.notes.add"), systemImage: "note.text.badge.plus")
             }
 
             taskGoalLinkMenu(for: item)
@@ -2788,6 +2866,7 @@ private struct RescheduleMatchedGeometry: ViewModifier {
             todoStore: TodoStore(),
             planningStore: PlanningStore(),
             goalStore: GoalStore(),
+            noteStore: NoteStore(),
             locationStore: LocationStore(),
             calendarAutoSync: CalendarAutoSync(permissionsManager: .shared)
         )

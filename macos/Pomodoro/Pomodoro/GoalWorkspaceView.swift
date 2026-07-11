@@ -1,12 +1,27 @@
 import EventKit
 import SwiftUI
 
+enum NotesNavigationMode {
+    case workspace
+    case thinking
+}
+
+enum NotesNavigationFeature {
+    // Temporary release setting. Switch to .thinking to restore the Thinking section.
+    static let mode: NotesNavigationMode = .workspace
+}
+
 enum WorkspaceSection: CaseIterable, Identifiable {
     case search
     case notes
     case goals
     case knowledge
     case map
+
+    static let notesEnabled = true
+    static let knowledgeEnabled = false
+    static let mapEnabled = true
+    static let locationContextEnabled = false
 
     var id: Self { self }
 
@@ -234,6 +249,7 @@ struct GoalWorkspaceView: View {
     @ObservedObject var locationStore: LocationStore
     @ObservedObject var calendarManager: CalendarManager
     @ObservedObject var sessionRecordStore: SessionRecordStore
+    @ObservedObject var noteStore: NoteStore
     @ObservedObject var featureGate: FeatureGate
     @ObservedObject var appState: AppState
     @EnvironmentObject private var languageManager: LanguageManager
@@ -333,19 +349,27 @@ struct GoalWorkspaceView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                if let limitMessage {
-                    Text(limitMessage)
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                        .padding(.horizontal, 2)
-                }
-
+        Group {
+            if selectedWorkspaceSection == .notes {
                 workspaceContent
+                    .padding(24)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        if let limitMessage {
+                            Text(limitMessage)
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                                .padding(.horizontal, 2)
+                        }
+
+                        workspaceContent
+                    }
+                    .padding(24)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
-            .padding(24)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .onAppear {
             if selectedGoalID == nil {
@@ -415,8 +439,19 @@ struct GoalWorkspaceView: View {
         switch selectedWorkspaceSection {
         case .search:
             workspaceSearchPage
-        case .goals, .notes, .knowledge:
+        case .notes:
+            NotesWorkspaceView(
+                noteStore: noteStore,
+                goalStore: goalStore,
+                todoStore: todoStore,
+                planningStore: planningStore,
+                sessionRecordStore: sessionRecordStore,
+                featureGate: featureGate
+            )
+        case .goals:
             goalsOverviewLayout
+        case .knowledge:
+            EmptyView()
         case .map:
             MapWorkspaceView(
                 locationStore: locationStore,
@@ -2101,6 +2136,8 @@ struct GoalWorkspaceView: View {
                         detailBlock(title: languageManager.text("workspace.goal.field.notes"), body: goal.notes)
                     }
 
+                    goalNotesSection(for: goal)
+
                     dangerZone(for: goal)
                 }
             }
@@ -2239,6 +2276,101 @@ struct GoalWorkspaceView: View {
                     .padding(.vertical, 6)
                 }
             }
+        }
+    }
+
+    private func goalNotesSection(for goal: GoalRecord) -> some View {
+        let linkedNotes = noteStore.notes(forGoalID: goal.id)
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(languageManager.text("workspace.section.notes"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button(languageManager.text("workspace.notes.add")) {
+                    createNote(for: goal)
+                }
+                .buttonStyle(.borderless)
+                if linkedNotes.count > 3 {
+                    Button(languageManager.text("workspace.notes.view_all")) {
+                        openNotes(noteID: linkedNotes.first?.id)
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+
+            if linkedNotes.isEmpty {
+                Text(languageManager.text("workspace.notes.goal_empty"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(linkedNotes.prefix(3)) { note in
+                    Button {
+                        openNotes(noteID: note.id)
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "note.text")
+                                .foregroundStyle(.secondary)
+                                .frame(width: 18)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(note.title)
+                                    .font(.subheadline.weight(.medium))
+                                    .lineLimit(1)
+                                if !note.body.isEmpty {
+                                    Text(note.body)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                            }
+                            Spacer()
+                            Text(note.updatedAt.formatted(date: .abbreviated, time: .omitted))
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private func createNote(for goal: GoalRecord) {
+        guard canCreateAnotherNote else {
+            presentNotesPaywall()
+            return
+        }
+        let note = noteStore.addNote(
+            title: languageManager.format("workspace.notes.linked_title", goal.outcome),
+            source: .goal,
+            linkedGoalID: goal.id
+        )
+        openNotes(noteID: note.id)
+    }
+
+    private var canCreateAnotherNote: Bool {
+        featureGate.canCreateUnlimitedNotes
+            || noteStore.notes.lazy.filter { !$0.isArchived }.count < 10
+    }
+
+    private func presentNotesPaywall() {
+        upgradePaywallContext = SubscriptionPaywallContext(
+            requiredTier: .plus,
+            title: languageManager.text("workspace.notes.limit.title"),
+            message: languageManager.text("workspace.notes.limit.message")
+        )
+    }
+
+    private func openNotes(noteID: UUID?) {
+        NotificationCenter.default.post(name: .navigateToThinkingNotes, object: nil)
+        guard let noteID else { return }
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .workspaceNoteFocusItem,
+                object: nil,
+                userInfo: ["noteID": noteID.uuidString]
+            )
         }
     }
 

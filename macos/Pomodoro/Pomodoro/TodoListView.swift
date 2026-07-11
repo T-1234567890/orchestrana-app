@@ -8,6 +8,7 @@ struct TodoListView: View {
     @ObservedObject var todoStore: TodoStore
     @ObservedObject var planningStore: PlanningStore
     @ObservedObject var goalStore: GoalStore
+    @ObservedObject var noteStore: NoteStore
     @ObservedObject var locationStore: LocationStore
     @ObservedObject var remindersSync: RemindersSync
     @ObservedObject var permissionsManager: PermissionsManager
@@ -814,6 +815,12 @@ struct TodoListView: View {
                     openEditorForEdit(item)
                 } label: {
                     Label(localizationManager.text("common.edit"), systemImage: "pencil")
+                }
+
+                Button {
+                    createNote(for: item)
+                } label: {
+                    Label(localizationManager.text("workspace.notes.add"), systemImage: "note.text.badge.plus")
                 }
 
                 linkToGoalMenu(for: item)
@@ -2555,6 +2562,39 @@ struct TodoListView: View {
         )
     }
 
+    private func createNote(for item: TodoItem) {
+        guard canCreateAnotherNote else {
+            presentUpgradePaywall(
+                requiredTier: .plus,
+                title: localizationManager.text("workspace.notes.limit.title"),
+                message: localizationManager.text("workspace.notes.limit.message")
+            )
+            return
+        }
+        let note = noteStore.addNote(
+            title: localizationManager.format("workspace.notes.linked_title", item.title),
+            source: .task,
+            linkedTaskID: item.id
+        )
+        openNote(note)
+    }
+
+    private var canCreateAnotherNote: Bool {
+        featureGate.canCreateUnlimitedNotes
+            || noteStore.notes.lazy.filter { !$0.isArchived }.count < 10
+    }
+
+    private func openNote(_ note: NoteRecord) {
+        NotificationCenter.default.post(name: .navigateToThinkingNotes, object: nil)
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .workspaceNoteFocusItem,
+                object: nil,
+                userInfo: ["noteID": note.id.uuidString]
+            )
+        }
+    }
+
     private func presentLockedFeatureInfo(
         featureName: String,
         description: String,
@@ -2823,6 +2863,7 @@ extension TodoListView {
             todoStore: store,
             planningStore: planningStore,
             goalStore: GoalStore(),
+            noteStore: NoteStore(),
             locationStore: LocationStore(),
             remindersSync: sync,
             permissionsManager: .shared

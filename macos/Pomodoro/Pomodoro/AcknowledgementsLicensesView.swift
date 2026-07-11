@@ -111,6 +111,21 @@ struct AcknowledgementsLicensesView: View {
             ]
         ),
         LicenseSection(
+            title: "MarkdownUI",
+            note: L("acknowledgements.markdown_ui.note"),
+            paragraphs: Self.mitLicenseParagraphs(copyright: "Copyright (c) 2020 Guille Gonzalez")
+        ),
+        LicenseSection(
+            title: "NetworkImage",
+            note: L("acknowledgements.network_image.note"),
+            paragraphs: Self.mitLicenseParagraphs(copyright: "Copyright (c) 2020 Guille Gonzalez")
+        ),
+        LicenseSection(
+            title: "swift-cmark",
+            note: L("acknowledgements.swift_cmark.note"),
+            paragraphs: Self.swiftCMarkLicenseParagraphs
+        ),
+        LicenseSection(
             title: L("acknowledgements.icon.title"),
             note: L("acknowledgements.icon.note"),
             paragraphs: Self.mitLicenseParagraphs(copyright: "Copyright (c) 2020 Microsoft Corporation")
@@ -128,10 +143,26 @@ struct AcknowledgementsLicensesView: View {
         ]
     }
 
+    private static var swiftCMarkLicenseParagraphs: [String] {
+        [
+            "Copyright (c) 2014, John MacFarlane\n\nAll rights reserved.",
+            "Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:\n\n* Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.\n\n* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.",
+            "THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.",
+            "Incorporated Houdini code: Copyright (C) 2012 Vicent Marti.",
+            "Incorporated buffer code: Copyright (C) 2012 Github, Inc.",
+            "Incorporated utf8proc code: Copyright (C) 2009 Public Software Group e. V., Berlin, Germany.",
+            "The incorporated code listed above is provided under the MIT License.",
+            Self.mitLicenseParagraphs(copyright: "Copyright (C) 2012 Vicent Marti; Copyright (C) 2012 GitHub, Inc.; Copyright (C) 2009 Public Software Group e. V., Berlin, Germany.").dropFirst(2).joined(separator: "\n\n")
+        ]
+    }
+
     private static let licenseLinks = [
         LicenseLink(title: "CC0 Summary", url: URL(string: "https://creativecommons.org/publicdomain/zero/1.0/deed.en")!),
         LicenseLink(title: "CC0 Legal Code", url: URL(string: "https://creativecommons.org/publicdomain/zero/1.0/legalcode.en")!),
-        LicenseLink(title: "MIT License", url: URL(string: "https://opensource.org/license/mit")!)
+        LicenseLink(title: "MIT License", url: URL(string: "https://opensource.org/license/mit")!),
+        LicenseLink(title: "MarkdownUI", url: URL(string: "https://github.com/gonzalezreal/swift-markdown-ui")!),
+        LicenseLink(title: "NetworkImage", url: URL(string: "https://github.com/gonzalezreal/NetworkImage")!),
+        LicenseLink(title: "swift-cmark", url: URL(string: "https://github.com/swiftlang/swift-cmark")!)
     ]
 
     private struct LicenseLink: Identifiable {

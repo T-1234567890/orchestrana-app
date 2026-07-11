@@ -59,6 +59,7 @@ struct MainWindowView: View {
     private let eventStore = SharedEventStore.shared.eventStore
     @State private var lastNonFlowSelection: SidebarItem = .dashboard
     @State private var isWorkspaceExpanded = false
+    @State private var isThinkingExpanded = false
     // Slider micro-interactions
     @State private var ambientSliderEditing = false
     @State private var ambientSliderHover = false
@@ -81,12 +82,15 @@ struct MainWindowView: View {
     @State private var settingsSearchText = ""
     @State private var showSettingsPlansSheet = false
     @State private var showAcknowledgementsLicenses = false
+    @State private var customSyntaxNameDraft = ""
+    @State private var customSyntaxTriggerDraft = ""
     
     // New: Calendar, Reminders, and Todo system
     @StateObject private var permissionsManager = PermissionsManager.shared
     @StateObject private var todoStore = TodoStore()
     @StateObject private var planningStore = PlanningStore()
     @StateObject private var goalStore = GoalStore()
+    @StateObject private var noteStore = NoteStore()
     @StateObject private var locationStore = LocationStore()
     @StateObject private var remindersSync = RemindersSync(permissionsManager: PermissionsManager.shared)
     @StateObject private var calendarManager = CalendarManager(permissionsManager: PermissionsManager.shared)
@@ -199,6 +203,27 @@ struct MainWindowView: View {
                             .tag(childItem)
                         }
                     }
+                } else if item == .thinking, SidebarItem.thinkingEnabled {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            isThinkingExpanded.toggle()
+                        }
+                    } label: {
+                        Label(languageManager.text(item.localizationKey), systemImage: item.systemImage)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    if isThinkingExpanded {
+                        ForEach(SidebarItem.thinkingChildItems) { childItem in
+                            HStack(spacing: 0) {
+                                Spacer()
+                                    .frame(width: 20)
+                                Label(languageManager.text(childItem.localizationKey), systemImage: childItem.systemImage)
+                            }
+                            .tag(childItem)
+                        }
+                    }
                 } else {
                     Label(languageManager.text(item.localizationKey), systemImage: item.systemImage)
                         .tag(item)
@@ -225,6 +250,18 @@ struct MainWindowView: View {
             case .workspaceSearch:
                 if SidebarItem.workspaceEnabled {
                     workspaceView(section: .search)
+                } else {
+                    dashboardView
+                }
+            case .workspaceNotes:
+                if SidebarItem.workspaceEnabled {
+                    workspaceView(section: .notes)
+                } else {
+                    dashboardView
+                }
+            case .thinking, .thinkingNotes:
+                if SidebarItem.thinkingEnabled {
+                    workspaceView(section: .notes)
                 } else {
                     dashboardView
                 }
@@ -639,6 +676,18 @@ struct MainWindowView: View {
                 sidebarSelection = .workspaceGoals
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToThinkingNotes)) { _ in
+            withAnimation {
+                splitViewVisibility = .all
+                if SidebarItem.thinkingEnabled {
+                    isThinkingExpanded = true
+                    sidebarSelection = .thinkingNotes
+                } else {
+                    isWorkspaceExpanded = true
+                    sidebarSelection = .workspaceNotes
+                }
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToWorkspaceMap)) { _ in
             withAnimation {
                 splitViewVisibility = .all
@@ -752,6 +801,7 @@ struct MainWindowView: View {
             todoStore: todoStore,
             planningStore: planningStore,
             goalStore: goalStore,
+            noteStore: noteStore,
             locationStore: locationStore,
             remindersSync: remindersSync,
             permissionsManager: permissionsManager
@@ -765,6 +815,7 @@ struct MainWindowView: View {
             todoStore: todoStore,
             planningStore: planningStore,
             goalStore: goalStore,
+            noteStore: noteStore,
             locationStore: locationStore,
             calendarAutoSync: calendarAutoSync
         )
@@ -849,6 +900,7 @@ struct MainWindowView: View {
             locationStore: locationStore,
             calendarManager: calendarManager,
             sessionRecordStore: sessionRecordStore,
+            noteStore: noteStore,
             featureGate: featureGate,
             appState: appState
         )
@@ -1171,6 +1223,8 @@ struct MainWindowView: View {
                 settingsNotificationPreferencesModule
                 settingsPermissionsModule
             }
+        case .notes:
+            notesSettingsContent
         case .aiFeatures:
             AdaptivePageGrid(minimumWidth: 360, spacing: 20) {
                 settingsAISubscriptionModule
@@ -1191,12 +1245,354 @@ struct MainWindowView: View {
         }
     }
 
+    private var notesSettingsContent: some View {
+        AdaptivePageGrid(minimumWidth: 390, spacing: 20) {
+            SettingsModuleCard(
+                title: languageManager.text("settings.notes.editor.title"),
+                description: languageManager.text("settings.notes.editor.description")
+            ) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Toggle(languageManager.text("settings.notes.editor.live_preview"), isOn: noteSettingBinding(\.livePreviewEnabled))
+                    Toggle(languageManager.text("settings.notes.editor.active_syntax"), isOn: noteSettingBinding(\.showsSyntaxInActiveRange))
+                    proFeatureToggle(
+                        languageManager.text("settings.notes.editor.source_mode"),
+                        isOn: noteSettingBinding(\.sourceModeEnabled)
+                    )
+                        .disabled(!featureGate.canUseNotesProFeatures)
+                    Text(languageManager.text("settings.notes.editor.source_mode.description"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Toggle(languageManager.text("settings.notes.editor.autosave"), isOn: noteSettingBinding(\.autosaveEnabled))
+                    Divider()
+                    settingsLabeledControl(title: languageManager.text("settings.notes.editor.line_width")) {
+                        HStack {
+                            Slider(value: noteSettingBinding(\.editorLineWidth), in: 480...1200, step: 20)
+                            Text("\(Int(noteStore.editorSettings.editorLineWidth))")
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .frame(width: 42, alignment: .trailing)
+                        }
+                    }
+                    settingsLabeledControl(title: languageManager.text("settings.notes.editor.paragraph_spacing")) {
+                        Slider(value: noteSettingBinding(\.paragraphSpacing), in: 0...24, step: 1)
+                    }
+                    settingsLabeledControl(title: languageManager.text("settings.notes.editor.default_type")) {
+                        Picker("", selection: noteSettingBinding(\.defaultNoteType)) {
+                            ForEach(NoteRecord.NoteType.allCases) { type in
+                                Text(languageManager.text("workspace.notes.type.\(type.rawValue)")).tag(type)
+                            }
+                        }
+                        .labelsHidden()
+                    }
+                    Toggle(languageManager.text("settings.notes.editor.smart_lists"), isOn: noteSettingBinding(\.smartListContinuation))
+                    Toggle(languageManager.text("settings.notes.editor.smart_quotes"), isOn: noteSettingBinding(\.smartQuoteContinuation))
+                    Toggle(languageManager.text("settings.notes.editor.continue_checklists"), isOn: noteSettingBinding(\.continuesChecklists))
+                }
+            }
+
+            SettingsModuleCard(
+                title: languageManager.text("settings.notes.writing.title"),
+                description: languageManager.text("settings.notes.writing.description")
+            ) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Toggle(languageManager.text("settings.notes.writing.spelling"), isOn: noteSettingBinding(\.checksSpelling))
+                    Toggle(languageManager.text("settings.notes.writing.grammar"), isOn: noteSettingBinding(\.checksGrammar))
+                    Toggle(languageManager.text("settings.notes.writing.autocorrect"), isOn: noteSettingBinding(\.correctsSpelling))
+                    Toggle(languageManager.text("settings.notes.writing.smart_quotes"), isOn: noteSettingBinding(\.usesSmartQuotes))
+                    Toggle(languageManager.text("settings.notes.writing.smart_dashes"), isOn: noteSettingBinding(\.usesSmartDashes))
+                    Toggle(languageManager.text("settings.notes.writing.substitutions"), isOn: noteSettingBinding(\.usesTextSubstitutions))
+                    Text(languageManager.text("settings.notes.writing.local_note"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            SettingsModuleCard(
+                title: languageManager.text("settings.notes.autocomplete.title"),
+                description: languageManager.text("settings.notes.autocomplete.description")
+            ) {
+                VStack(alignment: .leading, spacing: 12) {
+                    entitlementBadge(
+                        title: languageManager.text("settings.notes.autocomplete.plus"),
+                        isAvailable: canUseNotesSyntaxAutocomplete
+                    )
+                    Group {
+                        Toggle(languageManager.text("settings.notes.autocomplete.enable"), isOn: noteSettingBinding(\.syntaxAutocompleteEnabled))
+                        Toggle(languageManager.text("settings.notes.autocomplete.return"), isOn: noteSettingBinding(\.acceptsAutocompleteWithReturn))
+                        Toggle(languageManager.text("settings.notes.autocomplete.automatic"), isOn: noteSettingBinding(\.showsSuggestionsAutomatically))
+                        Toggle(languageManager.text("settings.notes.autocomplete.markdown"), isOn: noteSettingBinding(\.suggestsMarkdown))
+                        Toggle(languageManager.text("settings.notes.autocomplete.links"), isOn: noteSettingBinding(\.suggestsOrchestranaLinks))
+                        Toggle(languageManager.text("settings.notes.autocomplete.tags"), isOn: noteSettingBinding(\.suggestsTags))
+                    }
+                    .disabled(!canUseNotesSyntaxAutocomplete)
+                    Divider()
+                    proFeatureToggle(
+                        languageManager.text("settings.notes.autocomplete.custom"),
+                        isOn: noteSettingBinding(\.suggestsCustomSyntax)
+                    )
+                        .disabled(!featureGate.canUseNotesProFeatures)
+                }
+            }
+
+            SettingsModuleCard(
+                title: languageManager.text("settings.notes.custom_syntax.title"),
+                description: languageManager.text("settings.notes.custom_syntax.description")
+            ) {
+                VStack(alignment: .leading, spacing: 10) {
+                    entitlementBadge(
+                        title: languageManager.text("settings.notes.custom_syntax.pro"),
+                        isAvailable: featureGate.canUseNotesProFeatures
+                    )
+                    if featureGate.canUseNotesProFeatures {
+                        ForEach(noteStore.customSyntaxDefinitions) { definition in
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: definition.symbolName ?? "text.badge.plus")
+                                        .foregroundStyle(.secondary)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(definition.name).font(.subheadline.weight(.medium))
+                                        Text(definition.trigger).font(.caption.monospaced()).foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Menu {
+                                        Menu(languageManager.text("settings.notes.custom_syntax.color")) {
+                                            ForEach(NoteTagColor.allCases) { color in
+                                                Button(languageManager.text("settings.notes.color.\(color.rawValue)")) {
+                                                    var updated = definition
+                                                    updated.color = color
+                                                    _ = noteStore.updateCustomSyntax(updated)
+                                                }
+                                            }
+                                        }
+                                        Menu(languageManager.text("settings.notes.custom_syntax.symbol")) {
+                                            ForEach(["lightbulb", "exclamationmark.triangle", "questionmark.circle", "checkmark.circle", "book.closed", "flag"], id: \.self) { symbol in
+                                                Button {
+                                                    var updated = definition
+                                                    updated.symbolName = symbol
+                                                    _ = noteStore.updateCustomSyntax(updated)
+                                                } label: { Label(languageManager.text("settings.notes.symbol.\(symbol)"), systemImage: symbol) }
+                                            }
+                                        }
+                                        Menu(languageManager.text("settings.notes.custom_syntax.rendering")) {
+                                            ForEach(NoteCustomSyntaxDefinition.RenderingStyle.allCases) { style in
+                                                Button(languageManager.text("settings.notes.rendering.\(style.rawValue)")) {
+                                                    var updated = definition
+                                                    updated.renderingStyle = style
+                                                    _ = noteStore.updateCustomSyntax(updated)
+                                                }
+                                            }
+                                        }
+                                        Menu(languageManager.text("settings.notes.custom_syntax.type")) {
+                                            ForEach(NoteCustomSyntaxDefinition.SyntaxType.allCases) { type in
+                                                Button(languageManager.text("settings.notes.syntax_type.\(type.rawValue)")) {
+                                                    var updated = definition
+                                                    updated.syntaxType = type
+                                                    _ = noteStore.updateCustomSyntax(updated)
+                                                }
+                                            }
+                                        }
+                                        Menu(languageManager.text("settings.notes.custom_syntax.export")) {
+                                            Button(languageManager.text("settings.notes.custom_syntax.export.preserve")) {
+                                                var updated = definition
+                                                updated.exportText = ""
+                                                _ = noteStore.updateCustomSyntax(updated)
+                                            }
+                                            Button(languageManager.text("settings.notes.custom_syntax.export.name")) {
+                                                var updated = definition
+                                                updated.exportText = definition.name
+                                                _ = noteStore.updateCustomSyntax(updated)
+                                            }
+                                            Button(languageManager.text("settings.notes.custom_syntax.export.remove")) {
+                                                var updated = definition
+                                                updated.exportText = "__remove__"
+                                                _ = noteStore.updateCustomSyntax(updated)
+                                            }
+                                        }
+                                    } label: {
+                                        Image(systemName: "ellipsis.circle")
+                                    }
+                                    .menuStyle(.borderlessButton)
+                                    .help(languageManager.text("settings.notes.custom_syntax.edit"))
+                                    Button(role: .destructive) { _ = noteStore.deleteCustomSyntax(definition) } label: {
+                                        Image(systemName: "trash")
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .help(languageManager.text("common.delete"))
+                                }
+                                customSyntaxPreview(definition)
+                            }
+                        }
+                        HStack {
+                            TextField(languageManager.text("settings.notes.custom_syntax.name"), text: $customSyntaxNameDraft)
+                            TextField(languageManager.text("settings.notes.custom_syntax.trigger"), text: $customSyntaxTriggerDraft)
+                            Button {
+                                if noteStore.addCustomSyntax(name: customSyntaxNameDraft, trigger: customSyntaxTriggerDraft) != nil {
+                                    customSyntaxNameDraft = ""
+                                    customSyntaxTriggerDraft = ""
+                                }
+                            } label: { Image(systemName: "plus") }
+                            .buttonStyle(.bordered)
+                            .help(languageManager.text("settings.notes.custom_syntax.add"))
+                        }
+                    }
+                }
+            }
+
+            SettingsModuleCard(
+                title: languageManager.text("settings.notes.appearance.title"),
+                description: languageManager.text("settings.notes.appearance.description")
+            ) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Picker(languageManager.text("settings.notes.appearance.style"), selection: noteSettingBinding(\.selectedStyle)) {
+                        ForEach(NoteEditorStyle.allCases) { style in
+                            Text(languageManager.text("settings.notes.style.\(style.rawValue)")).tag(style)
+                        }
+                    }
+                    noteAppearancePreview(noteStore.editorSettings.selectedStyle)
+                }
+            }
+
+            SettingsModuleCard(
+                title: languageManager.text("settings.notes.paste.title"),
+                description: languageManager.text("settings.notes.paste.description")
+            ) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Toggle(languageManager.text("settings.notes.paste.tables"), isOn: noteSettingBinding(\.convertsTablesOnPaste))
+                    Toggle(languageManager.text("settings.notes.paste.rich_text"), isOn: noteSettingBinding(\.preservesRichTextOnPaste))
+                    Toggle(languageManager.text("settings.notes.paste.images"), isOn: noteSettingBinding(\.embedsPastedImages))
+                    Toggle(languageManager.text("settings.notes.embeds.enable"), isOn: noteSettingBinding(\.safeEmbedsEnabled))
+                    Text(languageManager.text("settings.notes.embeds.security"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button(languageManager.text("settings.notes.paste.cleanup")) {
+                        _ = noteStore.cleanupOrphanedAttachments()
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+
+            SettingsModuleCard(
+                title: languageManager.text("settings.notes.export.title"),
+                description: languageManager.text("settings.notes.export.description")
+            ) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Toggle(languageManager.text("settings.notes.export.metadata"), isOn: noteSettingBinding(\.markdownExportIncludesMetadata))
+                    Toggle(languageManager.text("settings.notes.export.plain"), isOn: noteSettingBinding(\.plainTextExportRemovesSyntax))
+                    Text(languageManager.text("settings.notes.export.local_note"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var canUseNotesSyntaxAutocomplete: Bool {
+        featureGate.canUseNotesSyntaxAutocomplete
+    }
+
+    @ViewBuilder
+    private func customSyntaxPreview(_ definition: NoteCustomSyntaxDefinition) -> some View {
+        let color = noteSettingsColor(definition.color)
+        let sample = languageManager.text("settings.notes.custom_syntax.preview_text")
+        HStack(spacing: 8) {
+            if let symbol = definition.symbolName {
+                Image(systemName: symbol)
+            }
+            Text(sample)
+                .font(definition.syntaxType == .inline ? .callout : .body)
+                .fontWeight(definition.renderingStyle == .badge ? .semibold : .regular)
+        }
+        .foregroundStyle(color)
+        .padding(.horizontal, definition.renderingStyle == .accent ? 10 : 8)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            if definition.renderingStyle != .accent {
+                RoundedRectangle(cornerRadius: definition.renderingStyle == .badge ? 6 : 4)
+                    .fill(color.opacity(definition.renderingStyle == .highlight ? 0.18 : 0.09))
+            }
+        }
+        .overlay(alignment: .leading) {
+            if definition.renderingStyle == .accent {
+                Rectangle().fill(color).frame(width: 3)
+            }
+        }
+        .accessibilityLabel(languageManager.text("settings.notes.custom_syntax.preview"))
+    }
+
+    private func noteAppearancePreview(_ style: NoteEditorStyle) -> some View {
+        VStack(alignment: .leading, spacing: style == .compact ? 2 : 6) {
+            Text(languageManager.text("settings.notes.appearance.preview_heading"))
+                .font(notePreviewFont(style, heading: true))
+            Text(languageManager.text("settings.notes.appearance.preview_body"))
+                .font(notePreviewFont(style, heading: false))
+                .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.primary.opacity(style == .minimal ? 0.025 : 0.045))
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+    }
+
+    private func notePreviewFont(_ style: NoteEditorStyle, heading: Bool) -> Font {
+        switch style {
+        case .default: return .system(size: heading ? 17 : 14, weight: heading ? .semibold : .regular)
+        case .minimal: return .system(size: heading ? 16 : 14, weight: heading ? .medium : .light)
+        case .compact: return .system(size: heading ? 14 : 12, weight: heading ? .semibold : .regular)
+        case .academic: return .system(size: heading ? 18 : 15, weight: heading ? .bold : .regular, design: .serif)
+        case .technical: return .system(size: heading ? 15 : 13, weight: heading ? .bold : .regular, design: .monospaced)
+        case .journal: return .system(size: heading ? 19 : 15, weight: heading ? .semibold : .regular, design: .rounded)
+        case .focused: return .system(size: heading ? 18 : 15, weight: heading ? .bold : .medium)
+        }
+    }
+
+    private func noteSettingsColor(_ color: NoteTagColor) -> Color {
+        switch color {
+        case .red: return .red
+        case .purple: return .purple
+        case .orange: return .orange
+        case .yellow: return .yellow
+        case .blue: return .blue
+        case .green: return .green
+        case .gray: return .gray
+        }
+    }
+
+    private func noteSettingBinding<Value>(_ keyPath: WritableKeyPath<NoteEditorSettingsRecord, Value>) -> Binding<Value> {
+        Binding(
+            get: { noteStore.editorSettings[keyPath: keyPath] },
+            set: { value in _ = noteStore.updateEditorSettings { $0[keyPath: keyPath] = value } }
+        )
+    }
+
+    private func entitlementBadge(title: String, isAvailable: Bool) -> some View {
+        Label(title, systemImage: isAvailable ? "checkmark.seal.fill" : "lock.fill")
+            .font(.caption.weight(.medium))
+            .foregroundStyle(isAvailable ? Color.green : Color.secondary)
+    }
+
+    private func proFeatureToggle(_ title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            HStack(spacing: 7) {
+                Text(title)
+                Text("Pro")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.green)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.green.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    .accessibilityLabel(languageManager.text("feature_gate.tier.pro"))
+            }
+        }
+    }
+
     private var settingsGeneralModule: some View {
         SettingsModuleCard(
             title: languageManager.text("settings.general.title"),
             description: languageManager.text("settings.general.description")
         ) {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 settingsLabeledControl(title: languageManager.text("settings.language.title"), description: languageManager.text("settings.language.description")) {
                     Picker(languageManager.text("settings.language.picker.label"), selection: $languageManager.currentLanguage) {
                         Text(languageManager.text("settings.language.system"))
@@ -1207,6 +1603,7 @@ struct MainWindowView: View {
                             .tag(LanguageManager.AppLanguage.chinese)
                     }
                     .pickerStyle(.segmented)
+                    .labelsHidden()
                     .frame(maxWidth: 320)
                 }
 
@@ -1228,7 +1625,7 @@ struct MainWindowView: View {
             title: languageManager.text("settings.appearance.title"),
             description: languageManager.text("settings.appearance.description")
         ) {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 12) {
                 settingsLabeledControl(
                     title: languageManager.text("settings.appearance.font.title"),
                     description: languageManager.text("settings.appearance.font.description")
@@ -1239,6 +1636,7 @@ struct MainWindowView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    .labelsHidden()
                     .frame(maxWidth: 320)
                 }
 
@@ -1254,6 +1652,7 @@ struct MainWindowView: View {
                         }
                     }
                     .pickerStyle(.radioGroup)
+                    .labelsHidden()
                 }
 
             }
@@ -1311,6 +1710,7 @@ struct MainWindowView: View {
                         .tag(PresetSelection.custom)
                 }
                 .pickerStyle(.segmented)
+                .labelsHidden()
             }
         }
     }
@@ -1380,7 +1780,7 @@ struct MainWindowView: View {
             title: languageManager.text("settings.notifications.title"),
             description: languageManager.text("settings.notifications.description")
         ) {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 10) {
                 settingsLabeledControl(title: languageManager.text("main.delivery"), description: languageManager.text("settings.notifications.delivery_description")) {
                     Picker(languageManager.text("main.delivery"), selection: $appState.notificationDeliveryStyle) {
                         ForEach(NotificationDeliveryStyle.allCases) { style in
@@ -1388,6 +1788,7 @@ struct MainWindowView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    .labelsHidden()
                 }
 
                 Divider()
@@ -1399,6 +1800,7 @@ struct MainWindowView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    .labelsHidden()
                 }
 
                 Divider()
@@ -1410,6 +1812,7 @@ struct MainWindowView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    .labelsHidden()
                 }
             }
         }
@@ -1650,6 +2053,7 @@ struct MainWindowView: View {
                 ) {
                     Toggle(languageManager.text("settings.developer.google_video_demo_mode.title"), isOn: googleVideoDemoModeBinding)
                         .toggleStyle(.switch)
+                        .labelsHidden()
                         .disabled(featureGate.tier != .developer)
                 }
 
@@ -1809,7 +2213,7 @@ struct MainWindowView: View {
         description: String? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.subheadline.weight(.semibold))
             if let description {
@@ -2717,8 +3121,11 @@ struct MainWindowView: View {
         case dashboard
         case workspace
         case workspaceSearch
+        case workspaceNotes
         case workspaceGoals
         case workspaceMap
+        case thinking
+        case thinkingNotes
         case tasks
         case calendar
         case insights
@@ -2728,22 +3135,36 @@ struct MainWindowView: View {
         var id: String { rawValue }
 
         static let workspaceEnabled = true
+        static let thinkingEnabled = WorkspaceSection.notesEnabled
+            && NotesNavigationFeature.mode == .thinking
 
         static var visibleItems: [SidebarItem] {
-            workspaceEnabled
-                ? [.dashboard, .flow, .workspace, .tasks, .calendar, .insights, .settings]
-                : [.dashboard, .flow, .tasks, .calendar, .insights, .settings]
+            var items: [SidebarItem] = [.dashboard, .flow]
+            if workspaceEnabled { items.append(.workspace) }
+            if thinkingEnabled { items.append(.thinking) }
+            items.append(contentsOf: [.tasks, .calendar, .insights, .settings])
+            return items
         }
 
         static var workspaceChildItems: [SidebarItem] {
-            [.workspaceSearch, .workspaceGoals, .workspaceMap]
+            var items: [SidebarItem] = [.workspaceSearch]
+            if WorkspaceSection.notesEnabled, NotesNavigationFeature.mode == .workspace {
+                items.append(.workspaceNotes)
+            }
+            items.append(.workspaceGoals)
+            if WorkspaceSection.mapEnabled { items.append(.workspaceMap) }
+            return items
+        }
+
+        static var thinkingChildItems: [SidebarItem] {
+            thinkingEnabled ? [.thinkingNotes] : []
         }
 
         var isWorkspaceRoute: Bool {
             switch self {
-            case .workspace, .workspaceSearch, .workspaceGoals, .workspaceMap:
+            case .workspace, .workspaceSearch, .workspaceNotes, .workspaceGoals, .workspaceMap:
                 return true
-            case .dashboard, .tasks, .calendar, .insights, .settings, .flow:
+            case .dashboard, .thinking, .thinkingNotes, .tasks, .calendar, .insights, .settings, .flow:
                 return false
             }
         }
@@ -2756,10 +3177,16 @@ struct MainWindowView: View {
                 return "main.sidebar.workspace"
             case .workspaceSearch:
                 return "workspace.section.search"
+            case .workspaceNotes:
+                return "workspace.section.notes"
             case .workspaceGoals:
                 return "workspace.section.goals"
             case .workspaceMap:
                 return "workspace.section.map"
+            case .thinking:
+                return "main.sidebar.thinking"
+            case .thinkingNotes:
+                return "workspace.section.notes"
             case .tasks:
                 return "main.sidebar.tasks"
             case .calendar:
@@ -2781,10 +3208,16 @@ struct MainWindowView: View {
                 return "sparkles.rectangle.stack"
             case .workspaceSearch:
                 return "magnifyingglass"
+            case .workspaceNotes:
+                return "note.text"
             case .workspaceGoals:
                 return "target"
             case .workspaceMap:
                 return "map"
+            case .thinking:
+                return "tray.fill"
+            case .thinkingNotes:
+                return "note.text"
             case .tasks:
                 return "checklist"
             case .calendar:
@@ -2806,10 +3239,16 @@ struct MainWindowView: View {
                 return "Workspace"
             case .workspaceSearch:
                 return "Search"
+            case .workspaceNotes:
+                return "Notes"
             case .workspaceGoals:
                 return "Goals"
             case .workspaceMap:
                 return "Map"
+            case .thinking:
+                return "Thinking"
+            case .thinkingNotes:
+                return "Notes"
             case .tasks:
                 return "Tasks"
             case .calendar:
@@ -2831,10 +3270,16 @@ struct MainWindowView: View {
                 return "Outcome goals linked to tasks, events, and focus sessions"
             case .workspaceSearch:
                 return "Search across goals, tasks, events, locations, and focus sessions"
+            case .workspaceNotes:
+                return "Capture notes and connect them to work"
             case .workspaceGoals:
                 return "Outcome goals linked to tasks, events, and focus sessions"
             case .workspaceMap:
                 return "Location-aware work and spatial routes"
+            case .thinking:
+                return "Capture thoughts and connect them to work"
+            case .thinkingNotes:
+                return "Capture notes and connect them to work"
             case .tasks:
                 return "Capture, organize, and plan work"
             case .calendar:
@@ -2853,6 +3298,7 @@ struct MainWindowView: View {
         case general
         case timerFocus
         case notifications
+        case notes
         case aiFeatures
         case account
 
@@ -2866,6 +3312,8 @@ struct MainWindowView: View {
                 return "Timer & Focus"
             case .notifications:
                 return "Notifications"
+            case .notes:
+                return "Notes"
             case .aiFeatures:
                 return "AI & Features"
             case .account:
@@ -2881,6 +3329,8 @@ struct MainWindowView: View {
                 return "Presets, durations, and countdown defaults for focused work."
             case .notifications:
                 return "Delivery preferences and system permissions."
+            case .notes:
+                return "Writing, syntax, appearance, paste, and local export behavior."
             case .aiFeatures:
                 return "Plans, quota visibility, and AI feature access."
             case .account:
@@ -2896,6 +3346,8 @@ struct MainWindowView: View {
                 return "Presets and durations"
             case .notifications:
                 return "Alerts and permissions"
+            case .notes:
+                return "Editor and syntax"
             case .aiFeatures:
                 return "Plans and AI"
             case .account:
@@ -2911,6 +3363,8 @@ struct MainWindowView: View {
                 return "timer"
             case .notifications:
                 return "bell.badge"
+            case .notes:
+                return "note.text"
             case .aiFeatures:
                 return "sparkles"
             case .account:
@@ -4849,9 +5303,11 @@ extension Notification.Name {
     static let navigateToTasks = Notification.Name("navigateToTasks")
     static let navigateToCalendar = Notification.Name("navigateToCalendar")
     static let navigateToInsights = Notification.Name("navigateToInsights")
+    static let navigateToThinkingNotes = Notification.Name("navigateToThinkingNotes")
     static let navigateToWorkspaceGoals = Notification.Name("navigateToWorkspaceGoals")
     static let navigateToWorkspaceMap = Notification.Name("navigateToWorkspaceMap")
     static let workspaceGoalFocusItem = Notification.Name("workspaceGoalFocusItem")
+    static let workspaceNoteFocusItem = Notification.Name("workspaceNoteFocusItem")
     static let workspaceMapFocusItem = Notification.Name("workspaceMapFocusItem")
     static let taskFocusItem = Notification.Name("taskFocusItem")
     static let calendarFocusItem = Notification.Name("calendarFocusItem")
