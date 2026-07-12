@@ -13,7 +13,6 @@ It is not just a timer — it links tasks, time, and focus, adapting to task-dri
   />
 </p>
 
-
 <p align="center">
   <img src="https://img.shields.io/github/license/T-1234567890/orchestrana-app" alt="License" />
   <img src="https://img.shields.io/badge/platform-macOS-blue?logo=apple" alt="Platform" />
@@ -124,7 +123,7 @@ The current version is fully native Swift; legacy Tauri/Svelte/Python versions a
 >	- Use this configuration in any other application or project
 >	- Send requests to the associated Firebase project outside of this application
 >	- Attempt to access, exploit, or interfere with the backend services
-> - Any types of abuses
+> - Any type of abuses
 >
 >Any unauthorized use may result in access restrictions and may be subject to further action.
 

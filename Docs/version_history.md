@@ -30,7 +30,7 @@
 ## 0.7.x
 - General UI improvements
 - New navigation bar
-- New pop up reminders when timer season ends
+- New pop-up reminders when timer session ends
 
 ## 1.0.0
 -fully migrated to Swift
