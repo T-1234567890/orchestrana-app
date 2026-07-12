@@ -36,7 +36,7 @@ Sponsored by VPS Town — servers for early access usage.
 ### 📆 Timeline
 
 - **Waitlist submission deadline:** March 13, 2026 23:59  
-- **Giveaway drawing & Winners announced:** March 14-15, 2026   
+- **Giveaway drawing & Winners announced:** March 14-15, 2026
 - **Server provisioning begins:** March 16, 2026  
 - **Server access valid for 30 days after activation**
 
@@ -48,7 +48,7 @@ Thank you for your interest and participation!
 
 >### ⚠️ Disclaimer
 >
->If server activation or delivery is delayed, unavailable, or affected due to force majeure, supply issues, infrastructure limitations, or other factors beyond control, neither the organizer nor >the sponsor shall be held liable for any direct or indirect damages.
+>If server activation or delivery is delayed, unavailable, or affected due to force majeure, supply issues, infrastructure limitations, or other factors beyond control, neither the organizer nor the sponsor shall be held liable for any direct or indirect damages.
 >
 >The organizer will make reasonable efforts to coordinate resolution and support, but delivery timing and availability cannot be guaranteed.
 

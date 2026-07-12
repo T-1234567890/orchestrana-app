@@ -131,7 +131,7 @@ Some advanced customization options may eventually be reserved for paid tiers, w
 
 ---
 
-## Additional Feature Ideas (Might requires different levels of subscriptions, Exploratory)
+## Additional Feature Ideas (Might require different levels of subscriptions, Exploratory)
 
 ### Task States (Beyond Completion)
 
