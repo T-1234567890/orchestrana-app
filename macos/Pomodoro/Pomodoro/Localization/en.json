@@ -21,7 +21,7 @@
   "audio.mixer": "Mixer",
   "audio.mixer.choose_folder": "Choose Folder",
   "audio.mixer.select_pack": "Select Pack",
-  "audio.mixer.subtitle": "Select multiple audio tracked and set each layer volume.",
+  "audio.mixer.subtitle": "Select multiple audio tracks and set each layer volume.",
   "audio.mixer.title": "Audio Mixer",
   "audio.mixer.your_pack": "Your Pack",
   "audio.mixer.your_pack.paywall_message": "Upgrade to Plus or Pro to load your own audio folder and mix those tracks with the built-in packs.",
