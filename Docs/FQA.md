@@ -83,7 +83,7 @@ Orchestrana syncs with Calendar and Reminders, allowing you to:
 1. Capture tasks or events on your phone
 2. Review, organize, and focus on them later on your Mac
 
-For best experience, please type this before your task on Apple reminders:
+For best experience, please type this before your task on Apple Reminders:
 - `#pomodoro`
 - `#Pomodoro`
 - `#专注`
