@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import FirebaseAuth
 import FirebaseCore
+import Security
 
 /// Entitlement-aware feature gating for cloud-powered capabilities.
 final class FeatureGate: ObservableObject {
@@ -9,6 +10,7 @@ final class FeatureGate: ObservableObject {
         let uid: String
         let tier: Tier
         let subscriptionEndAt: Date?
+        let verifiedAt: Date?
         let analyticsLevel: AnalyticsLevel
         let aiLevel: AILevel
         let features: [String: Bool]
@@ -17,6 +19,7 @@ final class FeatureGate: ObservableObject {
             uid: String,
             tier: Tier,
             subscriptionEndAt: Date?,
+            verifiedAt: Date,
             analyticsLevel: AnalyticsLevel,
             aiLevel: AILevel,
             features: [String: Bool]
@@ -24,6 +27,7 @@ final class FeatureGate: ObservableObject {
             self.uid = uid
             self.tier = tier
             self.subscriptionEndAt = subscriptionEndAt
+            self.verifiedAt = verifiedAt
             self.analyticsLevel = analyticsLevel
             self.aiLevel = aiLevel
             self.features = features
@@ -34,6 +38,7 @@ final class FeatureGate: ObservableObject {
             uid = try container.decode(String.self, forKey: .uid)
             tier = try container.decode(Tier.self, forKey: .tier)
             subscriptionEndAt = try container.decodeIfPresent(Date.self, forKey: .subscriptionEndAt)
+            verifiedAt = try container.decodeIfPresent(Date.self, forKey: .verifiedAt)
             analyticsLevel = try container.decodeIfPresent(AnalyticsLevel.self, forKey: .analyticsLevel)
                 ?? FeatureGate.defaultAnalyticsLevel(for: tier)
             aiLevel = try container.decodeIfPresent(AILevel.self, forKey: .aiLevel)
@@ -46,6 +51,7 @@ final class FeatureGate: ObservableObject {
             case uid
             case tier
             case subscriptionEndAt
+            case verifiedAt
             case analyticsLevel
             case aiLevel
             case features
@@ -72,6 +78,9 @@ final class FeatureGate: ObservableObject {
         case aiEnabled = "AI_ENABLED"
         case advancedCharts = "ADVANCED_CHARTS"
         case proLayout = "PRO_LAYOUT"
+        case notesUnlimited = "NOTES_UNLIMITED"
+        case notesAutocomplete = "NOTES_AUTOCOMPLETE"
+        case notesProTools = "NOTES_PRO_TOOLS"
     }
 
     enum AnalyticsLevel: String, Codable {
@@ -117,6 +126,10 @@ final class FeatureGate: ObservableObject {
     private var localStoreKitTier: Tier?
     private var localStoreKitSubscriptionEndAt: Date?
     private static let cachedEntitlementKey = "feature_gate.cached_entitlement"
+    private static let entitlementKeychainService = "PomodoroApp.entitlement"
+    private static let entitlementKeychainAccount = "server_verified_grace"
+    private static let offlineEntitlementGraceInterval: TimeInterval = 72 * 60 * 60
+    private static let allowedClockSkew: TimeInterval = 5 * 60
 
     private init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -144,12 +157,15 @@ final class FeatureGate: ObservableObject {
     }
 
     var canUseNotesProFeatures: Bool {
-        switch tier {
-        case .pro, .developer:
-            return true
-        default:
-            return false
-        }
+        canAccess(.notesProTools)
+    }
+
+    var canCreateUnlimitedNotes: Bool {
+        canAccess(.notesUnlimited)
+    }
+
+    var canUseNotesSyntaxAutocomplete: Bool {
+        canAccess(.notesAutocomplete)
     }
 
     var canUseSharePrivateSocial: Bool {
@@ -459,7 +475,9 @@ final class FeatureGate: ObservableObject {
             apply(payload: payload)
         } catch {
             allowanceErrorMessage = error.localizedDescription
-            resetToUnverifiedEntitlementState()
+            if !restoreCachedEntitlementIfAvailable() {
+                resetToUnverifiedEntitlementState()
+            }
         }
     }
 
@@ -503,21 +521,33 @@ final class FeatureGate: ObservableObject {
     }
 
     @MainActor
-    private func restoreCachedEntitlementIfAvailable() {
-        guard FirebaseApp.app() != nil else { return }
-        guard let uid = Auth.auth().currentUser?.uid else { return }
-        guard let data = defaults.data(forKey: Self.cachedEntitlementKey) else { return }
-        guard let cached = try? JSONDecoder().decode(CachedEntitlement.self, from: data) else { return }
-        guard cached.uid == uid else { return }
-        guard cached.tier == .free || cached.tier == .expired else { return }
+    @discardableResult
+    private func restoreCachedEntitlementIfAvailable() -> Bool {
+        guard FirebaseApp.app() != nil else { return false }
+        guard let uid = Auth.auth().currentUser?.uid else { return false }
+        guard let cached = loadCachedEntitlement() else { return false }
+        guard cached.uid == uid else { return false }
 
         let cachedTier = Self.normalizeClientTier(cached.tier)
+        if cachedTier == .plus || cachedTier == .pro || cachedTier == .developer {
+            let now = Date()
+            guard let verifiedAt = cached.verifiedAt,
+                  verifiedAt <= now.addingTimeInterval(Self.allowedClockSkew),
+                  now.timeIntervalSince(verifiedAt) <= Self.offlineEntitlementGraceInterval else {
+                return false
+            }
+            if let subscriptionEndAt = cached.subscriptionEndAt,
+               subscriptionEndAt <= now {
+                return false
+            }
+        }
 
         tier = cachedTier
         subscriptionEndAt = cached.subscriptionEndAt
         analyticsLevel = cachedTier == .free ? .basic : cached.analyticsLevel
         aiLevel = cachedTier == .free ? .none : cached.aiLevel
         featureFlags = cachedTier == .free ? Self.defaultFeatures(for: .free) : Self.decodeFeatureFlags(from: cached.features)
+        return true
     }
 
     @MainActor
@@ -560,12 +590,64 @@ final class FeatureGate: ObservableObject {
             uid: uid,
             tier: tier,
             subscriptionEndAt: subscriptionEndAt,
+            verifiedAt: Date(),
             analyticsLevel: analyticsLevel,
             aiLevel: aiLevel,
             features: Dictionary(uniqueKeysWithValues: featureFlags.map { ($0.key.rawValue, $0.value) })
         )
         guard let data = try? JSONEncoder().encode(cached) else { return }
-        defaults.set(data, forKey: Self.cachedEntitlementKey)
+        if tier == .plus || tier == .pro || tier == .developer {
+            defaults.removeObject(forKey: Self.cachedEntitlementKey)
+            savePaidEntitlementToKeychain(data)
+        } else {
+            clearPaidEntitlementKeychainEntry()
+            defaults.set(data, forKey: Self.cachedEntitlementKey)
+        }
+    }
+
+    private func loadCachedEntitlement() -> CachedEntitlement? {
+        let keychainQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.entitlementKeychainService,
+            kSecAttrAccount as String: Self.entitlementKeychainAccount,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var item: CFTypeRef?
+        if SecItemCopyMatching(keychainQuery as CFDictionary, &item) == errSecSuccess,
+           let data = item as? Data,
+           let cached = try? JSONDecoder().decode(CachedEntitlement.self, from: data) {
+            return cached
+        }
+
+        guard let data = defaults.data(forKey: Self.cachedEntitlementKey),
+              let cached = try? JSONDecoder().decode(CachedEntitlement.self, from: data),
+              cached.tier == .free || cached.tier == .expired else {
+            return nil
+        }
+        return cached
+    }
+
+    private func savePaidEntitlementToKeychain(_ data: Data) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.entitlementKeychainService,
+            kSecAttrAccount as String: Self.entitlementKeychainAccount,
+        ]
+        SecItemDelete(query as CFDictionary)
+        var attributes = query
+        attributes[kSecValueData as String] = data
+        attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        SecItemAdd(attributes as CFDictionary, nil)
+    }
+
+    private func clearPaidEntitlementKeychainEntry() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.entitlementKeychainService,
+            kSecAttrAccount as String: Self.entitlementKeychainAccount,
+        ]
+        SecItemDelete(query as CFDictionary)
     }
 
     private static func normalizeClientTier(_ tier: Tier) -> Tier {
@@ -911,18 +993,27 @@ final class FeatureGate: ObservableObject {
                 .aiEnabled: true,
                 .advancedCharts: true,
                 .proLayout: true,
+                .notesUnlimited: true,
+                .notesAutocomplete: true,
+                .notesProTools: true,
             ]
         case .plus:
             return [
                 .aiEnabled: true,
                 .advancedCharts: true,
                 .proLayout: false,
+                .notesUnlimited: true,
+                .notesAutocomplete: true,
+                .notesProTools: false,
             ]
         case .free, .beta, .expired:
             return [
                 .aiEnabled: false,
                 .advancedCharts: false,
                 .proLayout: false,
+                .notesUnlimited: false,
+                .notesAutocomplete: false,
+                .notesProTools: false,
             ]
         }
     }

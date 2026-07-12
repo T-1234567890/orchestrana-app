@@ -33,11 +33,11 @@ final class AppleMusicProvider: NowPlayingProvider {
             return NowPlayingProviderState(isRunning: false, isPlaying: false, title: "", artist: "", artwork: nil)
         }
 
-        let isRunning = result.descriptor(at: 1)?.booleanValue ?? false
-        let isPlaying = result.descriptor(at: 2)?.booleanValue ?? false
-        let title = result.descriptor(at: 3)?.stringValue ?? ""
-        let artist = result.descriptor(at: 4)?.stringValue ?? ""
-        let artworkData = result.descriptor(at: 5)?.data
+        let isRunning = result.boolean(at: 1) ?? false
+        let isPlaying = result.boolean(at: 2) ?? false
+        let title = result.string(at: 3) ?? ""
+        let artist = result.string(at: 4) ?? ""
+        let artworkData = result.data(at: 5)
         let artwork = artworkData.flatMap { NSImage(data: $0) }
 
         return NowPlayingProviderState(

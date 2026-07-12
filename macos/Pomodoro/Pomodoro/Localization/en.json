@@ -103,7 +103,7 @@
   "calendar.event_tasks.title_required": "Enter an event title first.",
   "calendar.ai_assistant.reschedule_description": "Reorganize today's schedule around today's calendar.",
   "calendar.ai_assistant.reschedule_title": "Reorganize Today",
-  "calendar.ai_auto_schedule.requires_pro": "AI Calendar Scheduling is available in Pro and Developer plans.",
+  "calendar.ai_auto_schedule.requires_pro": "AI Calendar Scheduling is available with Pro.",
   "calendar.ai_auto_schedule.requires_pro_title": "This feature requires a Pro subscription.",
   "calendar.all_day": "All day",
   "calendar.blocks": "Blocks",
